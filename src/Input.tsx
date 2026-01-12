@@ -100,7 +100,7 @@ export class Input {
     // ServerAPI for backend communication
     private serverAPI: ServerAPI;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
-    private pollingRate = 16; // ~60Hz polling
+    private pollingRate = 100; // 10Hz polling
 
     // Health tracking
     private lastInputTime: number = 0;
