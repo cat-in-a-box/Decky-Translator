@@ -6,7 +6,6 @@ lib-cov
 *.out
 *.pid
 *.gz
-*.swp
 
 pids
 logs
@@ -16,13 +15,10 @@ tmp
 # Coverage reports
 coverage
 
-# API keys and secrets
-.env
-
 # Dependency directory
 node_modules
 bower_components
-.pnpm-store
+py_modules
 
 # Editors
 .idea
@@ -32,9 +28,6 @@ bower_components
 .DS_Store
 Thumbs.db
 
-# Ignore built ts files
-dist/
-
 __pycache__/
 
 /.yalc
@@ -43,15 +36,35 @@ yalc.lock
 .vscode/settings.json
 
 # Ignore output folder
-
 backend/out
+bin
+/.pnpm-store
 
-# Make sure to ignore any instance of the loader's decky_plugin.py
-decky_plugin.py
+# Code-Assit tools
+.claude/
+claude-instructions/
 
-# Ignore decky CLI for building plugins
-out
-out/*
-cli/
-cli/*
-cli/decky
+# Deploy Folder
+deploy/
+
+# Node modules
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+temp-build/
+*.zip
