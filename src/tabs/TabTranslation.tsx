@@ -5,16 +5,24 @@ import {
     PanelSection,
     PanelSectionRow,
     DropdownItem,
-    ToggleField,
     SliderField,
     showModal,
     ModalRoot,
     DialogButton,
-    TextField
+    TextField,
+    Field,
+    Focusable
 } from "decky-frontend-lib";
 
 import { VFC, useState } from "react";
 import { useSettings } from "../SettingsContext";
+
+// @ts-ignore
+import ocrspaceLogo from "../../assets/ocrspace-logo.png";
+// @ts-ignore
+import googlecloudLogo from "../../assets/googlecloud-logo.png";
+// @ts-ignore
+import googletranslateLogo from "../../assets/googletranslate-logo.png";
 
 // Language options
 const languageOptions = [
@@ -85,7 +93,7 @@ export const TabTranslation: VFC = () => {
     const { settings, updateSetting } = useSettings();
 
     return (
-        <div style={{ marginLeft: "-8px", marginRight: "-8px" }}>
+        <div style={{ marginLeft: "-8px", marginRight: "-8px", paddingBottom: "40px" }}>
             <PanelSection title="Languages">
                 <PanelSectionRow>
                     <DropdownItem
@@ -110,12 +118,50 @@ export const TabTranslation: VFC = () => {
 
             <PanelSection title="Providers">
                 <PanelSectionRow>
-                    <ToggleField
-                        label="Use Google Cloud"
-                        description="Faster and provides better results but requires API key. Also free if you don't go crazy with it"
-                        checked={!settings.useFreeProviders}
-                        onChange={(value) => updateSetting('useFreeProviders', !value, 'Provider mode')}
+                    <DropdownItem
+                        label="Text Recognition + Translation"
+                        rgOptions={[
+                            { label: <span>Simple</span>, data: true },
+                            { label: <span>Advanced</span>, data: false }
+                        ]}
+                        selectedOption={settings.useFreeProviders}
+                        onChange={(option) => updateSetting('useFreeProviders', option.data, 'OCR provider')}
                     />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <Field
+                        focusable={true}
+                        childrenContainerWidth="max"
+                    >
+                        <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
+                            {settings.useFreeProviders ? (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                        <img src={ocrspaceLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>OCR.space</span>
+                                        <span>+</span>
+                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
+                                    </div>
+                                    <div>- Just works, no API key needed</div>
+                                    <div>- 500 requests/day limit</div>
+                                    <div>- Less accurate text recognition</div>
+                                    <div>- Average translation quality</div>
+                                </>
+                            ) : (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                        <img src={googlecloudLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Cloud</span>
+                                    </div>
+                                    <div>- Requires API key</div>
+                                    <div>- Free if you don't go crazy</div>
+                                    <div>- Faster recognition</div>
+                                    <div>- More accurate results</div>
+                                </>
+                            )}
+                        </div>
+                    </Field>
                 </PanelSectionRow>
 
                 {/* Google Cloud API Key - only show when not using free providers */}
@@ -156,6 +202,14 @@ export const TabTranslation: VFC = () => {
                         </PanelSectionRow>
                     </>
                 )}
+
+                {/* Invisible spacer to help with scroll when focusing last element */}
+                <PanelSectionRow>
+                    <Focusable
+                        style={{ height: "1px", opacity: 0 }}
+                        onActivate={() => {}}
+                    />
+                </PanelSectionRow>
             </PanelSection>
         </div>
     );
