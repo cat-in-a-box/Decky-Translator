@@ -17,6 +17,7 @@ export interface Settings {
     confidenceThreshold: number; // New setting for confidence threshold
     pauseGameOnOverlay: boolean; // Setting to control pausing game when overlay is shown
     quickToggleEnabled: boolean; // Quick toggle overlay with right button in combo modes
+    useFreeProviders: boolean; // Use free providers (OCR.space + free Google Translate)
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
 }
@@ -39,7 +40,8 @@ const initialSettings: Settings = {
     confidenceThreshold: 0.6, // Default confidence threshold
     pauseGameOnOverlay: false, // Default to not pausing game
     quickToggleEnabled: false, // Default to disabled
-    googleApiKey: "", // Empty by default, user must provide their own API key
+    useFreeProviders: true, // Default to free providers (no API key needed)
+    googleApiKey: "", // Empty by default, only needed for Google Cloud
     debugMode: false // Debug mode off by default
 };
 
@@ -99,6 +101,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     confidenceThreshold: serverSettings.confidence_threshold || 0.6, // Add default if not present
                     pauseGameOnOverlay: serverSettings.pause_game_on_overlay || false, // Add default if not present
                     quickToggleEnabled: serverSettings.quick_toggle_enabled || false, // Add default if not present
+                    useFreeProviders: serverSettings.use_free_providers !== false, // Default to true
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
                     debugMode: serverSettings.debug_mode || false // Debug mode
                 };
@@ -148,6 +151,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 confidenceThreshold: 'confidence_threshold',
                 pauseGameOnOverlay: 'pause_game_on_overlay',
                 quickToggleEnabled: 'quick_toggle_enabled',
+                useFreeProviders: 'use_free_providers',
                 googleApiKey: 'google_api_key',
                 debugMode: 'debug_mode'
             };
