@@ -7,7 +7,8 @@
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:zip": "npm run build && node scripts/build-zip.js",
-    "copy-to-deck": "node scripts/copy-to-deck.js"
+    "copy-to-deck": "node scripts/copy-to-deck.js",
+    "build:zip and copy-to-deck": "npm run build:zip && npm run copy-to-deck"
   },
   "repository": {
     "type": "git",
@@ -37,6 +38,7 @@
     "@types/react-dom": "^19.1.2",
     "@types/webpack": "^5.28.0",
     "bestzip": "^2.2.1",
+    "node-scp": "^0.0.25",
     "rollup": "^2.77.1",
     "rollup-plugin-import-assets": "^1.1.1",
     "shx": "^0.3.4",
@@ -44,6 +46,7 @@
     "typescript": "^4.7.4"
   },
   "dependencies": {
+    "@decky/ui": "^4.11.1",
     "decky-frontend-lib": "^3.24.5",
     "react-dom": "^19.1.0",
     "react-icons": "^4.4.0"
