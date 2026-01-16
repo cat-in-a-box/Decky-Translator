@@ -15,13 +15,13 @@ import { InputMode } from "../Input";
 
 // Input mode options for dropdown
 const inputModeOptions = [
-    { label: "L4 Back Button", data: InputMode.L4_BUTTON },
-    { label: "R4 Back Button", data: InputMode.R4_BUTTON },
-    { label: "L5 Back Button", data: InputMode.L5_BUTTON },
-    { label: "R5 Back Button", data: InputMode.R5_BUTTON },
-    { label: "L4 + R4 Combination", data: InputMode.L4_R4_COMBO },
-    { label: "L5 + R5 Combination", data: InputMode.L5_R5_COMBO },
-    { label: "Left + Right Touchpad Combination", data: InputMode.TOUCHPAD_COMBO }
+    { label: "L4", data: InputMode.L4_BUTTON },
+    { label: "R4", data: InputMode.R4_BUTTON },
+    { label: "L5", data: InputMode.L5_BUTTON },
+    { label: "R5", data: InputMode.R5_BUTTON },
+    { label: "L4 + R4", data: InputMode.L4_R4_COMBO },
+    { label: "L5 + R5", data: InputMode.L5_R5_COMBO },
+    { label: "Both Touchpads", data: InputMode.TOUCHPAD_COMBO }
 ];
 
 // Helper to get button labels for current input mode
@@ -50,8 +50,8 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
             <PanelSection title="Activation">
                 <PanelSectionRow>
                     <DropdownItem
-                        label="'Hold to Translate' buttons"
-                        description="Select which button(s) to use for activating translation"
+                        label="Quick Translation Shortcut"
+                        description="Select which buttons to hold to start translaton"
                         rgOptions={inputModeOptions}
                         selectedOption={settings.inputMode}
                         onChange={(option) => updateSetting('inputMode', option.data, 'Input method')}
@@ -64,8 +64,8 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         max={3}
                         min={0}
                         step={0.1}
-                        label="Hold Time for Translation"
-                        description="Seconds to hold button(s) to activate translation"
+                        label="Hold Time to Start"
+                        description="Seconds to hold button(s) to translate"
                         showValue={true}
                         valueSuffix="s"
                         onChange={(value) => {
@@ -81,7 +81,7 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         max={3}
                         min={0}
                         step={0.1}
-                        label="Hold Time for Dismissal"
+                        label="Hold Time to Dismiss"
                         description="Seconds to hold button(s) to dismiss overlay"
                         showValue={true}
                         valueSuffix="s"
@@ -98,7 +98,7 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                     <ToggleField
                         checked={settings.pauseGameOnOverlay}
                         label="Pause Game While Translating"
-                        description="Automatically pause the game when translation overlay is visible"
+                        description="Pauses the active game while overlay is visible. Allows you to read the text more thoughtfully. Resumed when dismissed"
                         onChange={(value) => {
                             updateSetting('pauseGameOnOverlay', value, 'Pause game while translating');
                         }}
@@ -112,8 +112,8 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                     <PanelSectionRow>
                         <ToggleField
                             checked={settings.quickToggleEnabled}
-                            label="Quick Toggle with Right Button"
-                            description="Tap right button to toggle overlay visibility (show/hide translations)"
+                            label="Quick toggle with Right Button"
+                            description="If double buttons combination is selected, press right button to toggle overlay visibility"
                             onChange={(value) => {
                                 updateSetting('quickToggleEnabled', value, 'Quick toggle');
                             }}
