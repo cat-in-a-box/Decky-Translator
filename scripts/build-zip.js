@@ -126,6 +126,20 @@ async function buildZip() {
       console.log('   ✓ py_modules/ directory created (empty)');
     }
 
+    // Copy providers directory (Python provider modules)
+    console.log('\n📂 Copying providers/ directory...');
+    const providersSrc = path.join(projectRoot, 'providers');
+    const providersDest = path.join(pluginDir, 'providers');
+
+    if (fs.existsSync(providersSrc)) {
+      copyRecursive(providersSrc, providersDest);
+      console.log('   ✓ providers/ directory copied');
+    } else {
+      console.error('   ✗ Error: providers/ directory not found.');
+      cleanupTemp(tempBuildDir);
+      process.exit(1);
+    }
+
     // Create zip file using bestzip
     console.log('\n🗜️  Creating zip archive...');
     const zipName = `${pluginName}.zip`;
