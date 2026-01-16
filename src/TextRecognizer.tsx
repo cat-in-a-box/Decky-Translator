@@ -3,6 +3,25 @@
 import { ServerAPI } from "decky-frontend-lib";
 import { logger } from "./Logger";
 
+// Error response from backend
+export interface ErrorResponse {
+    error: string;
+    message: string;
+}
+
+// Custom error class for network errors
+export class NetworkError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'NetworkError';
+    }
+}
+
+// Type guard to check if response is an error
+function isErrorResponse(value: unknown): value is ErrorResponse {
+    return typeof value === 'object' && value !== null && 'error' in value && 'message' in value;
+}
+
 // Enhanced text region interface with visual properties
 export interface TextRegion {
     text: string;
@@ -918,6 +937,18 @@ export class TextRecognizer {
                 image_path: imagePath
             });
             if (response.success && response.result) {
+                // Check for error response (network error)
+                if (isErrorResponse(response.result)) {
+                    const errorResponse = response.result as ErrorResponse;
+                    if (errorResponse.error === 'network_error') {
+                        logger.error('TextRecognizer', `Network error: ${errorResponse.message}`);
+                        throw new NetworkError(errorResponse.message);
+                    }
+                    // Handle other error types if needed
+                    logger.error('TextRecognizer', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
+                    return [];
+                }
+
                 const regions = response.result as TextRegion[];
                 logger.info('TextRecognizer', `Got ${regions.length} regions from file-based OCR`);
 
@@ -933,6 +964,10 @@ export class TextRecognizer {
             logger.error('TextRecognizer', 'Failed to recognize text (file-based)');
             return [];
         } catch (error) {
+            // Re-throw NetworkError to be handled by caller
+            if (error instanceof NetworkError) {
+                throw error;
+            }
             logger.error('TextRecognizer', 'Text recognition error (file-based)', error);
             return [];
         }

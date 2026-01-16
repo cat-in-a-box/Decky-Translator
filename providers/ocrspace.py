@@ -13,7 +13,7 @@ from typing import List, Optional
 import requests
 from PIL import Image
 
-from .base import OCRProvider, ProviderType, TextRegion
+from .base import OCRProvider, ProviderType, TextRegion, NetworkError
 
 logger = logging.getLogger(__name__)
 
@@ -287,6 +287,12 @@ class OCRSpaceProvider(OCRProvider):
 
             return text_regions
 
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"OCR.space connection error: {e}")
+            raise NetworkError("No internet connection") from e
+        except requests.exceptions.Timeout as e:
+            logger.error(f"OCR.space timeout error: {e}")
+            raise NetworkError("Connection timed out") from e
         except Exception as e:
             logger.error(f"OCR.space error: {e}")
             return []

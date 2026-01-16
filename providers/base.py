@@ -7,6 +7,11 @@ from typing import List, Dict, Tuple
 from enum import Enum
 
 
+class NetworkError(Exception):
+    """Raised when a network connection error occurs."""
+    pass
+
+
 class ProviderType(Enum):
     """Enum for available provider types."""
     GOOGLE = "google"           # Google Cloud (requires API key)

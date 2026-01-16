@@ -25,7 +25,7 @@ if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
 # Import provider system
-from providers import ProviderManager, TextRegion
+from providers import ProviderManager, TextRegion, NetworkError
 
 _processing_lock = False
 
@@ -1111,6 +1111,9 @@ class Plugin:
             # Convert TextRegion objects to dicts for JSON serialization
             return [region.to_dict() for region in text_regions]
 
+        except NetworkError as e:
+            logger.error(f"Network error during text recognition: {str(e)}")
+            return {"error": "network_error", "message": str(e)}
         except Exception as e:
             logger.error(f"Text recognition error: {str(e)}")
             logger.error(traceback.format_exc())
@@ -1194,6 +1197,9 @@ class Plugin:
             logger.info(f"Processed {len(translated_regions)} translated regions")
             return translated_regions
 
+        except NetworkError as e:
+            logger.error(f"Network error during translation: {str(e)}")
+            return {"error": "network_error", "message": str(e)}
         except Exception as e:
             logger.error(f"Translation error: {str(e)}")
             logger.error(traceback.format_exc())

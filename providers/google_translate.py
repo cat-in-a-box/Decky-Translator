@@ -7,7 +7,7 @@ from typing import List
 
 import requests
 
-from .base import TranslationProvider, ProviderType
+from .base import TranslationProvider, ProviderType, NetworkError
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +134,12 @@ class GoogleTranslateProvider(TranslationProvider):
                 logger.error("Unexpected response format from Translation API")
                 return texts
 
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Google Translate connection error: {e}")
+            raise NetworkError("No internet connection") from e
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Google Translate timeout error: {e}")
+            raise NetworkError("Connection timed out") from e
         except Exception as e:
             logger.error(f"Batch translation error: {e}")
             return texts

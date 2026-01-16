@@ -10,7 +10,7 @@ from typing import List
 import requests
 from PIL import Image
 
-from .base import OCRProvider, ProviderType, TextRegion
+from .base import OCRProvider, ProviderType, TextRegion, NetworkError
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +100,12 @@ class GoogleVisionProvider(OCRProvider):
             result = response.json()
             return self._parse_response(result)
 
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Google Vision connection error: {e}")
+            raise NetworkError("No internet connection") from e
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Google Vision timeout error: {e}")
+            raise NetworkError("Connection timed out") from e
         except Exception as e:
             logger.error(f"Google Vision OCR error: {e}")
             return []
