@@ -19,6 +19,14 @@ import requests
 from PIL import Image
 import io
 
+# Add plugin directory to Python path for local imports
+PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
+if PLUGIN_DIR not in sys.path:
+    sys.path.insert(0, PLUGIN_DIR)
+
+# Import provider system
+from providers import ProviderManager, TextRegion
+
 _processing_lock = False
 
 # Get environment variable
@@ -611,6 +619,10 @@ class Plugin:
     # Hidraw button monitor
     _hidraw_monitor: HidrawButtonMonitor = None
 
+    # Provider system
+    _provider_manager: ProviderManager = None
+    _use_free_providers: bool = True  # Default to free providers (no API key needed)
+
     # OCR API configurations - user must provide their own API key
     _google_vision_api_key: str = ""
     _google_translate_api_key: str = ""
@@ -652,6 +664,14 @@ class Plugin:
                 self._pause_game_on_overlay = value
             elif key == "quick_toggle_enabled":
                 self._quick_toggle_enabled = value
+            elif key == "use_free_providers":
+                self._use_free_providers = value
+                # Update provider manager configuration
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=value,
+                        google_api_key=self._google_vision_api_key
+                    )
             else:
                 logger.warning(f"Unknown setting key: {key}")
 
@@ -672,6 +692,7 @@ class Plugin:
                 "input_language": self._input_language,
                 "input_mode": self._input_mode,
                 "enabled": self._settings.get_setting("enabled", True),
+                "use_free_providers": self._use_free_providers,
                 "google_api_key": self._google_vision_api_key,  # Single key for frontend
                 "google_vision_api_key": self._google_vision_api_key,
                 "google_translate_api_key": self._google_translate_api_key,
@@ -687,6 +708,17 @@ class Plugin:
             logger.error(f"Error getting all settings: {str(e)}")
             logger.error(traceback.format_exc())
             return {}
+
+    async def get_provider_status(self):
+        """Get current provider status including usage stats."""
+        logger.info("Getting provider status")
+        try:
+            if self._provider_manager:
+                return self._provider_manager.get_provider_status()
+            return {"error": "Provider manager not initialized"}
+        except Exception as e:
+            logger.error(f"Error getting provider status: {str(e)}")
+            return {"error": str(e)}
 
     async def take_screenshot(self, app_name: str = ""):
         logger.info(f"Taking screenshot for app: {app_name}")
@@ -1042,7 +1074,7 @@ class Plugin:
         logger.warning(f"appid_from_pid: No AppId found for pid={pid}")
         return 0
 
-    # New method for OCR text recognition
+    # OCR text recognition using provider system
     async def recognize_text(self, image_data: str):
         logger.info("Starting text recognition")
         try:
@@ -1057,194 +1089,28 @@ class Plugin:
             # If image data starts with data:image prefix, remove it
             if image_data.startswith('data:image'):
                 logger.debug("Stripping data:image prefix from image data")
-                # Extract the base64 part after the comma
                 image_data = image_data.split(',', 1)[1]
                 logger.debug(f"Base64 data length after stripping prefix: {len(image_data)}")
 
-            # Check if we have a Google Vision API key configured
-            if not self._google_vision_api_key:
-                logger.error("Google Vision API key not configured")
-                return []  # Return empty result if no API key
+            # Decode base64 to bytes for provider
+            image_bytes = base64.b64decode(image_data)
 
-            # Prepare request to Google Cloud Vision API
-            url = f"https://vision.googleapis.com/v1/images:annotate?key={self._google_vision_api_key}"
-            logger.debug(f"Prepared OCR API URL: {url}")
+            # Use provider manager for OCR
+            if not self._provider_manager:
+                logger.error("Provider manager not initialized")
+                return []
 
-            # Prepare the request body - using DOCUMENT_TEXT_DETECTION instead of TEXT_DETECTION
-            request_data = {
-                "requests": [
-                    {
-                        "image": {
-                            "content": image_data
-                        },
-                        "features": [
-                            {
-                                "type": "DOCUMENT_TEXT_DETECTION",  # This feature provides confidence scores
-                                "maxResults": 50
-                            }
-                        ]
-                    }
-                ]
-            }
-            logger.debug("OCR request body prepared")
-
-            # Log API call
-            logger.info("Sending request to Google Cloud Vision API")
             start_time = time.time()
-            response = requests.post(url, json=request_data, timeout=5.0)
+            text_regions = await self._provider_manager.recognize_text(
+                image_bytes,
+                language=self._input_language
+            )
             elapsed_time = time.time() - start_time
-            logger.info(f"Received response from Google Cloud Vision API in {elapsed_time:.2f}s")
-            logger.debug(f"Response status code: {response.status_code}")
+            logger.info(f"OCR completed in {elapsed_time:.2f}s, found {len(text_regions)} regions")
 
-            if response.status_code != 200:
-                logger.error(f"Google Vision API error: {response.status_code}")
-                logger.error(f"Response content: {response.text[:500]}")
+            # Convert TextRegion objects to dicts for JSON serialization
+            return [region.to_dict() for region in text_regions]
 
-            # Parse the response
-            result = response.json()
-            logger.debug(f"Response JSON parsed successfully")
-
-            # Extract text blocks
-            text_regions = []
-
-            try:
-                # Get image dimensions for positioning
-                logger.debug("Decoding image from base64 to get dimensions")
-                image_bytes = base64.b64decode(image_data)
-                image = Image.open(io.BytesIO(image_bytes))
-                img_width, img_height = image.size
-                logger.debug(f"Image dimensions: {img_width}x{img_height}")
-
-                # Process text annotations
-                if 'responses' in result and result['responses']:
-                    # With DOCUMENT_TEXT_DETECTION, the response structure is different
-                    full_text_annotation = result['responses'][0].get('fullTextAnnotation', {})
-                    pages = full_text_annotation.get('pages', [])
-
-                    # First check if we got pages
-                    if pages:
-                        # Extract blocks from the first page
-                        blocks = pages[0].get('blocks', [])
-                        logger.info(f"Found {len(blocks)} text blocks in the response")
-
-                        for block_idx, block in enumerate(blocks):
-                            # Each block contains paragraphs
-                            paragraphs = block.get('paragraphs', [])
-                            for para_idx, paragraph in enumerate(paragraphs):
-                                # Extract paragraph text by combining words
-                                para_text = ""
-                                confidence = paragraph.get('confidence', 0.0)
-
-                                # Get paragraph bounding box
-                                vertices = paragraph.get('boundingBox', {}).get('vertices', [])
-
-                                if vertices and len(vertices) >= 4:
-                                    # Extract coordinates
-                                    x_coords = [v.get('x', 0) for v in vertices if 'x' in v]
-                                    y_coords = [v.get('y', 0) for v in vertices if 'y' in v]
-
-                                    if x_coords and y_coords:
-                                        left = min(x_coords)
-                                        top = min(y_coords)
-                                        right = max(x_coords)
-                                        bottom = max(y_coords)
-
-                                        # Get paragraph text by combining words
-                                        for word in paragraph.get('words', []):
-                                            word_text = ""
-                                            for symbol in word.get('symbols', []):
-                                                word_text += symbol.get('text', '')
-                                            if word_text:
-                                                para_text += word_text + " "
-
-                                        para_text = para_text.strip()
-
-                                        # Log the extracted coordinates
-                                        logger.debug(
-                                            f"Text region {block_idx}_{para_idx}: '{para_text[:20]}{'...' if len(para_text) > 20 else ''}', " +
-                                            f"coords: [{left},{top},{right},{bottom}]")
-
-                                        # Log confidence score
-                                        logger.debug(f"Text region {block_idx}_{para_idx} confidence: {confidence}")
-
-                                        # Determine if text is a dialog (simple heuristic)
-                                        # If text is longer than 15 chars or contains punctuation, it might be dialog
-                                        is_dialog = len(para_text) > 15 or any(p in para_text for p in '.?!,:;"')
-                                        logger.debug(f"Text region {block_idx}_{para_idx} dialog status: {is_dialog}")
-
-                                        text_regions.append({
-                                            "text": para_text,
-                                            "rect": {
-                                                "left": left,
-                                                "top": top,
-                                                "right": right,
-                                                "bottom": bottom
-                                            },
-                                            "isDialog": is_dialog,
-                                            "confidence": confidence
-                                        })
-                    else:
-                        # Fallback to text annotations if no pages
-                        text_annotations = result['responses'][0].get('textAnnotations', [])
-                        logger.info(f"No page structure found, using {len(text_annotations)} text annotations")
-
-                        # Skip the first annotation which is the entire text content
-                        for idx, annotation in enumerate(text_annotations[1:], 1):
-                            text = annotation.get('description', '')
-                            vertices = annotation.get('boundingPoly', {}).get('vertices', [])
-
-                            # Extract confidence from parent block (this is a best-effort attempt)
-                            # Note: confidences may not be accurate in this fallback method
-                            confidence = 0.8  # Default fallback confidence
-
-                            if text and vertices and len(vertices) >= 4:
-                                # Extract coordinates
-                                x_coords = [v.get('x', 0) for v in vertices if 'x' in v]
-                                y_coords = [v.get('y', 0) for v in vertices if 'y' in v]
-
-                                if x_coords and y_coords:
-                                    left = min(x_coords)
-                                    top = min(y_coords)
-                                    right = max(x_coords)
-                                    bottom = max(y_coords)
-
-                                    # Log the extracted coordinates
-                                    logger.debug(
-                                        f"Text region {idx}: '{text[:20]}{'...' if len(text) > 20 else ''}', " +
-                                        f"coords: [{left},{top},{right},{bottom}]")
-
-                                    # Log confidence score
-                                    logger.debug(f"Text region {idx} confidence: {confidence}")
-
-                                    # Determine if text is a dialog (simple heuristic)
-                                    is_dialog = len(text) > 15 or any(p in text for p in '.?!,:;"')
-                                    logger.debug(f"Text region {idx} dialog status: {is_dialog}")
-
-                                    text_regions.append({
-                                        "text": text,
-                                        "rect": {
-                                            "left": left,
-                                            "top": top,
-                                            "right": right,
-                                            "bottom": bottom
-                                        },
-                                        "isDialog": is_dialog,
-                                        "confidence": confidence
-                                    })
-                else:
-                    logger.warning("No 'responses' field or empty responses in the API result")
-                    logger.debug(f"API response structure: {json.dumps(result)[:200]}...")
-            except Exception as img_error:
-                logger.error(f"Error processing image dimensions or text regions: {str(img_error)}")
-                logger.error(traceback.format_exc())
-
-            logger.info(f"Text recognition completed, found {len(text_regions)} text regions")
-            return text_regions
-
-        except requests.exceptions.RequestException as req_err:
-            logger.error(f"HTTP request error during text recognition: {str(req_err)}")
-            logger.error(traceback.format_exc())
-            return []
         except Exception as e:
             logger.error(f"Text recognition error: {str(e)}")
             logger.error(traceback.format_exc())
@@ -1278,7 +1144,7 @@ class Plugin:
                 except Exception as cleanup_error:
                     logger.warning(f"Failed to delete temporary screenshot file: {cleanup_error}")
 
-    # Method to translate text using Google Translate API
+    # Translation using provider system
     async def translate_text(self, text_regions, target_language=None, input_language=None):
         logger.info(
             f"Starting text translation to {target_language or self._target_language} from {input_language or self._input_language}")
@@ -1293,83 +1159,41 @@ class Plugin:
             input_lang = input_language or self._input_language
             logger.debug(f"Using target language: {target_lang}, input language: {input_lang}")
 
-            # Check if we have a Google Translate API key configured
-            if not self._google_translate_api_key:
-                logger.error("Google Translate API key not configured")
-                return None  # Return None to indicate error
+            # Use provider manager for translation
+            if not self._provider_manager:
+                logger.error("Provider manager not initialized")
+                return None
 
-            # Prepare for batch translation
+            # Extract texts from regions
             texts_to_translate = []
             for idx, region in enumerate(text_regions):
                 texts_to_translate.append(region["text"])
                 logger.debug(
                     f"Text region {idx} for translation: '{region['text'][:30]}{'...' if len(region['text']) > 30 else ''}'")
 
-            # Translate API URL
-            url = f"https://translation.googleapis.com/language/translate/v2?key={self._google_translate_api_key}"
-            logger.debug(f"Prepared translation API URL: {url}")
-
-            # Prepare request data
-            request_data = {
-                "q": texts_to_translate,
-                "target": target_lang,
-                "format": "text"
-            }
-
-            # Only add source language if not auto
-            if input_lang and input_lang != "auto":
-                request_data["source"] = input_lang
-
-            logger.debug(f"Translation request prepared for {len(texts_to_translate)} text regions to {target_lang}")
-
-            # Log API call
-            logger.info(f"Sending translation request for {len(texts_to_translate)} texts")
+            # Translate using provider
             start_time = time.time()
-            response = requests.post(url, json=request_data)
+            translated_texts = await self._provider_manager.translate_text(
+                texts_to_translate,
+                source_lang=input_lang,
+                target_lang=target_lang
+            )
             elapsed_time = time.time() - start_time
-            logger.info(f"Received response from Google Translate API in {elapsed_time:.2f}s")
-            logger.debug(f"Translation response status code: {response.status_code}")
+            logger.info(f"Translation completed in {elapsed_time:.2f}s")
 
-            if response.status_code != 200:
-                logger.error(f"Google Translate API error: {response.status_code}")
-                logger.error(f"Response content: {response.text[:500]}")
-
-            # Parse the response
-            result = response.json()
-            logger.debug("Translation response JSON parsed successfully")
-
-            # Process translations
+            # Combine translations with original regions
             translated_regions = []
-            if 'data' in result and 'translations' in result['data']:
-                translations = result['data']['translations']
-                logger.info(f"Received {len(translations)} translations from API")
+            for i, translated_text in enumerate(translated_texts):
+                if i < len(text_regions):
+                    translated_region = {
+                        **text_regions[i],
+                        "translatedText": translated_text
+                    }
+                    translated_regions.append(translated_region)
 
-                for i, translation in enumerate(translations):
-                    if i < len(text_regions):
-                        translated_text = translation.get('translatedText', '')
-                        logger.debug(
-                            f"Region {i} translation: '{translated_text[:30]}{'...' if len(translated_text) > 30 else ''}'")
-
-                        # Create translated region with the original region info
-                        translated_region = {
-                            **text_regions[i],  # Copy all fields from original region
-                            "translatedText": translated_text
-                        }
-                        translated_regions.append(translated_region)
-                    else:
-                        logger.warning(
-                            f"Received more translations ({len(translations)}) than regions ({len(text_regions)})")
-            else:
-                logger.error("Unexpected response format from Translation API")
-                logger.debug(f"Response structure: {json.dumps(result)[:200]}...")
-
-            logger.info(f"Translation completed, processed {len(translated_regions)} regions")
+            logger.info(f"Processed {len(translated_regions)} translated regions")
             return translated_regions
 
-        except requests.exceptions.RequestException as req_err:
-            logger.error(f"HTTP request error during translation: {str(req_err)}")
-            logger.error(traceback.format_exc())
-            return None
         except Exception as e:
             logger.error(f"Translation error: {str(e)}")
             logger.error(traceback.format_exc())
@@ -1597,7 +1421,26 @@ class Plugin:
                 # Save to new key format for future
                 self._settings.set_setting("google_api_key", google_api_key)
             else:
-                logger.warning("No Google API key configured - text recognition will not work")
+                logger.info("No Google API key configured - will use free providers by default")
+
+            # Load use_free_providers setting
+            saved_use_free = self._settings.get_setting("use_free_providers")
+            if saved_use_free is not None:
+                logger.info(f"Using saved use_free_providers: {saved_use_free}")
+                self._use_free_providers = saved_use_free
+            else:
+                logger.info(f"No saved use_free_providers, using default: {self._use_free_providers}")
+                self._settings.set_setting("use_free_providers", self._use_free_providers)
+
+            # Initialize provider manager
+            logger.info("Initializing provider manager...")
+            self._provider_manager = ProviderManager()
+            self._provider_manager.configure(
+                use_free_providers=self._use_free_providers,
+                google_api_key=google_api_key
+            )
+            provider_status = self._provider_manager.get_provider_status()
+            logger.info(f"Provider manager initialized: {provider_status}")
 
             # Set confidence treshold
             saved_confidence = self._settings.get_setting("confidence_threshold")

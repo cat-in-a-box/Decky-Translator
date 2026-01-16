@@ -101,6 +101,7 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
     const {settings, updateSetting, initialized} = useSettings();
     const [overlayVisible, setOverlayVisible] = useState<boolean>(logic.isOverlayVisible());
     const [inputDiagnostics, setInputDiagnostics] = useState<any>(null);
+    const [providerStatus, setProviderStatus] = useState<any>(null);
 
     // Input mode options for dropdown
     const inputModeOptions = [
@@ -131,6 +132,33 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
             clearInterval(intervalId);
         };
     }, [logic, settings.enabled]);
+
+    // Fetch provider status (including usage stats) when using free providers
+    useEffect(() => {
+        if (!settings.useFreeProviders) {
+            setProviderStatus(null);
+            return;
+        }
+
+        const fetchProviderStatus = async () => {
+            try {
+                const response = await serverAPI.callPluginMethod('get_provider_status', {});
+                if (response.success && response.result) {
+                    setProviderStatus(response.result);
+                }
+            } catch (error) {
+                logger.error('GameTranslator', 'Failed to fetch provider status', error);
+            }
+        };
+
+        fetchProviderStatus();
+        // Refresh every 30 seconds
+        const intervalId = setInterval(fetchProviderStatus, 30000);
+
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [serverAPI, settings.useFreeProviders]);
 
     // Refresh diagnostics while debug mode is on
     useEffect(() => {
@@ -309,22 +337,110 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
                         />
                     </PanelSectionRow>
 
+                    {/* Provider Selection */}
                     <PanelSectionRow>
-                        <ButtonItem
-                            label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
-                            description="Google Cloud API key for text recognition & translation"
-                            layout="below"
-                            onClick={() => {
-                                showModal(
-                                    <ApiKeyModal
-                                        currentKey={settings.googleApiKey}
-                                        onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
-                                    />
-                                );
-                            }}>
-                            Set API Key
-                        </ButtonItem>
+                        <ToggleField
+                            label="Use Google Cloud"
+                            description={!settings.useFreeProviders
+                                ? "Google Cloud Vision + Translation (requires API key)"
+                                : "Currently using OCR.space + Google Translate (free)"}
+                            checked={!settings.useFreeProviders}
+                            onChange={(value) => updateSetting('useFreeProviders', !value, 'Provider mode')}
+                        />
                     </PanelSectionRow>
+
+                    {/* Provider Status */}
+                    <PanelSectionRow>
+                        <div style={{
+                            padding: '10px 12px',
+                            backgroundColor: settings.useFreeProviders
+                                ? 'rgba(76, 175, 80, 0.15)'
+                                : 'rgba(33, 150, 243, 0.15)',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            border: settings.useFreeProviders
+                                ? '1px solid rgba(76, 175, 80, 0.3)'
+                                : '1px solid rgba(33, 150, 243, 0.3)'
+                        }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+                                {settings.useFreeProviders ? 'Free recognition and translation services' : '☁️ Google Cloud'}
+                            </div>
+                            <div style={{ color: '#aaa', fontSize: '11px' }}>
+                                {settings.useFreeProviders
+                                    ? 'OCR.space + Google Translate'
+                                    : 'Google Cloud Vision + Google Cloud Translation'}
+                            </div>
+                            {/* Show OCR.space usage stats when using free providers */}
+                            {settings.useFreeProviders && providerStatus?.ocr_usage && (
+                                <div style={{ marginTop: '8px' }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '4px'
+                                    }}>
+                                        <span style={{ color: '#aaa', fontSize: '11px' }}>
+                                            Daily Text Recognition usage:
+                                        </span>
+                                        <span style={{
+                                            fontSize: '11px',
+                                            color: providerStatus.ocr_usage.remaining < 50 ? '#ff6b6b' : '#aaa'
+                                        }}>
+                                            {providerStatus.ocr_usage.used} / {providerStatus.ocr_usage.limit}
+                                        </span>
+                                    </div>
+                                    <div style={{
+                                        height: '4px',
+                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        borderRadius: '2px',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{
+                                            height: '100%',
+                                            width: `${(providerStatus.ocr_usage.used / providerStatus.ocr_usage.limit) * 100}%`,
+                                            backgroundColor: providerStatus.ocr_usage.remaining < 50
+                                                ? '#ff6b6b'
+                                                : providerStatus.ocr_usage.remaining < 100
+                                                    ? '#ffa726'
+                                                    : '#4caf50',
+                                            borderRadius: '2px',
+                                            transition: 'width 0.3s ease'
+                                        }} />
+                                    </div>
+                                    {providerStatus.ocr_usage.remaining < 50 && (
+                                        <div style={{ color: '#ff6b6b', fontSize: '10px', marginTop: '4px' }}>
+                                            ⚠️ Low remaining requests today
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {!settings.useFreeProviders && !settings.googleApiKey && (
+                                <div style={{ color: '#ff6b6b', marginTop: '6px', fontSize: '11px' }}>
+                                    ⚠️ API key required for Google Cloud
+                                </div>
+                            )}
+                        </div>
+                    </PanelSectionRow>
+
+                    {/* Google Cloud API Key - only show when not using free providers */}
+                    {!settings.useFreeProviders && (
+                        <PanelSectionRow>
+                            <ButtonItem
+                                label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
+                                description="Google Cloud API key for text recognition & translation"
+                                layout="below"
+                                onClick={() => {
+                                    showModal(
+                                        <ApiKeyModal
+                                            currentKey={settings.googleApiKey}
+                                            onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
+                                        />
+                                    );
+                                }}>
+                                Set API Key
+                            </ButtonItem>
+                        </PanelSectionRow>
+                    )}
 
                     <PanelSectionRow>
                         <DropdownItem
@@ -372,22 +488,24 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
                         />
                     </PanelSectionRow>
 
-                    {/* New slider for confidence threshold */}
-                    <PanelSectionRow>
-                        <SliderField
-                            value={settings.confidenceThreshold}
-                            max={1.0}
-                            min={0.0}
-                            step={0.05}
-                            label="Text Recognition Confidence"
-                            description="Minimum confidence level for detected text (higher = fewer false positives)"
-                            showValue={true}
-                            valueSuffix=""
-                            onChange={(value) => {
-                                updateSetting('confidenceThreshold', value, 'Text recognition confidence');
-                            }}
-                        />
-                    </PanelSectionRow>
+                    {/* Confidence threshold slider - only show for Google Cloud (has confidence scores) */}
+                    {!settings.useFreeProviders && (
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.confidenceThreshold}
+                                max={1.0}
+                                min={0.0}
+                                step={0.05}
+                                label="Text Recognition Confidence"
+                                description="Minimum confidence level for detected text (higher = fewer false positives)"
+                                showValue={true}
+                                valueSuffix=""
+                                onChange={(value) => {
+                                    updateSetting('confidenceThreshold', value, 'Text recognition confidence');
+                                }}
+                            />
+                        </PanelSectionRow>
+                    )}
 
                     {/* New toggle for pausing game when overlay is active */}
                     <PanelSectionRow>
