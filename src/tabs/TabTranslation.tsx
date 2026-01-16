@@ -90,7 +90,7 @@ export const TabTranslation: VFC = () => {
                 <PanelSectionRow>
                     <DropdownItem
                         label="Input Language"
-                        description="Source language (Auto to detect automatically)"
+                        description="Source language (Select auto-detect if unsure)"
                         rgOptions={inputLanguageOptions}
                         selectedOption={settings.inputLanguage}
                         onChange={(option) => updateSetting('inputLanguage', option.data, 'Input language')}
@@ -108,7 +108,7 @@ export const TabTranslation: VFC = () => {
                 </PanelSectionRow>
             </PanelSection>
 
-            <PanelSection title="Provider">
+            <PanelSection title="Providers">
                 <PanelSectionRow>
                     <ToggleField
                         label="Use Google Cloud"
