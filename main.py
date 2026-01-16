@@ -712,7 +712,8 @@ class Plugin:
                 "hold_time_dismiss": self._settings.get_setting("hold_time_dismiss", 500),
                 "confidence_threshold": self._settings.get_setting("confidence_threshold", 0.6),
                 "pause_game_on_overlay": self._settings.get_setting("pause_game_on_overlay", False),
-                "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False)
+                "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
+                "debug_mode": self._settings.get_setting("debug_mode", False)
             }
             logger.info(f"Returning all settings: {json.dumps(settings)}")
             return settings
