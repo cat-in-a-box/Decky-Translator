@@ -1,7 +1,7 @@
 // TextTranslator.tsx
 
 import { ServerAPI } from "decky-frontend-lib";
-import { TextRegion, NetworkError, ErrorResponse } from "./TextRecognizer";
+import { TextRegion, NetworkError, ApiKeyError, ErrorResponse } from "./TextRecognizer";
 import { logger } from "./Logger";
 
 // Type guard to check if response is an error
@@ -56,12 +56,16 @@ export class TextTranslator {
             });
 
             if (response.success && response.result) {
-                // Check for error response (network error)
+                // Check for error response (network error, API key error)
                 if (isErrorResponse(response.result)) {
                     const errorResponse = response.result as ErrorResponse;
                     if (errorResponse.error === 'network_error') {
                         logger.error('TextTranslator', `Network error: ${errorResponse.message}`);
                         throw new NetworkError(errorResponse.message);
+                    }
+                    if (errorResponse.error === 'api_key_error') {
+                        logger.error('TextTranslator', `API key error: ${errorResponse.message}`);
+                        throw new ApiKeyError(errorResponse.message);
                     }
                     // Handle other error types if needed
                     logger.error('TextTranslator', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
@@ -78,8 +82,8 @@ export class TextTranslator {
                 translatedText: region.text
             }));
         } catch (error) {
-            // Re-throw NetworkError to be handled by caller
-            if (error instanceof NetworkError) {
+            // Re-throw NetworkError and ApiKeyError to be handled by caller
+            if (error instanceof NetworkError || error instanceof ApiKeyError) {
                 throw error;
             }
             logger.error('TextTranslator', 'Text translation error', error);

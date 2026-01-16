@@ -10,6 +10,7 @@ from .base import (
     ProviderType,
     TextRegion,
     NetworkError,
+    ApiKeyError,
 )
 from .google_ocr import GoogleVisionProvider
 from .google_translate import GoogleTranslateProvider
@@ -25,6 +26,7 @@ __all__ = [
     'ProviderType',
     'TextRegion',
     'NetworkError',
+    'ApiKeyError',
     'GoogleVisionProvider',
     'GoogleTranslateProvider',
     'OCRSpaceProvider',

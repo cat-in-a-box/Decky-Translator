@@ -17,6 +17,14 @@ export class NetworkError extends Error {
     }
 }
 
+// Custom error class for API key errors
+export class ApiKeyError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'ApiKeyError';
+    }
+}
+
 // Type guard to check if response is an error
 function isErrorResponse(value: unknown): value is ErrorResponse {
     return typeof value === 'object' && value !== null && 'error' in value && 'message' in value;
@@ -937,12 +945,16 @@ export class TextRecognizer {
                 image_path: imagePath
             });
             if (response.success && response.result) {
-                // Check for error response (network error)
+                // Check for error response (network error, API key error)
                 if (isErrorResponse(response.result)) {
                     const errorResponse = response.result as ErrorResponse;
                     if (errorResponse.error === 'network_error') {
                         logger.error('TextRecognizer', `Network error: ${errorResponse.message}`);
                         throw new NetworkError(errorResponse.message);
+                    }
+                    if (errorResponse.error === 'api_key_error') {
+                        logger.error('TextRecognizer', `API key error: ${errorResponse.message}`);
+                        throw new ApiKeyError(errorResponse.message);
                     }
                     // Handle other error types if needed
                     logger.error('TextRecognizer', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
@@ -964,8 +976,8 @@ export class TextRecognizer {
             logger.error('TextRecognizer', 'Failed to recognize text (file-based)');
             return [];
         } catch (error) {
-            // Re-throw NetworkError to be handled by caller
-            if (error instanceof NetworkError) {
+            // Re-throw NetworkError and ApiKeyError to be handled by caller
+            if (error instanceof NetworkError || error instanceof ApiKeyError) {
                 throw error;
             }
             logger.error('TextRecognizer', 'Text recognition error (file-based)', error);
