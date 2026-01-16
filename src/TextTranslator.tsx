@@ -1,8 +1,13 @@
 // TextTranslator.tsx
 
 import { ServerAPI } from "decky-frontend-lib";
-import { TextRegion } from "./TextRecognizer";
+import { TextRegion, NetworkError, ErrorResponse } from "./TextRecognizer";
 import { logger } from "./Logger";
+
+// Type guard to check if response is an error
+function isErrorResponse(value: unknown): value is ErrorResponse {
+    return typeof value === 'object' && value !== null && 'error' in value && 'message' in value;
+}
 
 // Include translated text with the original region info
 export interface TranslatedRegion extends TextRegion {
@@ -51,6 +56,17 @@ export class TextTranslator {
             });
 
             if (response.success && response.result) {
+                // Check for error response (network error)
+                if (isErrorResponse(response.result)) {
+                    const errorResponse = response.result as ErrorResponse;
+                    if (errorResponse.error === 'network_error') {
+                        logger.error('TextTranslator', `Network error: ${errorResponse.message}`);
+                        throw new NetworkError(errorResponse.message);
+                    }
+                    // Handle other error types if needed
+                    logger.error('TextTranslator', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
+                }
+
                 return response.result as TranslatedRegion[];
             }
 
@@ -62,6 +78,10 @@ export class TextTranslator {
                 translatedText: region.text
             }));
         } catch (error) {
+            // Re-throw NetworkError to be handled by caller
+            if (error instanceof NetworkError) {
+                throw error;
+            }
             logger.error('TextTranslator', 'Text translation error', error);
             // Return the original text if translation fails
             return textRegions.map(region => ({
