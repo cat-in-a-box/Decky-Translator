@@ -9,7 +9,7 @@ import {
 } from "decky-frontend-lib";
 
 import { VFC } from "react";
-import { BsTranslate, BsXLg } from "react-icons/bs";
+import { BsTranslate, BsXLg, BsEye } from "react-icons/bs";
 import { useSettings } from "../SettingsContext";
 import { GameTranslatorLogic } from "../Translator";
 import { logger } from "../Logger";
@@ -60,53 +60,42 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
 
                         {/* Provider Status */}
                         <PanelSectionRow>
-                            <div style={{
-                                padding: '10px 12px',
-                                backgroundColor: settings.useFreeProviders
-                                    ? 'rgba(76, 175, 80, 0.15)'
-                                    : 'rgba(33, 150, 243, 0.15)',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                border: settings.useFreeProviders
-                                    ? '1px solid rgba(76, 175, 80, 0.3)'
-                                    : '1px solid rgba(33, 150, 243, 0.3)'
-                            }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                                    {settings.useFreeProviders ? 'Free recognition and translation services' : 'Google Cloud'}
+                            <div style={{ fontSize: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: settings.useFreeProviders && providerStatus?.ocr_usage ? '2px' : '4px' }}>
+                                    <BsEye style={{ marginRight: '8px', color: '#aaa' }} />
+                                    <span style={{ color: '#888' }}>Text Recognition:</span>
+                                    <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
+                                        {settings.useFreeProviders ? 'OCR.space' : 'Google Cloud'}
+                                    </span>
                                 </div>
-                                <div style={{ color: '#aaa', fontSize: '11px' }}>
-                                    {settings.useFreeProviders
-                                        ? 'OCR.space + Google Translate'
-                                        : 'Google Cloud Vision + Google Cloud Translation'}
-                                </div>
-                                {/* Show OCR.space usage stats when using free providers */}
+                                {/* Show OCR.space usage stats right under text recognition */}
                                 {settings.useFreeProviders && providerStatus?.ocr_usage && (
-                                    <div style={{ marginTop: '8px' }}>
+                                    <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
                                         <div style={{
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center',
-                                            marginBottom: '4px'
+                                            marginBottom: '3px'
                                         }}>
-                                            <span style={{ color: '#aaa', fontSize: '11px' }}>
-                                                Daily Text Recognition usage:
+                                            <span style={{ color: '#666', fontSize: '10px' }}>
+                                                Remaining daily API usage:
                                             </span>
                                             <span style={{
-                                                fontSize: '11px',
-                                                color: providerStatus.ocr_usage.remaining < 50 ? '#ff6b6b' : '#aaa'
+                                                fontSize: '10px',
+                                                color: providerStatus.ocr_usage.remaining < 50 ? '#ff6b6b' : '#888'
                                             }}>
-                                                {providerStatus.ocr_usage.used} / {providerStatus.ocr_usage.limit}
+                                                {providerStatus.ocr_usage.remaining}
                                             </span>
                                         </div>
                                         <div style={{
-                                            height: '4px',
+                                            height: '3px',
                                             backgroundColor: 'rgba(255,255,255,0.1)',
                                             borderRadius: '2px',
                                             overflow: 'hidden'
                                         }}>
                                             <div style={{
                                                 height: '100%',
-                                                width: `${(providerStatus.ocr_usage.used / providerStatus.ocr_usage.limit) * 100}%`,
+                                                width: `${(providerStatus.ocr_usage.remaining / providerStatus.ocr_usage.limit) * 100}%`,
                                                 backgroundColor: providerStatus.ocr_usage.remaining < 50
                                                     ? '#ff6b6b'
                                                     : providerStatus.ocr_usage.remaining < 100
@@ -117,14 +106,21 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                             }} />
                                         </div>
                                         {providerStatus.ocr_usage.remaining < 50 && (
-                                            <div style={{ color: '#ff6b6b', fontSize: '10px', marginTop: '4px' }}>
-                                                Low remaining requests today
+                                            <div style={{ color: '#ff6b6b', fontSize: '9px', marginTop: '2px' }}>
+                                                Low remaining requests
                                             </div>
                                         )}
                                     </div>
                                 )}
+                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                    <BsTranslate style={{ marginRight: '8px', color: '#aaa' }} />
+                                    <span style={{ color: '#888' }}>Translator:</span>
+                                    <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
+                                        {settings.useFreeProviders ? 'Google Translate' : 'Google Cloud'}
+                                    </span>
+                                </div>
                                 {!settings.useFreeProviders && !settings.googleApiKey && (
-                                    <div style={{ color: '#ff6b6b', marginTop: '6px', fontSize: '11px' }}>
+                                    <div style={{ color: '#ff6b6b', marginTop: '8px', fontSize: '11px' }}>
                                         API key required - configure in Translation tab
                                     </div>
                                 )}

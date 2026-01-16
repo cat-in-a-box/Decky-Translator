@@ -112,9 +112,7 @@ export const TabTranslation: VFC = () => {
                 <PanelSectionRow>
                     <ToggleField
                         label="Use Google Cloud"
-                        description={!settings.useFreeProviders
-                            ? "Google Cloud Vision + Translation (requires API key)"
-                            : "Currently using OCR.space + Google Translate (free)"}
+                        description="Faster and provides better results but requires API key. Also free if you don't go crazy with it"
                         checked={!settings.useFreeProviders}
                         onChange={(value) => updateSetting('useFreeProviders', !value, 'Provider mode')}
                     />
@@ -126,7 +124,7 @@ export const TabTranslation: VFC = () => {
                         <PanelSectionRow>
                             <ButtonItem
                                 label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
-                                description="Google Cloud API key for text recognition & translation"
+                                description="You can find it in your Google Cloud Console"
                                 layout="below"
                                 onClick={() => {
                                     showModal(
