@@ -5,7 +5,8 @@ import {
     PanelSectionRow,
     DropdownItem,
     ToggleField,
-    SliderField
+    SliderField,
+    Field
 } from "decky-frontend-lib";
 
 import { VFC } from "react";
@@ -119,7 +120,9 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         />
                     </PanelSectionRow>
                 )}
+            </PanelSection>
 
+            <PanelSection title="Miscellaneous">
                 <PanelSectionRow>
                     <ToggleField
                         label="Debug Mode"
@@ -132,74 +135,74 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                 {/* Show diagnostics when debug mode is on */}
                 {settings.debugMode && inputDiagnostics && (
                     <PanelSectionRow>
-                        <div style={{
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            padding: '12px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontFamily: 'monospace',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            marginTop: '5px'
-                        }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '12px' }}>
-                                Input System Diagnostics
+                        <Field
+                            focusable={true}
+                            childrenContainerWidth="max"
+                        >
+                            <div style={{
+                                backgroundColor: 'rgba(0,0,0,0.4)',
+                                padding: '12px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontFamily: 'monospace',
+                                border: '1px solid rgba(255,255,255,0.1)'
+                            }}>
+                                <div style={{ display: 'grid', gap: '3px' }}>
+                                    <div>
+                                        <span style={{ color: '#888' }}>Status:</span>{' '}
+                                        {inputDiagnostics.enabled ?
+                                            (inputDiagnostics.healthy ? 'Healthy' : 'Unhealthy') :
+                                            'Disabled'
+                                        }
+                                    </div>
+
+                                    <div>
+                                        <span style={{ color: '#888' }}>Input mode:</span>{' '}
+                                        {getInputModeButtons(inputDiagnostics.inputMode)}
+                                    </div>
+
+                                    <div>
+                                        <span style={{ color: '#888' }}>Input active:</span>{' '}
+                                        {inputDiagnostics.leftTouchpadTouched ? 'Yes' : 'No'}
+                                    </div>
+
+                                    <div>
+                                        <span style={{ color: '#888' }}>Buttons pressed:</span>{' '}
+                                        {inputDiagnostics.currentButtons && inputDiagnostics.currentButtons.length > 0
+                                            ? inputDiagnostics.currentButtons.join(', ')
+                                            : 'None'}
+                                    </div>
+
+                                    <div>
+                                        <span style={{ color: '#888' }}>Plugin State:</span>{' '}
+                                        {!inputDiagnostics.inCooldown && !inputDiagnostics.waitingForRelease && !inputDiagnostics.overlayVisible ? 'Ready' : ''}
+                                        {inputDiagnostics.inCooldown ? 'Cooldown ' : ''}
+                                        {inputDiagnostics.waitingForRelease ? 'WaitRelease ' : ''}
+                                        {inputDiagnostics.overlayVisible ? 'Overlay ' : ''}
+                                    </div>
+
+                                    <div>
+                                        <span style={{ color: '#888' }}>Timings:</span>{' '}
+                                        Hold:{inputDiagnostics.translateHoldTime}ms{' '}
+                                        Dismiss:{inputDiagnostics.dismissHoldTime}ms
+                                    </div>
+                                </div>
+
+                                {!inputDiagnostics.healthy && inputDiagnostics.enabled && (
+                                    <div style={{
+                                        color: '#ff6b6b',
+                                        fontWeight: 'bold',
+                                        marginTop: '8px',
+                                        padding: '6px',
+                                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                                        borderRadius: '4px',
+                                        fontSize: '11px'
+                                    }}>
+                                        Input system is unhealthy - try toggling the plugin off/on
+                                    </div>
+                                )}
                             </div>
-
-                            <div style={{ display: 'grid', gap: '3px' }}>
-                                <div>
-                                    <span style={{ color: '#888' }}>Status:</span>{' '}
-                                    {inputDiagnostics.enabled ?
-                                        (inputDiagnostics.healthy ? 'Healthy' : 'Unhealthy') :
-                                        'Disabled'
-                                    }
-                                </div>
-
-                                <div>
-                                    <span style={{ color: '#888' }}>Input mode:</span>{' '}
-                                    {getInputModeButtons(inputDiagnostics.inputMode)}
-                                </div>
-
-                                <div>
-                                    <span style={{ color: '#888' }}>Input active:</span>{' '}
-                                    {inputDiagnostics.leftTouchpadTouched ? 'Yes' : 'No'}
-                                </div>
-
-                                <div>
-                                    <span style={{ color: '#888' }}>Buttons pressed:</span>{' '}
-                                    {inputDiagnostics.currentButtons && inputDiagnostics.currentButtons.length > 0
-                                        ? inputDiagnostics.currentButtons.join(', ')
-                                        : 'None'}
-                                </div>
-
-                                <div>
-                                    <span style={{ color: '#888' }}>Plugin State:</span>{' '}
-                                    {!inputDiagnostics.inCooldown && !inputDiagnostics.waitingForRelease && !inputDiagnostics.overlayVisible ? 'Ready' : ''}
-                                    {inputDiagnostics.inCooldown ? 'Cooldown ' : ''}
-                                    {inputDiagnostics.waitingForRelease ? 'WaitRelease ' : ''}
-                                    {inputDiagnostics.overlayVisible ? 'Overlay ' : ''}
-                                </div>
-
-                                <div>
-                                    <span style={{ color: '#888' }}>Timings:</span>{' '}
-                                    Hold:{inputDiagnostics.translateHoldTime}ms{' '}
-                                    Dismiss:{inputDiagnostics.dismissHoldTime}ms
-                                </div>
-                            </div>
-
-                            {!inputDiagnostics.healthy && inputDiagnostics.enabled && (
-                                <div style={{
-                                    color: '#ff6b6b',
-                                    fontWeight: 'bold',
-                                    marginTop: '8px',
-                                    padding: '6px',
-                                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                                    borderRadius: '4px',
-                                    fontSize: '11px'
-                                }}>
-                                    Input system is unhealthy - try toggling the plugin off/on
-                                </div>
-                            )}
-                        </div>
+                        </Field>
                     </PanelSectionRow>
                 )}
             </PanelSection>
