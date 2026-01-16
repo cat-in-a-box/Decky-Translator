@@ -25,7 +25,7 @@ if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
 # Import provider system
-from providers import ProviderManager, TextRegion
+from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError
 
 _processing_lock = False
 
@@ -650,8 +650,20 @@ class Plugin:
                 # Single API key for both Vision and Translate
                 self._google_vision_api_key = value
                 self._google_translate_api_key = value
+                # Update provider manager with new API key
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=self._use_free_providers,
+                        google_api_key=value
+                    )
             elif key == "google_vision_api_key":
                 self._google_vision_api_key = value
+                # Update provider manager with new API key
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=self._use_free_providers,
+                        google_api_key=value
+                    )
             elif key == "google_translate_api_key":
                 self._google_translate_api_key = value
             elif key == "hold_time_translate":
@@ -700,7 +712,8 @@ class Plugin:
                 "hold_time_dismiss": self._settings.get_setting("hold_time_dismiss", 500),
                 "confidence_threshold": self._settings.get_setting("confidence_threshold", 0.6),
                 "pause_game_on_overlay": self._settings.get_setting("pause_game_on_overlay", False),
-                "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False)
+                "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
+                "debug_mode": self._settings.get_setting("debug_mode", False)
             }
             logger.info(f"Returning all settings: {json.dumps(settings)}")
             return settings
@@ -1111,6 +1124,12 @@ class Plugin:
             # Convert TextRegion objects to dicts for JSON serialization
             return [region.to_dict() for region in text_regions]
 
+        except NetworkError as e:
+            logger.error(f"Network error during text recognition: {str(e)}")
+            return {"error": "network_error", "message": str(e)}
+        except ApiKeyError as e:
+            logger.error(f"API key error during text recognition: {str(e)}")
+            return {"error": "api_key_error", "message": "Invalid API key"}
         except Exception as e:
             logger.error(f"Text recognition error: {str(e)}")
             logger.error(traceback.format_exc())
@@ -1194,6 +1213,12 @@ class Plugin:
             logger.info(f"Processed {len(translated_regions)} translated regions")
             return translated_regions
 
+        except NetworkError as e:
+            logger.error(f"Network error during translation: {str(e)}")
+            return {"error": "network_error", "message": str(e)}
+        except ApiKeyError as e:
+            logger.error(f"API key error during translation: {str(e)}")
+            return {"error": "api_key_error", "message": "Invalid API key"}
         except Exception as e:
             logger.error(f"Translation error: {str(e)}")
             logger.error(traceback.format_exc())

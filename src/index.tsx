@@ -1,118 +1,58 @@
 // index.tsx - Main plugin entry point
 
 import {
-    ButtonItem,
     definePlugin,
     PanelSection,
     PanelSectionRow,
     ServerAPI,
-    staticClasses,
-    Router,
-    DropdownItem,
-    ToggleField,
-    SliderField,
-    TextField,
-    showModal,
-    ModalRoot,
-    DialogButton
+    staticClasses
 } from "decky-frontend-lib";
 
-import React, {
+import { Tabs } from "@decky/ui";
+
+import {
     VFC,
     useState,
     useEffect
 } from "react";
 
-import {BsTranslate, BsXLg} from "react-icons/bs";
-import {ImageState, ImageOverlay} from "./Overlay";
-import {GameTranslatorLogic} from "./Translator";
-import {InputMode, ProgressInfo} from "./Input";
-import {ActivationIndicator} from "./ActivationIndicator";
-import {SettingsProvider, useSettings} from "./SettingsContext";
-import {logger} from "./Logger";
+import { BsTranslate } from "react-icons/bs";
+import { ImageState, ImageOverlay } from "./Overlay";
+import { GameTranslatorLogic } from "./Translator";
+import { ProgressInfo } from "./Input";
+import { ActivationIndicator } from "./ActivationIndicator";
+import { SettingsProvider, useSettings } from "./SettingsContext";
+import { logger } from "./Logger";
 
-const languageOptions = [
-    {label: "Auto-detect", data: "auto"}, // Only for input language
-    {label: "English", data: "en"},
-    {label: "Spanish", data: "es"},
-    {label: "French", data: "fr"},
-    {label: "German", data: "de"},
-    {label: "Italian", data: "it"},
-    {label: "Portuguese", data: "pt"},
-    {label: "Russian", data: "ru"},
-    {label: "Japanese", data: "ja"},
-    {label: "Korean", data: "ko"},
-    {label: "Chinese (Simplified)", data: "zh-CN"},
-    {label: "Chinese (Traditional)", data: "zh-TW"},
-    {label: "Arabic", data: "ar"},
-    {label: "Dutch", data: "nl"},
-    {label: "Hindi", data: "hi"},
-    {label: "Polish", data: "pl"},
-    {label: "Turkish", data: "tr"},
-    {label: "Ukrainian", data: "uk"}
-];
-// Output language options (without auto-detect)
-const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto");
-// Input language options (including auto-detect)
-const inputLanguageOptions = languageOptions;
+// Import tab components
+import { TabMain, TabTranslation, TabControls } from "./tabs";
 
-// API Key Modal Component
-const ApiKeyModal: VFC<{
-    currentKey: string;
-    onSave: (key: string) => void;
-    closeModal?: () => void;
-}> = ({ currentKey, onSave, closeModal }) => {
-    const [apiKey, setApiKey] = useState(currentKey || "");
+// SVG Icons for tabs
+const IconTranslate = () => (
+    <svg style={{ display: "block" }} width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0014.07 6H17V4h-7V2H8v2H1v2h11.17A15.4 15.4 0 018.87 12a15.4 15.4 0 01-2.44-4H4.3a17.38 17.38 0 003.08 5.22l-5.3 5.25 1.42 1.42L9 14.4l3.11 3.11.76-2.44zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" fill="currentColor"/>
+    </svg>
+);
 
-    return (
-        <ModalRoot onCancel={closeModal} onEscKeypress={closeModal}>
-            <div style={{ padding: "20px", minWidth: "400px" }}>
-                <h2 style={{ marginBottom: "15px" }}>Google Cloud API Key</h2>
-                <p style={{ marginBottom: "15px", color: "#aaa", fontSize: "13px" }}>
-                    Enter your Google Cloud API key for Vision and Translation services.
-                </p>
-                <TextField
-                    label="API Key"
-                    value={apiKey}
-                    bIsPassword={true}
-                    bShowClearAction={true}
-                    onChange={(e) => setApiKey(e.target.value)}
-                />
-                <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
-                    <DialogButton onClick={closeModal}>
-                        Cancel
-                    </DialogButton>
-                    <DialogButton
-                        onClick={() => {
-                            onSave(apiKey);
-                            closeModal?.();
-                        }}
-                    >
-                        Save
-                    </DialogButton>
-                </div>
-            </div>
-        </ModalRoot>
-    );
-};
+const IconLanguage = () => (
+    <svg style={{ display: "block" }} width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zm6.93 6h-2.95a15.65 15.65 0 00-1.38-3.56A8.03 8.03 0 0118.92 8zM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96zM4.26 14C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2H4.26zm.82 2h2.95c.32 1.25.78 2.45 1.38 3.56A7.987 7.987 0 015.08 16zm2.95-8H5.08a7.987 7.987 0 014.33-3.56A15.65 15.65 0 008.03 8zM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96zM14.34 14H9.66c-.09-.66-.16-1.32-.16-2s.07-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2zm.25 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 01-4.33 3.56zM16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2h-3.38z" fill="currentColor"/>
+    </svg>
+);
+
+const IconGamepad = () => (
+    <svg style={{ display: "block" }} width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M21.58 16.09l-1.09-7.66A3.996 3.996 0 0016.53 5H7.47a3.996 3.996 0 00-3.96 3.43l-1.09 7.66c-.22 1.58.52 3.14 1.88 3.94a3.988 3.988 0 005.09-.95l1.04-1.31c.26-.33.66-.52 1.08-.52h2.96c.42 0 .82.19 1.08.52l1.04 1.31a3.988 3.988 0 005.09.95 3.99 3.99 0 001.88-3.94zm-12.08-.57H8v1.5H6.5v-1.5H5v-1.5h1.5v-1.5H8v1.5h1.5v1.5zm5-1.5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm2.5 2.5c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/>
+    </svg>
+);
 
 // Main plugin component
-const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> = ({serverAPI, logic}) => {
-    const {settings, updateSetting, initialized} = useSettings();
+const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> = ({ serverAPI, logic }) => {
+    const { settings, initialized } = useSettings();
     const [overlayVisible, setOverlayVisible] = useState<boolean>(logic.isOverlayVisible());
     const [inputDiagnostics, setInputDiagnostics] = useState<any>(null);
     const [providerStatus, setProviderStatus] = useState<any>(null);
-
-    // Input mode options for dropdown
-    const inputModeOptions = [
-        {label: "L4 Back Button", data: InputMode.L4_BUTTON},
-        {label: "R4 Back Button", data: InputMode.R4_BUTTON},
-        {label: "L5 Back Button", data: InputMode.L5_BUTTON},
-        {label: "R5 Back Button", data: InputMode.R5_BUTTON},
-        {label: "L4 + R4 Combination", data: InputMode.L4_R4_COMBO},
-        {label: "L5 + R5 Combination", data: InputMode.L5_R5_COMBO},
-        {label: "Left + Right Touchpad Combination", data: InputMode.TOUCHPAD_COMBO}
-    ];
+    const [currentTabRoute, setCurrentTabRoute] = useState<string>("main");
 
     useEffect(() => {
         // Don't poll overlay state if plugin is disabled
@@ -152,8 +92,8 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
         };
 
         fetchProviderStatus();
-        // Refresh every 30 seconds
-        const intervalId = setInterval(fetchProviderStatus, 30000);
+        // Refresh every 5 seconds for responsive updates
+        const intervalId = setInterval(fetchProviderStatus, 5000);
 
         return () => {
             clearInterval(intervalId);
@@ -182,29 +122,6 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
         };
     }, [settings.debugMode, logic]);
 
-    const handleButtonClick = () => {
-        if (overlayVisible) {
-            logic.imageState.hideImage();
-        } else {
-            logic.takeScreenshotAndTranslate().catch(err => logger.error('GameTranslator', 'Screenshot failed', err));
-        }
-        Router.CloseSideMenus();
-    };
-
-    // Helper to get button labels for current input mode
-    const getInputModeButtons = (mode: string): string => {
-        switch (mode) {
-            case 'L4_BUTTON': return 'L4';
-            case 'R4_BUTTON': return 'R4';
-            case 'L5_BUTTON': return 'L5';
-            case 'R5_BUTTON': return 'R5';
-            case 'L4_R4_COMBO': return 'L4 + R4';
-            case 'L5_R5_COMBO': return 'L5 + R5';
-            case 'TOUCHPAD_COMBO': return 'Left Pad + Right Pad';
-            default: return mode;
-        }
-    };
-
     // Show loading state if not initialized
     if (!initialized) {
         return (
@@ -217,336 +134,47 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
     }
 
     return (
-        <PanelSection title="Decky Translator">
-            <PanelSectionRow>
-                <ToggleField
-                    label="Enable Decky Translator"
-                    description="Toggle the plugin on or off"
-                    checked={settings.enabled}
-                    onChange={(value) => updateSetting('enabled', value, 'Decky Translator')}
+        <>
+            <style>
+                {`
+                .decky-translator-tabs > div > div:first-child::before {
+                    background: #0D141C;
+                    box-shadow: none;
+                    backdrop-filter: none;
+                }
+                `}
+            </style>
+
+            <div className="decky-translator-tabs" style={{ height: "95%", width: "300px", position: "fixed", marginTop: "-12px", overflow: "hidden" }}>
+                <Tabs
+                    activeTab={currentTabRoute}
+                    // @ts-ignore
+                    onShowTab={(tabID: string) => {
+                        setCurrentTabRoute(tabID);
+                    }}
+                    tabs={[
+                        {
+                            // @ts-ignore
+                            title: <IconTranslate />,
+                            content: <TabMain logic={logic} overlayVisible={overlayVisible} providerStatus={providerStatus} />,
+                            id: "main",
+                        },
+                        {
+                            // @ts-ignore
+                            title: <IconLanguage />,
+                            content: <TabTranslation />,
+                            id: "translation",
+                        },
+                        {
+                            // @ts-ignore
+                            title: <IconGamepad />,
+                            content: <TabControls inputDiagnostics={inputDiagnostics} />,
+                            id: "controls",
+                        }
+                    ]}
                 />
-            </PanelSectionRow>
-
-            {settings.enabled && (
-                <div>
-
-                    <div>
-                        <PanelSectionRow>
-                            <ButtonItem
-                                bottomSeparator="standard"
-                                layout="below"
-                                onClick={handleButtonClick}>
-                                {overlayVisible ? <span><BsXLg style={{marginRight: "8px"}} /> Close Overlay</span> : <span><BsTranslate style={{marginRight: "8px"}} /> Translate</span>}
-                            </ButtonItem>
-                        </PanelSectionRow>
-
-                    </div>
-
-                    {/* Show diagnostics when debug mode is on */}
-                    {settings.debugMode && inputDiagnostics && (
-                        <PanelSectionRow>
-                            <div style={{
-                                backgroundColor: 'rgba(0,0,0,0.4)',
-                                padding: '12px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontFamily: 'monospace',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                marginTop: '5px'
-                            }}>
-                                <div style={{fontWeight: 'bold', marginBottom: '8px', fontSize: '12px'}}>
-                                    🔧 Input System Diagnostics
-                                </div>
-
-                                <div style={{display: 'grid', gap: '3px'}}>
-                                    <div>
-                                        <span style={{color: '#888'}}>Status:</span>{' '}
-                                        {inputDiagnostics.enabled ?
-                                            (inputDiagnostics.healthy ? '🟢 Healthy' : '🟡 Unhealthy') :
-                                            '🔴 Disabled'
-                                        }
-                                    </div>
-
-                                    <div>
-                                        <span style={{color: '#888'}}>Input mode:</span>{' '}
-                                        {getInputModeButtons(inputDiagnostics.inputMode)}
-                                    </div>
-
-                                    <div>
-                                        <span style={{color: '#888'}}>Input active:</span>{' '}
-                                        {inputDiagnostics.leftTouchpadTouched ? '🟢 Yes' : '⚫ No'}
-                                    </div>
-
-                                    <div>
-                                        <span style={{color: '#888'}}>Buttons pressed:</span>{' '}
-                                        {inputDiagnostics.currentButtons && inputDiagnostics.currentButtons.length > 0
-                                            ? inputDiagnostics.currentButtons.join(', ')
-                                            : 'None'}
-                                    </div>
-
-                                    <div>
-                                        <span style={{color: '#888'}}>Plugin State:</span>{' '}
-                                        {!inputDiagnostics.inCooldown && !inputDiagnostics.waitingForRelease && !inputDiagnostics.overlayVisible ? 'Ready' : ''}
-                                        {inputDiagnostics.inCooldown ? 'Cooldown ' : ''}
-                                        {inputDiagnostics.waitingForRelease ? 'WaitRelease ' : ''}
-                                        {inputDiagnostics.overlayVisible ? 'Overlay ' : ''}
-                                    </div>
-
-                                    <div>
-                                        <span style={{color: '#888'}}>Timings:</span>{' '}
-                                        Hold:{inputDiagnostics.translateHoldTime}ms{' '}
-                                        Dismiss:{inputDiagnostics.dismissHoldTime}ms
-                                    </div>
-                                </div>
-
-                                {!inputDiagnostics.healthy && inputDiagnostics.enabled && (
-                                    <div style={{
-                                        color: '#ff6b6b',
-                                        fontWeight: 'bold',
-                                        marginTop: '8px',
-                                        padding: '6px',
-                                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                                        borderRadius: '4px',
-                                        fontSize: '11px'
-                                    }}>
-                                        ⚠️ Input system is unhealthy - try toggling the plugin off/on
-                                    </div>
-                                )}
-
-                            </div>
-                        </PanelSectionRow>
-                    )}
-
-                    <PanelSectionRow>
-                        <DropdownItem
-                            label="Input Language"
-                            description="Source language (Auto to detect automatically)"
-                            rgOptions={inputLanguageOptions}
-                            selectedOption={settings.inputLanguage}
-                            onChange={(option) => updateSetting('inputLanguage', option.data, 'Input language')}
-                        />
-                    </PanelSectionRow>
-
-                    <PanelSectionRow>
-                        <DropdownItem
-                            label="Output Language"
-                            description="Target language for translation"
-                            rgOptions={outputLanguageOptions}
-                            selectedOption={settings.targetLanguage}
-                            onChange={(option) => updateSetting('targetLanguage', option.data, 'Output language')}
-                        />
-                    </PanelSectionRow>
-
-                    {/* Provider Selection */}
-                    <PanelSectionRow>
-                        <ToggleField
-                            label="Use Google Cloud"
-                            description={!settings.useFreeProviders
-                                ? "Google Cloud Vision + Translation (requires API key)"
-                                : "Currently using OCR.space + Google Translate (free)"}
-                            checked={!settings.useFreeProviders}
-                            onChange={(value) => updateSetting('useFreeProviders', !value, 'Provider mode')}
-                        />
-                    </PanelSectionRow>
-
-                    {/* Provider Status */}
-                    <PanelSectionRow>
-                        <div style={{
-                            padding: '10px 12px',
-                            backgroundColor: settings.useFreeProviders
-                                ? 'rgba(76, 175, 80, 0.15)'
-                                : 'rgba(33, 150, 243, 0.15)',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            border: settings.useFreeProviders
-                                ? '1px solid rgba(76, 175, 80, 0.3)'
-                                : '1px solid rgba(33, 150, 243, 0.3)'
-                        }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                                {settings.useFreeProviders ? 'Free recognition and translation services' : '☁️ Google Cloud'}
-                            </div>
-                            <div style={{ color: '#aaa', fontSize: '11px' }}>
-                                {settings.useFreeProviders
-                                    ? 'OCR.space + Google Translate'
-                                    : 'Google Cloud Vision + Google Cloud Translation'}
-                            </div>
-                            {/* Show OCR.space usage stats when using free providers */}
-                            {settings.useFreeProviders && providerStatus?.ocr_usage && (
-                                <div style={{ marginTop: '8px' }}>
-                                    <div style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        marginBottom: '4px'
-                                    }}>
-                                        <span style={{ color: '#aaa', fontSize: '11px' }}>
-                                            Daily Text Recognition usage:
-                                        </span>
-                                        <span style={{
-                                            fontSize: '11px',
-                                            color: providerStatus.ocr_usage.remaining < 50 ? '#ff6b6b' : '#aaa'
-                                        }}>
-                                            {providerStatus.ocr_usage.used} / {providerStatus.ocr_usage.limit}
-                                        </span>
-                                    </div>
-                                    <div style={{
-                                        height: '4px',
-                                        backgroundColor: 'rgba(255,255,255,0.1)',
-                                        borderRadius: '2px',
-                                        overflow: 'hidden'
-                                    }}>
-                                        <div style={{
-                                            height: '100%',
-                                            width: `${(providerStatus.ocr_usage.used / providerStatus.ocr_usage.limit) * 100}%`,
-                                            backgroundColor: providerStatus.ocr_usage.remaining < 50
-                                                ? '#ff6b6b'
-                                                : providerStatus.ocr_usage.remaining < 100
-                                                    ? '#ffa726'
-                                                    : '#4caf50',
-                                            borderRadius: '2px',
-                                            transition: 'width 0.3s ease'
-                                        }} />
-                                    </div>
-                                    {providerStatus.ocr_usage.remaining < 50 && (
-                                        <div style={{ color: '#ff6b6b', fontSize: '10px', marginTop: '4px' }}>
-                                            ⚠️ Low remaining requests today
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {!settings.useFreeProviders && !settings.googleApiKey && (
-                                <div style={{ color: '#ff6b6b', marginTop: '6px', fontSize: '11px' }}>
-                                    ⚠️ API key required for Google Cloud
-                                </div>
-                            )}
-                        </div>
-                    </PanelSectionRow>
-
-                    {/* Google Cloud API Key - only show when not using free providers */}
-                    {!settings.useFreeProviders && (
-                        <PanelSectionRow>
-                            <ButtonItem
-                                label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
-                                description="Google Cloud API key for text recognition & translation"
-                                layout="below"
-                                onClick={() => {
-                                    showModal(
-                                        <ApiKeyModal
-                                            currentKey={settings.googleApiKey}
-                                            onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
-                                        />
-                                    );
-                                }}>
-                                Set API Key
-                            </ButtonItem>
-                        </PanelSectionRow>
-                    )}
-
-                    <PanelSectionRow>
-                        <DropdownItem
-                            label="'Hold to Translate' buttons"
-                            description="Select which button(s) to use for activating translation"
-                            rgOptions={inputModeOptions}
-                            selectedOption={settings.inputMode}
-                            onChange={(option) => updateSetting('inputMode', option.data, 'Input method')}
-                        />
-                    </PanelSectionRow>
-
-                    <PanelSectionRow>
-                        <SliderField
-                            value={settings.holdTimeTranslate / 1000} // Convert to seconds for display
-                            max={3}
-                            min={0}
-                            step={0.1}
-                            label="Hold Time for Translation"
-                            description="Seconds to hold button(s) to activate translation"
-                            showValue={true}
-                            valueSuffix="s"
-                            onChange={(value) => {
-                                // Convert seconds back to milliseconds for storage
-                                const milliseconds = Math.round(value * 1000);
-                                updateSetting('holdTimeTranslate', milliseconds, 'Hold time');
-                            }}
-                        />
-                    </PanelSectionRow>
-
-                    <PanelSectionRow>
-                        <SliderField
-                            value={settings.holdTimeDismiss / 1000} // Convert to seconds for display
-                            max={3}
-                            min={0}
-                            step={0.1}
-                            label="Hold Time for Dismissal"
-                            description="Seconds to hold button(s) to dismiss overlay"
-                            showValue={true}
-                            valueSuffix="s"
-                            onChange={(value) => {
-                                // Convert seconds back to milliseconds for storage
-                                const milliseconds = Math.round(value * 1000);
-                                updateSetting('holdTimeDismiss', milliseconds, 'Hold time for dismissal');
-                            }}
-                        />
-                    </PanelSectionRow>
-
-                    {/* Confidence threshold slider - only show for Google Cloud (has confidence scores) */}
-                    {!settings.useFreeProviders && (
-                        <PanelSectionRow>
-                            <SliderField
-                                value={settings.confidenceThreshold}
-                                max={1.0}
-                                min={0.0}
-                                step={0.05}
-                                label="Text Recognition Confidence"
-                                description="Minimum confidence level for detected text (higher = fewer false positives)"
-                                showValue={true}
-                                valueSuffix=""
-                                onChange={(value) => {
-                                    updateSetting('confidenceThreshold', value, 'Text recognition confidence');
-                                }}
-                            />
-                        </PanelSectionRow>
-                    )}
-
-                    {/* New toggle for pausing game when overlay is active */}
-                    <PanelSectionRow>
-                        <ToggleField
-                            checked={settings.pauseGameOnOverlay}
-                            label="Pause Game While Translating"
-                            description="Automatically pause the game when translation overlay is visible"
-                            onChange={(value) => {
-                                updateSetting('pauseGameOnOverlay', value, 'Pause game while translating');
-                            }}
-                        />
-                    </PanelSectionRow>
-
-                    {/* Quick toggle option - only show for combo modes */}
-                    {(settings.inputMode === InputMode.L4_R4_COMBO ||
-                      settings.inputMode === InputMode.L5_R5_COMBO ||
-                      settings.inputMode === InputMode.TOUCHPAD_COMBO) && (
-                        <PanelSectionRow>
-                            <ToggleField
-                                checked={settings.quickToggleEnabled}
-                                label="Quick Toggle with Right Button"
-                                description="Tap right button to toggle overlay visibility (show/hide translations)"
-                                onChange={(value) => {
-                                    updateSetting('quickToggleEnabled', value, 'Quick toggle');
-                                }}
-                            />
-                        </PanelSectionRow>
-                    )}
-
-                    {/* Debug mode toggle */}
-                    <PanelSectionRow>
-                        <ToggleField
-                            label="Debug Mode"
-                            description="Enable verbose console logging and diagnostics panel"
-                            checked={settings.debugMode}
-                            onChange={(value) => updateSetting('debugMode', value, 'Debug mode')}
-                        />
-                    </PanelSectionRow>
-                </div>
-            )}
-        </PanelSection>
+            </div>
+        </>
     );
 };
 

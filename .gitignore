@@ -59,6 +59,9 @@ dist/
 .env.development
 .env.production
 
+# Steam Deck credentials to connect and deploy
+.deck
+
 # Editor files
 .vscode/
 .idea/
