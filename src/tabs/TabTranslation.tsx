@@ -24,26 +24,26 @@ import googlecloudLogo from "../../assets/googlecloud-logo.png";
 // @ts-ignore
 import googletranslateLogo from "../../assets/googletranslate-logo.png";
 
-// Language options
+// Language options with flag emojis
 const languageOptions = [
-    { label: "Auto-detect", data: "auto" },
-    { label: "English", data: "en" },
-    { label: "Spanish", data: "es" },
-    { label: "French", data: "fr" },
-    { label: "German", data: "de" },
-    { label: "Italian", data: "it" },
-    { label: "Portuguese", data: "pt" },
-    { label: "Russian", data: "ru" },
-    { label: "Japanese", data: "ja" },
-    { label: "Korean", data: "ko" },
-    { label: "Chinese (Simplified)", data: "zh-CN" },
-    { label: "Chinese (Traditional)", data: "zh-TW" },
-    { label: "Arabic", data: "ar" },
-    { label: "Dutch", data: "nl" },
-    { label: "Hindi", data: "hi" },
-    { label: "Polish", data: "pl" },
-    { label: "Turkish", data: "tr" },
-    { label: "Ukrainian", data: "uk" }
+    { label: "🌐 Auto-detect", data: "auto" },
+    { label: "🇬🇧 English", data: "en" },
+    { label: "🇪🇸 Spanish", data: "es" },
+    { label: "🇫🇷 French", data: "fr" },
+    { label: "🇩🇪 German", data: "de" },
+    { label: "🇮🇹 Italian", data: "it" },
+    { label: "🇵🇹 Portuguese", data: "pt" },
+    { label: "🇷🇺 Russian", data: "ru" },
+    { label: "🇯🇵 Japanese", data: "ja" },
+    { label: "🇰🇷 Korean", data: "ko" },
+    { label: "🇨🇳 Chinese (Simplified)", data: "zh-CN" },
+    { label: "🇹🇼 Chinese (Traditional)", data: "zh-TW" },
+    { label: "🇸🇦 Arabic", data: "ar" },
+    { label: "🇳🇱 Dutch", data: "nl" },
+    { label: "🇮🇳 Hindi", data: "hi" },
+    { label: "🇵🇱 Polish", data: "pl" },
+    { label: "🇹🇷 Turkish", data: "tr" },
+    { label: "🇺🇦 Ukrainian", data: "uk" }
 ];
 
 const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto");
