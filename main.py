@@ -25,7 +25,7 @@ if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
 # Import provider system
-from providers import ProviderManager, TextRegion, NetworkError
+from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError
 
 _processing_lock = False
 
@@ -650,8 +650,20 @@ class Plugin:
                 # Single API key for both Vision and Translate
                 self._google_vision_api_key = value
                 self._google_translate_api_key = value
+                # Update provider manager with new API key
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=self._use_free_providers,
+                        google_api_key=value
+                    )
             elif key == "google_vision_api_key":
                 self._google_vision_api_key = value
+                # Update provider manager with new API key
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=self._use_free_providers,
+                        google_api_key=value
+                    )
             elif key == "google_translate_api_key":
                 self._google_translate_api_key = value
             elif key == "hold_time_translate":
@@ -1114,6 +1126,9 @@ class Plugin:
         except NetworkError as e:
             logger.error(f"Network error during text recognition: {str(e)}")
             return {"error": "network_error", "message": str(e)}
+        except ApiKeyError as e:
+            logger.error(f"API key error during text recognition: {str(e)}")
+            return {"error": "api_key_error", "message": "Invalid API key"}
         except Exception as e:
             logger.error(f"Text recognition error: {str(e)}")
             logger.error(traceback.format_exc())
@@ -1200,6 +1215,9 @@ class Plugin:
         except NetworkError as e:
             logger.error(f"Network error during translation: {str(e)}")
             return {"error": "network_error", "message": str(e)}
+        except ApiKeyError as e:
+            logger.error(f"API key error during translation: {str(e)}")
+            return {"error": "api_key_error", "message": "Invalid API key"}
         except Exception as e:
             logger.error(f"Translation error: {str(e)}")
             logger.error(traceback.format_exc())

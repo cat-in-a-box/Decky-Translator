@@ -12,6 +12,11 @@ class NetworkError(Exception):
     pass
 
 
+class ApiKeyError(Exception):
+    """Raised when the API key is invalid or missing."""
+    pass
+
+
 class ProviderType(Enum):
     """Enum for available provider types."""
     GOOGLE = "google"           # Google Cloud (requires API key)

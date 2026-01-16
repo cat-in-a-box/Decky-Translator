@@ -7,7 +7,7 @@ from typing import List
 
 import requests
 
-from .base import TranslationProvider, ProviderType, NetworkError
+from .base import TranslationProvider, ProviderType, NetworkError, ApiKeyError
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +118,15 @@ class GoogleTranslateProvider(TranslationProvider):
             if response.status_code != 200:
                 logger.error(f"Google Translate API error: {response.status_code}")
                 logger.error(f"Response: {response.text[:500]}")
+                # Check for API key errors
+                if response.status_code == 400:
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get('error', {}).get('message', '')
+                        if 'API key not valid' in error_msg or 'API_KEY_INVALID' in response.text:
+                            raise ApiKeyError("Invalid API key")
+                    except (ValueError, KeyError):
+                        pass
                 return texts
 
             result = response.json()
@@ -134,6 +143,8 @@ class GoogleTranslateProvider(TranslationProvider):
                 logger.error("Unexpected response format from Translation API")
                 return texts
 
+        except ApiKeyError:
+            raise  # Re-raise API key errors
         except requests.exceptions.ConnectionError as e:
             logger.error(f"Google Translate connection error: {e}")
             raise NetworkError("No internet connection") from e

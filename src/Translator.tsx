@@ -1,7 +1,7 @@
 // Translator.tsx - Handles translator logic and API interactions
 
 import { Router, ServerAPI } from "decky-frontend-lib";
-import { TextRecognizer, NetworkError } from "./TextRecognizer";
+import { TextRecognizer, NetworkError, ApiKeyError } from "./TextRecognizer";
 import { TextTranslator } from "./TextTranslator";
 import { Input, InputMode, ActionType, ProgressInfo } from "./Input";
 import { ImageState } from "./Overlay";
@@ -391,6 +391,12 @@ export class GameTranslatorLogic {
                 setTimeout(() => {
                     this.imageState.hideImage();
                 }, 2500); // 2.5 seconds delay for network error
+            } else if (error instanceof ApiKeyError) {
+                this.imageState.updateProcessingStep("Invalid API key");
+                // Hide overlay after showing the error message
+                setTimeout(() => {
+                    this.imageState.hideImage();
+                }, 2500); // 2.5 seconds delay for API key error
             } else {
                 this.imageState.hideImage();
             }
