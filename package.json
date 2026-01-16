@@ -6,7 +6,8 @@
     "build": "shx rm -rf dist && rollup -c",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:zip": "npm run build && node scripts/build-zip.js"
+    "build:zip": "npm run build && node scripts/build-zip.js",
+    "copy-to-deck": "node scripts/copy-to-deck.js"
   },
   "repository": {
     "type": "git",
