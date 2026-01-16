@@ -7,9 +7,13 @@ import {
     ToggleField,
     Router
 } from "decky-frontend-lib";
+import { Navigation, DialogButton, Focusable } from "@decky/ui";
 
 import { VFC } from "react";
 import { BsTranslate, BsXLg, BsEye } from "react-icons/bs";
+import { SiKofi } from "react-icons/si";
+import { HiQrCode } from "react-icons/hi2";
+import showQrModal from "../showQrModal";
 import { useSettings } from "../SettingsContext";
 import { GameTranslatorLogic } from "../Translator";
 import { logger } from "../Logger";
@@ -37,8 +41,8 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
             <PanelSection>
                 <PanelSectionRow>
                     <ToggleField
-                        label="Enable Decky Translator"
-                        description="Toggle the plugin on or off"
+                        label={settings.enabled ? "Plugin is enabled" : "Plugin is disabled"}
+                        description="Toggle the functionality on or off"
                         checked={settings.enabled}
                         onChange={(value) => updateSetting('enabled', value, 'Decky Translator')}
                     />
@@ -60,7 +64,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
 
                         {/* Provider Status */}
                         <PanelSectionRow>
-                            <div style={{ fontSize: '12px' }}>
+                            <div style={{ fontSize: '12px', marginTop: '8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: settings.useFreeProviders && providerStatus?.ocr_usage ? '2px' : '4px' }}>
                                     <BsEye style={{ marginRight: '8px', color: '#aaa' }} />
                                     <span style={{ color: '#888' }}>Text Recognition:</span>
@@ -128,6 +132,40 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                         </PanelSectionRow>
                     </>
                 )}
+
+                {/* Ko-fi Support Button */}
+                <PanelSectionRow>
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            marginTop: '12px',
+                        }}
+                    >
+                        <Focusable>
+                            <DialogButton
+                                onClick={() => {
+                                    Navigation.CloseSideMenus();
+                                    Navigation.NavigateToExternalWeb('https://ko-fi.com/alexanderdev');
+                                }}
+                                onSecondaryButton={() => showQrModal('https://ko-fi.com/alexanderdev')}
+                                onSecondaryActionDescription="Show QR Code"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '6px 12px',
+                                    fontSize: '11px',
+                                    minWidth: 'auto',
+                                }}
+                            >
+                                <SiKofi style={{ fontSize: '13px' }} />
+                                <span>Support on Ko-fi</span>
+                                <HiQrCode style={{ fontSize: '13px', opacity: 0.6 }} />
+                            </DialogButton>
+                        </Focusable>
+                    </div>
+                </PanelSectionRow>
             </PanelSection>
         </div>
     );

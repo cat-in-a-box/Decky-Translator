@@ -48,6 +48,7 @@
   "dependencies": {
     "@decky/ui": "^4.11.1",
     "decky-frontend-lib": "^3.24.5",
+    "qrcode.react": "^4.2.0",
     "react-dom": "^19.1.0",
     "react-icons": "^4.4.0"
   },
