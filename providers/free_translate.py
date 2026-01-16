@@ -5,10 +5,11 @@ import asyncio
 import logging
 import urllib.parse
 from typing import List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
-from .base import TranslationProvider, ProviderType
+from .base import TranslationProvider, ProviderType, NetworkError
 
 logger = logging.getLogger(__name__)
 
@@ -72,11 +73,17 @@ class FreeTranslateProvider(TranslationProvider):
         """Return list of supported language codes."""
         return self.SUPPORTED_LANGUAGES.copy()
 
-    def _translate_single(self, text: str, source_lang: str, target_lang: str) -> str:
+    def _translate_single(self, text: str, source_lang: str, target_lang: str, session: requests.Session = None) -> str:
         """
         Translate a single text using the free Google Translate API.
 
         This uses the same endpoint that Google Translate web interface uses.
+
+        Args:
+            text: Text to translate
+            source_lang: Source language code
+            target_lang: Target language code
+            session: Optional requests.Session for connection reuse
         """
         if not text or not text.strip():
             return text
@@ -90,14 +97,25 @@ class FreeTranslateProvider(TranslationProvider):
                 'q': text
             }
 
-            response = requests.get(
-                self.TRANSLATE_URL,
-                params=params,
-                timeout=10.0,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            )
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+
+            # Use session if provided, otherwise use requests directly
+            if session:
+                response = session.get(
+                    self.TRANSLATE_URL,
+                    params=params,
+                    timeout=10.0,
+                    headers=headers
+                )
+            else:
+                response = requests.get(
+                    self.TRANSLATE_URL,
+                    params=params,
+                    timeout=10.0,
+                    headers=headers
+                )
 
             if response.status_code != 200:
                 logger.warning(f"Translation request failed: {response.status_code}")
@@ -120,6 +138,12 @@ class FreeTranslateProvider(TranslationProvider):
 
             return text
 
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Free Translate connection error: {e}")
+            raise NetworkError("No internet connection") from e
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Free Translate timeout error: {e}")
+            raise NetworkError("Connection timed out") from e
         except Exception as e:
             logger.error(f"Translation error: {e}")
             return text
@@ -153,7 +177,7 @@ class FreeTranslateProvider(TranslationProvider):
 
     async def translate_batch(self, texts: List[str], source_lang: str, target_lang: str) -> List[str]:
         """
-        Translate multiple texts.
+        Translate multiple texts in parallel.
 
         Args:
             texts: List of texts to translate
@@ -169,24 +193,57 @@ class FreeTranslateProvider(TranslationProvider):
         src = self._map_language(source_lang)
         tgt = self._map_language(target_lang)
 
-        logger.info(f"Batch translating {len(texts)} texts: {src} -> {tgt}")
+        logger.info(f"Batch translating {len(texts)} texts in parallel: {src} -> {tgt}")
 
-        # Run batch translation in thread pool
-        def do_batch_translate():
-            results = []
-            for text in texts:
-                if text and text.strip():
-                    try:
-                        translated = self._translate_single(text, src, tgt)
-                        results.append(translated if translated else text)
-                    except Exception as e:
-                        logger.warning(f"Failed to translate text: {e}")
-                        results.append(text)
-                else:
-                    results.append(text)
+        # Run parallel translation in thread pool
+        def do_parallel_translate():
+            # Use a session for connection reuse
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+
+            # Prepare results list with same length as input
+            results = [None] * len(texts)
+
+            # Limit concurrent requests to avoid rate limiting
+            max_workers = min(10, len(texts))
+
+            def translate_with_index(index: int, text: str):
+                """Translate text and return with its original index."""
+                if not text or not text.strip():
+                    return index, text
+                try:
+                    translated = self._translate_single(text, src, tgt, session)
+                    return index, translated if translated else text
+                except Exception as e:
+                    logger.warning(f"Failed to translate text at index {index}: {e}")
+                    return index, text
+
+            try:
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    # Submit all translation tasks
+                    futures = {
+                        executor.submit(translate_with_index, i, text): i
+                        for i, text in enumerate(texts)
+                    }
+
+                    # Collect results as they complete
+                    for future in as_completed(futures):
+                        try:
+                            index, translated = future.result()
+                            results[index] = translated
+                        except Exception as e:
+                            index = futures[future]
+                            logger.warning(f"Translation future failed for index {index}: {e}")
+                            results[index] = texts[index]
+
+            finally:
+                session.close()
+
             return results
 
-        results = await asyncio.to_thread(do_batch_translate)
+        results = await asyncio.to_thread(do_parallel_translate)
 
         logger.info(f"Batch translation complete: {len(results)} results")
         return results

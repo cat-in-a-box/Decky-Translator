@@ -10,7 +10,7 @@ from typing import List
 import requests
 from PIL import Image
 
-from .base import OCRProvider, ProviderType, TextRegion
+from .base import OCRProvider, ProviderType, TextRegion, NetworkError, ApiKeyError
 
 logger = logging.getLogger(__name__)
 
@@ -95,11 +95,28 @@ class GoogleVisionProvider(OCRProvider):
             if response.status_code != 200:
                 logger.error(f"Google Vision API error: {response.status_code}")
                 logger.error(f"Response: {response.text[:500]}")
+                # Check for API key errors
+                if response.status_code == 400:
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get('error', {}).get('message', '')
+                        if 'API key not valid' in error_msg or 'API_KEY_INVALID' in response.text:
+                            raise ApiKeyError("Invalid API key")
+                    except (ValueError, KeyError):
+                        pass
                 return []
 
             result = response.json()
             return self._parse_response(result)
 
+        except ApiKeyError:
+            raise  # Re-raise API key errors
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Google Vision connection error: {e}")
+            raise NetworkError("No internet connection") from e
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Google Vision timeout error: {e}")
+            raise NetworkError("Connection timed out") from e
         except Exception as e:
             logger.error(f"Google Vision OCR error: {e}")
             return []
