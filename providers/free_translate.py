@@ -212,14 +212,18 @@ class FreeTranslateProvider(TranslationProvider):
             def translate_with_index(index: int, text: str):
                 """Translate text and return with its original index."""
                 if not text or not text.strip():
-                    return index, text
+                    return index, text, None
                 try:
                     translated = self._translate_single(text, src, tgt, session)
-                    return index, translated if translated else text
+                    return index, translated if translated else text, None
+                except NetworkError as e:
+                    # Propagate network errors - don't silently fail
+                    return index, text, e
                 except Exception as e:
                     logger.warning(f"Failed to translate text at index {index}: {e}")
-                    return index, text
+                    return index, text, None
 
+            network_error = None
             try:
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     # Submit all translation tasks
@@ -231,8 +235,11 @@ class FreeTranslateProvider(TranslationProvider):
                     # Collect results as they complete
                     for future in as_completed(futures):
                         try:
-                            index, translated = future.result()
+                            index, translated, error = future.result()
                             results[index] = translated
+                            # Track first network error encountered
+                            if error and isinstance(error, NetworkError) and network_error is None:
+                                network_error = error
                         except Exception as e:
                             index = futures[future]
                             logger.warning(f"Translation future failed for index {index}: {e}")
@@ -240,6 +247,10 @@ class FreeTranslateProvider(TranslationProvider):
 
             finally:
                 session.close()
+
+            # If we got a network error, raise it after cleanup
+            if network_error:
+                raise network_error
 
             return results
 

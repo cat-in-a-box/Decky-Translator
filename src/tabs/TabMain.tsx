@@ -65,15 +65,36 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                         {/* Provider Status */}
                         <PanelSectionRow>
                             <div style={{ fontSize: '12px', marginTop: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: settings.useFreeProviders && providerStatus?.ocr_usage ? '2px' : '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: settings.ocrProvider === 'simple' && providerStatus?.ocr_usage ? '2px' : '4px' }}>
                                     <BsEye style={{ marginRight: '8px', color: '#aaa' }} />
                                     <span style={{ color: '#888' }}>Text Recognition:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
-                                        {settings.useFreeProviders ? 'OCR.space' : 'Google Cloud'}
+                                        {settings.ocrProvider === 'local' ? 'Tesseract' :
+                                         settings.ocrProvider === 'simple' ? 'OCR.space' : 'Google Cloud'}
                                     </span>
                                 </div>
+                                {/* Show local Tesseract status */}
+                                {settings.ocrProvider === 'local' && (
+                                    <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
+                                        {providerStatus?.tesseract_available ? (
+                                            <>
+                                                {providerStatus?.tesseract_info && (
+                                                    <div style={{ color: '#666', fontSize: '9px' }}>
+                                                        <div>On-device text recognition</div>
+                                                        <div>v{providerStatus.tesseract_info.version || 'unknown'} ({providerStatus.tesseract_info.tessdata_type || 'tessdata'})</div>
+                                                        <div>{providerStatus.tesseract_info.languages_count || 0} languages installed</div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <span style={{ color: '#ff6b6b', fontSize: '10px' }}>
+                                                Not available - Tesseract binary not found
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                                 {/* Show OCR.space usage stats right under text recognition */}
-                                {settings.useFreeProviders && providerStatus?.ocr_usage && (
+                                {settings.ocrProvider === 'simple' && providerStatus?.ocr_usage && (
                                     <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
                                         {/* Rate limit (10 per 10 minutes) */}
                                         <div style={{
@@ -159,14 +180,22 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                         )}
                                     </div>
                                 )}
+                                {/* Show Google Cloud status */}
+                                {settings.ocrProvider === 'advanced' && (
+                                    <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
+                                        <span style={{ color: settings.googleApiKey ? '#4caf50' : '#ff6b6b', fontSize: '10px' }}>
+                                            {settings.googleApiKey ? 'API key configured' : 'API key required'}
+                                        </span>
+                                    </div>
+                                )}
                                 <div style={{ display: 'flex', alignItems: 'center' }}>
                                     <BsTranslate style={{ marginRight: '8px', color: '#aaa' }} />
-                                    <span style={{ color: '#888' }}>Translator:</span>
+                                    <span style={{ color: '#888' }}>Translation:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
-                                        {settings.useFreeProviders ? 'Google Translate' : 'Google Cloud'}
+                                        {settings.ocrProvider === 'advanced' ? 'Google Cloud' : 'Google Translate'}
                                     </span>
                                 </div>
-                                {!settings.useFreeProviders && !settings.googleApiKey && (
+                                {settings.ocrProvider === 'advanced' && !settings.googleApiKey && (
                                     <div style={{ color: '#ff6b6b', marginTop: '8px', fontSize: '11px' }}>
                                         API key required - configure in Translation tab
                                     </div>
