@@ -1,0 +1,7 @@
+# Python dependencies for Decky Translator
+# Install to py_modules folder with:
+#   pip install -r requirements.txt -t py_modules
+
+Pillow==11.2.1
+requests==2.32.3
+urllib3==2.4.0
