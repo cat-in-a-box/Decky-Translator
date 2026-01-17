@@ -17,6 +17,11 @@ class ApiKeyError(Exception):
     pass
 
 
+class RateLimitError(Exception):
+    """Raised when API rate limit is exceeded."""
+    pass
+
+
 class ProviderType(Enum):
     """Enum for available provider types."""
     GOOGLE = "google"           # Google Cloud (requires API key)

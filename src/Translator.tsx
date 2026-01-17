@@ -1,7 +1,7 @@
 // Translator.tsx - Handles translator logic and API interactions
 
 import { Router, ServerAPI } from "decky-frontend-lib";
-import { TextRecognizer, NetworkError, ApiKeyError } from "./TextRecognizer";
+import { TextRecognizer, NetworkError, ApiKeyError, RateLimitError } from "./TextRecognizer";
 import { TextTranslator } from "./TextTranslator";
 import { Input, InputMode, ActionType, ProgressInfo } from "./Input";
 import { ImageState } from "./Overlay";
@@ -397,6 +397,12 @@ export class GameTranslatorLogic {
                 setTimeout(() => {
                     this.imageState.hideImage();
                 }, 2500); // 2.5 seconds delay for API key error
+            } else if (error instanceof RateLimitError) {
+                this.imageState.updateProcessingStep(error.message);
+                // Hide overlay after showing the error message
+                setTimeout(() => {
+                    this.imageState.hideImage();
+                }, 3000); // 3 seconds delay for rate limit error
             } else {
                 this.imageState.hideImage();
             }

@@ -13,12 +13,16 @@ from typing import List, Optional
 import requests
 from PIL import Image
 
-from .base import OCRProvider, ProviderType, TextRegion, NetworkError
+from .base import OCRProvider, ProviderType, TextRegion, NetworkError, RateLimitError
 
 logger = logging.getLogger(__name__)
 
 # Daily request limit for free tier
 DAILY_LIMIT = 500
+
+# Rate limit: 10 requests per 600 seconds (10 minutes)
+RATE_LIMIT_REQUESTS = 10
+RATE_LIMIT_WINDOW = 600  # seconds
 
 # Maximum file size for OCR.space free tier (1MB)
 MAX_FILE_SIZE = 1024 * 1024
@@ -79,10 +83,14 @@ class OCRSpaceProvider(OCRProvider):
         try:
             if os.path.exists(self._usage_file):
                 with open(self._usage_file, 'r') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    # Ensure timestamps list exists
+                    if "timestamps" not in data:
+                        data["timestamps"] = []
+                    return data
         except Exception as e:
             logger.warning(f"Failed to load usage data: {e}")
-        return {"date": "", "count": 0}
+        return {"date": "", "count": 0, "timestamps": []}
 
     def _save_usage(self, usage: dict) -> None:
         """Save usage data to file."""
@@ -93,40 +101,82 @@ class OCRSpaceProvider(OCRProvider):
         except Exception as e:
             logger.warning(f"Failed to save usage data: {e}")
 
-    def _increment_usage(self) -> None:
-        """Increment the daily usage counter."""
+    def _track_rate_limit(self) -> None:
+        """Track request timestamp for rate limiting (called BEFORE API request)."""
+        today = date.today().isoformat()
+        now = datetime.now().timestamp()
+        usage = self._load_usage()
+
+        # Reset counter if it's a new day
+        if usage.get("date") != today:
+            usage = {"date": today, "count": 0, "timestamps": []}
+
+        # Add current timestamp for rate limit tracking
+        timestamps = usage.get("timestamps", [])
+        timestamps.append(now)
+        # Keep only timestamps within the rate limit window
+        cutoff = now - RATE_LIMIT_WINDOW
+        usage["timestamps"] = [ts for ts in timestamps if ts > cutoff]
+
+        self._save_usage(usage)
+        logger.debug(f"OCR.space rate tracked: {len(usage['timestamps'])}/{RATE_LIMIT_REQUESTS}")
+
+    def _increment_daily_count(self) -> None:
+        """Increment the daily usage counter (called AFTER successful OCR)."""
         today = date.today().isoformat()
         usage = self._load_usage()
 
         # Reset counter if it's a new day
         if usage.get("date") != today:
-            usage = {"date": today, "count": 0}
+            usage = {"date": today, "count": 0, "timestamps": usage.get("timestamps", [])}
 
         usage["count"] = usage.get("count", 0) + 1
+
         self._save_usage(usage)
-        logger.debug(f"OCR.space usage: {usage['count']}/{DAILY_LIMIT}")
+        logger.debug(f"OCR.space daily usage: {usage['count']}/{DAILY_LIMIT}")
 
     def get_usage_stats(self) -> dict:
         """
         Get current usage statistics.
 
         Returns:
-            Dictionary with 'used', 'limit', 'remaining', and 'date' fields
+            Dictionary with daily usage and rate limit info
         """
         today = date.today().isoformat()
+        now = datetime.now().timestamp()
         usage = self._load_usage()
 
         # Reset if it's a new day
         if usage.get("date") != today:
             used = 0
+            timestamps = []
         else:
             used = usage.get("count", 0)
+            timestamps = usage.get("timestamps", [])
+
+        # Filter timestamps to only include those within the rate limit window
+        cutoff = now - RATE_LIMIT_WINDOW
+        recent_timestamps = [ts for ts in timestamps if ts > cutoff]
+        rate_used = len(recent_timestamps)
+
+        # Calculate seconds until oldest timestamp expires (rate limit resets)
+        if recent_timestamps and rate_used >= RATE_LIMIT_REQUESTS:
+            oldest = min(recent_timestamps)
+            seconds_until_reset = max(0, int((oldest + RATE_LIMIT_WINDOW) - now))
+        else:
+            seconds_until_reset = 0
 
         return {
             "used": used,
             "limit": DAILY_LIMIT,
             "remaining": max(0, DAILY_LIMIT - used),
-            "date": today
+            "date": today,
+            # Rate limit info (10 requests per 600 seconds)
+            "rate_used": rate_used,
+            "rate_limit": RATE_LIMIT_REQUESTS,
+            "rate_remaining": max(0, RATE_LIMIT_REQUESTS - rate_used),
+            "rate_window": RATE_LIMIT_WINDOW,
+            "rate_reset_seconds": seconds_until_reset
         }
 
     @property
@@ -270,8 +320,24 @@ class OCRSpaceProvider(OCRProvider):
                     timeout=30.0
                 )
 
+            # Track rate limit BEFORE making the request (API counts all attempts)
+            self._track_rate_limit()
+
             logger.info(f"Sending request to OCR.space (lang={ocr_language}, engine={engine})")
             response = await asyncio.to_thread(do_request)
+
+            if response.status_code == 403:
+                # Rate limit exceeded
+                logger.error(f"OCR.space API error: {response.status_code}")
+                logger.error(f"Response: {response.text[:500]}")
+                # Check if it's the rate limit message
+                if "maximum" in response.text.lower() and "seconds" in response.text.lower():
+                    # Get the actual reset time from usage stats
+                    usage_stats = self.get_usage_stats()
+                    reset_seconds = usage_stats.get("rate_reset_seconds", 600)
+                    reset_minutes = max(1, (reset_seconds + 59) // 60)  # Round up to nearest minute
+                    raise RateLimitError(f"Rate limit reached. Please wait {reset_minutes} min")
+                raise RateLimitError("Rate limit reached. Please wait 10 min")
 
             if response.status_code != 200:
                 logger.error(f"OCR.space API error: {response.status_code}")
@@ -281,9 +347,9 @@ class OCRSpaceProvider(OCRProvider):
             result = response.json()
             text_regions = self._parse_response(result)
 
-            # Only increment usage counter on successful recognition
+            # Only increment daily counter on successful recognition
             if text_regions:
-                self._increment_usage()
+                self._increment_daily_count()
 
             return text_regions
 
@@ -293,6 +359,9 @@ class OCRSpaceProvider(OCRProvider):
         except requests.exceptions.Timeout as e:
             logger.error(f"OCR.space timeout error: {e}")
             raise NetworkError("Connection timed out") from e
+        except RateLimitError:
+            # Re-raise rate limit errors so they can be handled by the caller
+            raise
         except Exception as e:
             logger.error(f"OCR.space error: {e}")
             return []
