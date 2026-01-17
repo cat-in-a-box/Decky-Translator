@@ -1,6 +1,6 @@
 {
   "name": "decky-translator",
-  "version": "0.5.0",
+  "version": "0.6.1",
   "description": "Translate anything on your screen to your language",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",
