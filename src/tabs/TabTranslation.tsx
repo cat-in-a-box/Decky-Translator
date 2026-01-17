@@ -23,6 +23,8 @@ import ocrspaceLogo from "../../assets/ocrspace-logo.png";
 import googlecloudLogo from "../../assets/googlecloud-logo.png";
 // @ts-ignore
 import googletranslateLogo from "../../assets/googletranslate-logo.png";
+// @ts-ignore
+import tesseractLogo from "../../assets/tesseract-logo.png";
 
 // Language options with flag emojis
 const languageOptions = [
@@ -121,11 +123,12 @@ export const TabTranslation: VFC = () => {
                     <DropdownItem
                         label="Text Recognition + Translation"
                         rgOptions={[
-                            { label: <span>Simple</span>, data: true },
-                            { label: <span>Advanced</span>, data: false }
+                            { label: <span>Tesseract</span>, data: "local" },
+                            { label: <span>OCR.space</span>, data: "simple" },
+                            { label: <span>Google Cloud</span>, data: "advanced" }
                         ]}
-                        selectedOption={settings.useFreeProviders}
-                        onChange={(option) => updateSetting('useFreeProviders', option.data, 'OCR provider')}
+                        selectedOption={settings.ocrProvider}
+                        onChange={(option) => updateSetting('ocrProvider', option.data, 'OCR provider')}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>
@@ -134,7 +137,22 @@ export const TabTranslation: VFC = () => {
                         childrenContainerWidth="max"
                     >
                         <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
-                            {settings.useFreeProviders ? (
+                            {settings.ocrProvider === 'local' && (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                        <img src={tesseractLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Tesseract</span>
+                                        <span>+</span>
+                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
+                                    </div>
+                                    <div>- Recognizes text locally on your device</div>
+                                    <div>- Translates found text via Google Translate</div>
+                                    <div>- Screenshots do not leave your device</div>
+                                    <div>- Provides average results</div>
+                                </>
+                            )}
+                            {settings.ocrProvider === 'simple' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <img src={ocrspaceLogo} alt="" style={{ height: "18px" }} />
@@ -143,29 +161,49 @@ export const TabTranslation: VFC = () => {
                                         <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
                                     </div>
-                                    <div>- Just works, no API key needed</div>
-                                    <div>- 500 requests/day limit</div>
-                                    <div>- Less accurate text recognition</div>
-                                    <div>- Average translation quality</div>
+                                    <div>- Recognizes text with ocr.space free API</div>
+                                    <div>- API usage limits: 500 requests/day + 10 requests/10 min</div>
+                                    <div>- Translates found text via Google Translate</div>
+                                    <div>- Good accuracy for clean text</div>
                                 </>
-                            ) : (
+                            )}
+                            {settings.ocrProvider === 'advanced' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <img src={googlecloudLogo} alt="" style={{ height: "18px" }} />
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Cloud</span>
                                     </div>
                                     <div>- Requires API key</div>
-                                    <div>- Free if you don't go crazy</div>
-                                    <div>- Faster recognition</div>
-                                    <div>- More accurate results</div>
+                                    <div>- Best accuracy available</div>
+                                    <div>- Pay-as-you-go pricing</div>
+                                    <div>- Ideal for complex/stylized text</div>
                                 </>
                             )}
                         </div>
                     </Field>
                 </PanelSectionRow>
 
-                {/* Google Cloud API Key - only show when not using free providers */}
-                {!settings.useFreeProviders && (
+                {/* Tesseract confidence slider - only show when using local provider */}
+                {settings.ocrProvider === 'local' && (
+                    <PanelSectionRow>
+                        <SliderField
+                            value={settings.tesseractConfidence}
+                            max={100}
+                            min={0}
+                            step={5}
+                            label="Recognition Confidence"
+                            description="Filter out low-confidence results (higher = less noise, may miss text)"
+                            showValue={true}
+                            valueSuffix="%"
+                            onChange={(value) => {
+                                updateSetting('tesseractConfidence', value, 'Tesseract confidence');
+                            }}
+                        />
+                    </PanelSectionRow>
+                )}
+
+                {/* Google Cloud API Key - only show when using advanced provider */}
+                {settings.ocrProvider === 'advanced' && (
                     <>
                         <PanelSectionRow>
                             <ButtonItem

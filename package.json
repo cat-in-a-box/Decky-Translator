@@ -6,7 +6,11 @@
     "build": "shx rm -rf dist && rollup -c",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "download:tesseract": "bash scripts/download-tesseract.sh",
+    "download:tessdata": "bash scripts/download-tessdata.sh",
+    "download:all": "npm run download:tesseract && npm run download:tessdata",
     "build:zip": "npm run build && node scripts/build-zip.js",
+    "build:full": "npm run download:all && npm run build:zip",
     "copy-to-deck": "node scripts/copy-to-deck.js",
     "build:zip and copy-to-deck": "npm run build:zip && npm run copy-to-deck"
   },

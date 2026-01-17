@@ -613,6 +613,7 @@ class Plugin:
     _hold_time_translate: int = 1000  # Default to 1 second
     _hold_time_dismiss: int = 500  # Default to 0.5 seconds for dismissal
     _confidence_threshold: float = 0.6  # Default confidence threshold
+    _tesseract_confidence: int = 40  # Tesseract-specific confidence threshold (0-100)
     _pause_game_on_overlay: bool = False  # Default to not pausing game on overlay
     _quick_toggle_enabled: bool = False  # Default to disabled for quick toggle
 
@@ -622,6 +623,7 @@ class Plugin:
     # Provider system
     _provider_manager: ProviderManager = None
     _use_free_providers: bool = True  # Default to free providers (no API key needed)
+    _ocr_provider: str = "simple"  # "local" (Tesseract), "simple" (OCR.space), or "advanced" (Google Cloud)
 
     # OCR API configurations - user must provide their own API key
     _google_vision_api_key: str = ""
@@ -672,17 +674,33 @@ class Plugin:
                 self._hold_time_dismiss = value
             elif key == "confidence_threshold":
                 self._confidence_threshold = value
+            elif key == "tesseract_confidence":
+                self._tesseract_confidence = value
+                # Update provider manager with new confidence
+                if self._provider_manager:
+                    self._provider_manager.set_tesseract_confidence(value)
             elif key == "pause_game_on_overlay":
                 self._pause_game_on_overlay = value
             elif key == "quick_toggle_enabled":
                 self._quick_toggle_enabled = value
             elif key == "use_free_providers":
                 self._use_free_providers = value
-                # Update provider manager configuration
+                # Update provider manager configuration (backwards compatibility)
                 if self._provider_manager:
                     self._provider_manager.configure(
                         use_free_providers=value,
                         google_api_key=self._google_vision_api_key
+                    )
+            elif key == "ocr_provider":
+                self._ocr_provider = value
+                # Derive use_free_providers for backwards compatibility
+                self._use_free_providers = (value != "advanced")
+                # Update provider manager configuration
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=self._use_free_providers,
+                        google_api_key=self._google_vision_api_key,
+                        ocr_provider=value
                     )
             else:
                 logger.warning(f"Unknown setting key: {key}")
@@ -705,12 +723,14 @@ class Plugin:
                 "input_mode": self._input_mode,
                 "enabled": self._settings.get_setting("enabled", True),
                 "use_free_providers": self._use_free_providers,
+                "ocr_provider": self._ocr_provider,
                 "google_api_key": self._google_vision_api_key,  # Single key for frontend
                 "google_vision_api_key": self._google_vision_api_key,
                 "google_translate_api_key": self._google_translate_api_key,
                 "hold_time_translate": self._settings.get_setting("hold_time_translate", 1000),
                 "hold_time_dismiss": self._settings.get_setting("hold_time_dismiss", 500),
                 "confidence_threshold": self._settings.get_setting("confidence_threshold", 0.6),
+                "tesseract_confidence": self._settings.get_setting("tesseract_confidence", 40),
                 "pause_game_on_overlay": self._settings.get_setting("pause_game_on_overlay", False),
                 "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
                 "debug_mode": self._settings.get_setting("debug_mode", False)
@@ -1451,26 +1471,38 @@ class Plugin:
             else:
                 logger.info("No Google API key configured - will use free providers by default")
 
-            # Load use_free_providers setting
-            saved_use_free = self._settings.get_setting("use_free_providers")
-            if saved_use_free is not None:
-                logger.info(f"Using saved use_free_providers: {saved_use_free}")
-                self._use_free_providers = saved_use_free
+            # Load ocr_provider setting (new way)
+            saved_ocr_provider = self._settings.get_setting("ocr_provider")
+            if saved_ocr_provider is not None:
+                logger.info(f"Using saved ocr_provider: {saved_ocr_provider}")
+                self._ocr_provider = saved_ocr_provider
+                # Derive use_free_providers for backwards compatibility
+                self._use_free_providers = (saved_ocr_provider != "advanced")
             else:
-                logger.info(f"No saved use_free_providers, using default: {self._use_free_providers}")
-                self._settings.set_setting("use_free_providers", self._use_free_providers)
+                # Try to migrate from old use_free_providers setting
+                saved_use_free = self._settings.get_setting("use_free_providers")
+                if saved_use_free is not None:
+                    logger.info(f"Migrating from use_free_providers: {saved_use_free}")
+                    self._use_free_providers = saved_use_free
+                    # Map old setting to new: True -> "simple", False -> "advanced"
+                    self._ocr_provider = "simple" if saved_use_free else "advanced"
+                else:
+                    logger.info(f"No saved ocr_provider, using default: {self._ocr_provider}")
+                # Save the new ocr_provider setting
+                self._settings.set_setting("ocr_provider", self._ocr_provider)
 
             # Initialize provider manager
             logger.info("Initializing provider manager...")
             self._provider_manager = ProviderManager()
             self._provider_manager.configure(
                 use_free_providers=self._use_free_providers,
-                google_api_key=google_api_key
+                google_api_key=google_api_key,
+                ocr_provider=self._ocr_provider
             )
             provider_status = self._provider_manager.get_provider_status()
             logger.info(f"Provider manager initialized: {provider_status}")
 
-            # Set confidence treshold
+            # Set confidence threshold
             saved_confidence = self._settings.get_setting("confidence_threshold")
             if saved_confidence is not None:
                 logger.info(f"Using saved confidence threshold: {saved_confidence}")
@@ -1479,6 +1511,19 @@ class Plugin:
                 logger.info(f"No saved confidence threshold, using default: {self._confidence_threshold}")
                 # Only save default if no setting exists
                 self._settings.set_setting("confidence_threshold", self._confidence_threshold)
+
+            # Set Tesseract-specific confidence threshold
+            saved_tesseract_conf = self._settings.get_setting("tesseract_confidence")
+            if saved_tesseract_conf is not None:
+                logger.info(f"Using saved Tesseract confidence: {saved_tesseract_conf}")
+                self._tesseract_confidence = saved_tesseract_conf
+            else:
+                logger.info(f"No saved Tesseract confidence, using default: {self._tesseract_confidence}")
+                # Only save default if no setting exists
+                self._settings.set_setting("tesseract_confidence", self._tesseract_confidence)
+            # Apply Tesseract confidence to provider manager
+            if self._provider_manager:
+                self._provider_manager.set_tesseract_confidence(self._tesseract_confidence)
 
             # Set pause game on overlay
             saved_pause_game = self._settings.get_setting("pause_game_on_overlay")

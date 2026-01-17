@@ -17,6 +17,7 @@ from .google_ocr import GoogleVisionProvider
 from .google_translate import GoogleTranslateProvider
 from .ocrspace import OCRSpaceProvider
 from .free_translate import FreeTranslateProvider
+from .tesseract_ocr import TesseractProvider
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ __all__ = [
     'GoogleTranslateProvider',
     'OCRSpaceProvider',
     'FreeTranslateProvider',
+    'TesseractProvider',
     'ProviderManager',
 ]
 
@@ -49,13 +51,16 @@ class ProviderManager:
         # Configuration
         self._use_free_providers = True  # Default to free providers
         self._google_api_key = ""
+        self._ocr_provider_preference = "simple"  # "local", "simple", or "advanced"
+        self._tesseract_confidence = 40  # Default Tesseract confidence threshold (0-100)
 
         logger.info("ProviderManager initialized")
 
     def configure(
         self,
         use_free_providers: bool = True,
-        google_api_key: str = ""
+        google_api_key: str = "",
+        ocr_provider: str = ""
     ) -> None:
         """
         Configure provider preferences.
@@ -63,10 +68,21 @@ class ProviderManager:
         Args:
             use_free_providers: If True, use OCR.space + free Google Translate.
                                 If False, use Google Cloud APIs (requires API key).
-            google_api_key: Google Cloud API key (only needed if use_free_providers=False)
+                                (Deprecated: use ocr_provider instead)
+            google_api_key: Google Cloud API key (only needed for advanced provider)
+            ocr_provider: OCR provider preference - "local", "simple", or "advanced"
         """
-        self._use_free_providers = use_free_providers
         self._google_api_key = google_api_key
+
+        # Handle ocr_provider setting (new way)
+        if ocr_provider:
+            self._ocr_provider_preference = ocr_provider
+            # Derive use_free_providers for backwards compatibility
+            self._use_free_providers = (ocr_provider != "advanced")
+        else:
+            # Backwards compatibility: derive from use_free_providers
+            self._use_free_providers = use_free_providers
+            self._ocr_provider_preference = "simple" if use_free_providers else "advanced"
 
         # Update Google Cloud providers with new API key
         if ProviderType.GOOGLE in self._ocr_providers:
@@ -75,9 +91,23 @@ class ProviderManager:
             self._translation_providers[ProviderType.GOOGLE].set_api_key(google_api_key)
 
         logger.info(
-            f"Provider config updated: use_free={use_free_providers}, "
+            f"Provider config updated: ocr_provider={self._ocr_provider_preference}, "
             f"google_api_key_set={bool(google_api_key)}"
         )
+
+    def set_tesseract_confidence(self, confidence: int) -> None:
+        """
+        Set the Tesseract confidence threshold.
+
+        Args:
+            confidence: Minimum confidence (0-100) for Tesseract results.
+        """
+        self._tesseract_confidence = confidence
+        # Update existing Tesseract provider if it exists
+        tesseract = self._ocr_providers.get(ProviderType.TESSERACT)
+        if tesseract:
+            tesseract.set_min_confidence(confidence)
+        logger.info(f"Tesseract confidence set to {confidence}")
 
     def get_ocr_provider(
         self,
@@ -87,16 +117,26 @@ class ProviderManager:
         Get OCR provider, creating if necessary.
 
         Args:
-            provider_type: Specific provider type, or None for default
+            provider_type: Specific provider type, or None for default based on preference
 
         Returns:
             OCRProvider instance or None
         """
         if provider_type is None:
-            provider_type = ProviderType.OCR_SPACE if self._use_free_providers else ProviderType.GOOGLE
+            # Determine provider type based on preference
+            if self._ocr_provider_preference == "local":
+                provider_type = ProviderType.TESSERACT
+            elif self._ocr_provider_preference == "simple":
+                provider_type = ProviderType.OCR_SPACE
+            else:  # "advanced"
+                provider_type = ProviderType.GOOGLE
 
         if provider_type not in self._ocr_providers:
-            if provider_type == ProviderType.OCR_SPACE:
+            if provider_type == ProviderType.TESSERACT:
+                self._ocr_providers[provider_type] = TesseractProvider(
+                    min_confidence=self._tesseract_confidence
+                )
+            elif provider_type == ProviderType.OCR_SPACE:
                 self._ocr_providers[provider_type] = OCRSpaceProvider()
             elif provider_type == ProviderType.GOOGLE:
                 self._ocr_providers[provider_type] = GoogleVisionProvider(
@@ -119,7 +159,11 @@ class ProviderManager:
             TranslationProvider instance or None
         """
         if provider_type is None:
-            provider_type = ProviderType.FREE_GOOGLE if self._use_free_providers else ProviderType.GOOGLE
+            # Only "advanced" uses Google Cloud Translation, others use free
+            if self._ocr_provider_preference == "advanced":
+                provider_type = ProviderType.GOOGLE
+            else:
+                provider_type = ProviderType.FREE_GOOGLE
 
         if provider_type not in self._translation_providers:
             if provider_type == ProviderType.FREE_GOOGLE:
@@ -196,6 +240,7 @@ class ProviderManager:
 
         status = {
             "use_free_providers": self._use_free_providers,
+            "ocr_provider_preference": self._ocr_provider_preference,
             "google_api_configured": bool(self._google_api_key),
             "ocr_provider": ocr_provider.name if ocr_provider else "None",
             "translation_provider": trans_provider.name if trans_provider else "None",
@@ -203,9 +248,18 @@ class ProviderManager:
             "translation_available": trans_provider.is_available("auto", "en") if trans_provider else False,
         }
 
-        # Add OCR.space usage stats if using free providers
-        if self._use_free_providers and ocr_provider:
+        # Add OCR.space usage stats if using simple (OCR.space) provider
+        if self._ocr_provider_preference == "simple" and ocr_provider:
             if hasattr(ocr_provider, 'get_usage_stats'):
                 status["ocr_usage"] = ocr_provider.get_usage_stats()
+
+        # Add Tesseract availability info
+        tesseract = self._ocr_providers.get(ProviderType.TESSERACT)
+        if tesseract is None:
+            # Create temporarily to check availability
+            tesseract = TesseractProvider(min_confidence=self._tesseract_confidence)
+        status["tesseract_available"] = tesseract.is_available()
+        status["tesseract_languages"] = tesseract.get_supported_languages() if tesseract.is_available() else []
+        status["tesseract_info"] = tesseract.get_tesseract_info() if tesseract.is_available() else {}
 
         return status

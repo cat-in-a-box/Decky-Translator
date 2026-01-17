@@ -15,9 +15,11 @@ export interface Settings {
     holdTimeTranslate: number;
     holdTimeDismiss: number;
     confidenceThreshold: number; // New setting for confidence threshold
+    tesseractConfidence: number; // Tesseract-specific confidence threshold (0-100)
     pauseGameOnOverlay: boolean; // Setting to control pausing game when overlay is shown
     quickToggleEnabled: boolean; // Quick toggle overlay with right button in combo modes
-    useFreeProviders: boolean; // Use free providers (OCR.space + free Google Translate)
+    useFreeProviders: boolean; // Use free providers (OCR.space + free Google Translate) - deprecated, use ocrProvider
+    ocrProvider: 'local' | 'simple' | 'advanced'; // OCR provider: local (Tesseract), simple (OCR.space), advanced (Google Cloud)
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
 }
@@ -38,9 +40,11 @@ const initialSettings: Settings = {
     holdTimeTranslate: 1000, // Default to 1 second (1000ms)
     holdTimeDismiss: 500,    // Default to 0.5 seconds (500ms)
     confidenceThreshold: 0.6, // Default confidence threshold
+    tesseractConfidence: 40, // Default Tesseract confidence threshold (0-100)
     pauseGameOnOverlay: false, // Default to not pausing game
     quickToggleEnabled: false, // Default to disabled
-    useFreeProviders: true, // Default to free providers (no API key needed)
+    useFreeProviders: true, // Default to free providers (no API key needed) - deprecated
+    ocrProvider: "simple", // Default to simple (OCR.space) provider
     googleApiKey: "", // Empty by default, only needed for Google Cloud
     debugMode: false // Debug mode off by default
 };
@@ -99,9 +103,11 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     holdTimeTranslate: serverSettings.hold_time_translate,
                     holdTimeDismiss: serverSettings.hold_time_dismiss,
                     confidenceThreshold: serverSettings.confidence_threshold || 0.6, // Add default if not present
+                    tesseractConfidence: serverSettings.tesseract_confidence ?? 40, // Tesseract confidence (0-100)
                     pauseGameOnOverlay: serverSettings.pause_game_on_overlay || false, // Add default if not present
                     quickToggleEnabled: serverSettings.quick_toggle_enabled || false, // Add default if not present
-                    useFreeProviders: serverSettings.use_free_providers !== false, // Default to true
+                    useFreeProviders: serverSettings.use_free_providers !== false, // Default to true (deprecated)
+                    ocrProvider: serverSettings.ocr_provider || "simple", // OCR provider setting
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
                     debugMode: serverSettings.debug_mode || false // Debug mode
                 };
@@ -149,9 +155,11 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 holdTimeTranslate: 'hold_time_translate',
                 holdTimeDismiss: 'hold_time_dismiss',
                 confidenceThreshold: 'confidence_threshold',
+                tesseractConfidence: 'tesseract_confidence',
                 pauseGameOnOverlay: 'pause_game_on_overlay',
                 quickToggleEnabled: 'quick_toggle_enabled',
                 useFreeProviders: 'use_free_providers',
+                ocrProvider: 'ocr_provider',
                 googleApiKey: 'google_api_key',
                 debugMode: 'debug_mode'
             };
