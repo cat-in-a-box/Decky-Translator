@@ -25,7 +25,7 @@ if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
 # Import provider system
-from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError
+from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError, RateLimitError
 
 _processing_lock = False
 
@@ -1130,6 +1130,9 @@ class Plugin:
         except ApiKeyError as e:
             logger.error(f"API key error during text recognition: {str(e)}")
             return {"error": "api_key_error", "message": "Invalid API key"}
+        except RateLimitError as e:
+            logger.error(f"Rate limit error during text recognition: {str(e)}")
+            return {"error": "rate_limit_error", "message": str(e)}
         except Exception as e:
             logger.error(f"Text recognition error: {str(e)}")
             logger.error(traceback.format_exc())

@@ -25,6 +25,14 @@ export class ApiKeyError extends Error {
     }
 }
 
+// Custom error class for rate limit errors
+export class RateLimitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'RateLimitError';
+    }
+}
+
 // Type guard to check if response is an error
 function isErrorResponse(value: unknown): value is ErrorResponse {
     return typeof value === 'object' && value !== null && 'error' in value && 'message' in value;
@@ -956,6 +964,10 @@ export class TextRecognizer {
                         logger.error('TextRecognizer', `API key error: ${errorResponse.message}`);
                         throw new ApiKeyError(errorResponse.message);
                     }
+                    if (errorResponse.error === 'rate_limit_error') {
+                        logger.error('TextRecognizer', `Rate limit error: ${errorResponse.message}`);
+                        throw new RateLimitError(errorResponse.message);
+                    }
                     // Handle other error types if needed
                     logger.error('TextRecognizer', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
                     return [];
@@ -976,8 +988,8 @@ export class TextRecognizer {
             logger.error('TextRecognizer', 'Failed to recognize text (file-based)');
             return [];
         } catch (error) {
-            // Re-throw NetworkError and ApiKeyError to be handled by caller
-            if (error instanceof NetworkError || error instanceof ApiKeyError) {
+            // Re-throw NetworkError, ApiKeyError, and RateLimitError to be handled by caller
+            if (error instanceof NetworkError || error instanceof ApiKeyError || error instanceof RateLimitError) {
                 throw error;
             }
             logger.error('TextRecognizer', 'Text recognition error (file-based)', error);

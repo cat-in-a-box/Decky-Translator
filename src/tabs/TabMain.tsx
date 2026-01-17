@@ -75,6 +75,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                 {/* Show OCR.space usage stats right under text recognition */}
                                 {settings.useFreeProviders && providerStatus?.ocr_usage && (
                                     <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
+                                        {/* Rate limit (10 per 10 minutes) */}
                                         <div style={{
                                             display: 'flex',
                                             justifyContent: 'space-between',
@@ -82,13 +83,55 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                             marginBottom: '3px'
                                         }}>
                                             <span style={{ color: '#666', fontSize: '10px' }}>
-                                                Remaining daily API usage:
+                                                10 min limit:
+                                            </span>
+                                            <span style={{
+                                                fontSize: '10px',
+                                                color: providerStatus.ocr_usage.rate_remaining <= 2 ? '#ff6b6b' : '#888'
+                                            }}>
+                                                {providerStatus.ocr_usage.rate_remaining}/{providerStatus.ocr_usage.rate_limit}
+                                            </span>
+                                        </div>
+                                        <div style={{
+                                            height: '3px',
+                                            backgroundColor: 'rgba(255,255,255,0.1)',
+                                            borderRadius: '2px',
+                                            overflow: 'hidden',
+                                            marginBottom: '4px'
+                                        }}>
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${(providerStatus.ocr_usage.rate_remaining / providerStatus.ocr_usage.rate_limit) * 100}%`,
+                                                backgroundColor: providerStatus.ocr_usage.rate_remaining <= 2
+                                                    ? '#ff6b6b'
+                                                    : providerStatus.ocr_usage.rate_remaining <= 5
+                                                        ? '#ffa726'
+                                                        : '#4caf50',
+                                                borderRadius: '2px',
+                                                transition: 'width 0.3s ease'
+                                            }} />
+                                        </div>
+                                        {providerStatus.ocr_usage.rate_remaining === 0 && providerStatus.ocr_usage.rate_reset_seconds > 0 && (
+                                            <div style={{ color: '#ff6b6b', fontSize: '9px', marginBottom: '4px' }}>
+                                                Rate limit exceeded - resets in {Math.ceil(providerStatus.ocr_usage.rate_reset_seconds / 60)} min
+                                            </div>
+                                        )}
+
+                                        {/* Daily limit (500 per day) */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            marginBottom: '3px'
+                                        }}>
+                                            <span style={{ color: '#666', fontSize: '10px' }}>
+                                                Daily limit:
                                             </span>
                                             <span style={{
                                                 fontSize: '10px',
                                                 color: providerStatus.ocr_usage.remaining < 50 ? '#ff6b6b' : '#888'
                                             }}>
-                                                {providerStatus.ocr_usage.remaining}
+                                                {providerStatus.ocr_usage.remaining}/{providerStatus.ocr_usage.limit}
                                             </span>
                                         </div>
                                         <div style={{
@@ -111,7 +154,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                         </div>
                                         {providerStatus.ocr_usage.remaining < 50 && (
                                             <div style={{ color: '#ff6b6b', fontSize: '9px', marginTop: '2px' }}>
-                                                Low remaining requests
+                                                Low daily requests remaining
                                             </div>
                                         )}
                                     </div>
