@@ -5,7 +5,7 @@ import {
 } from "decky-frontend-lib";
 
 
-import { VFC, useEffect, useState } from "react";
+import { VFC, useEffect, useState, useRef, useCallback } from "react";
 import { TranslatedRegion } from "./TextTranslator";
 import { logger } from "./Logger";
 
@@ -279,31 +279,87 @@ export const TranslatedTextOverlay: VFC<{
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
+    // Ref to the screenshot image element
+    const imgRef = useRef<HTMLImageElement>(null);
+
+    // State to track actual rendered image dimensions
+    const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+
+    // State to track the natural (original) image dimensions from the screenshot
+    const [naturalDimensions, setNaturalDimensions] = useState({ width: 1280, height: 800 });
+
+
     const formattedImageData = imageData && imageData.startsWith('data:')
         ? imageData
         : imageData ? `data:image/png;base64,${imageData}` : "";
 
-    // Function to calculate the scaling factor based on current resolution
-    function getScalingFactor() {
-        // Base Steam Deck resolution
-        const baseWidth = 1280;
-        const baseHeight = 800;
+    // Update image dimensions when the image loads or window resizes
+    const updateImageDimensions = useCallback(() => {
+        if (imgRef.current) {
+            const rect = imgRef.current.getBoundingClientRect();
+            setImageDimensions({ width: rect.width, height: rect.height });
 
-        const element = document.querySelector('.WindowFocus') as HTMLElement;
-        let elementWidth: number = 0;
-        let elementHeight: number = 0;
-        if (element) {
-            elementWidth = element.offsetWidth;
-            elementHeight = element.offsetHeight;
+            // Also capture the natural (original) image dimensions
+            // This is the actual screenshot resolution, which may vary with UI scaling
+            const natWidth = imgRef.current.naturalWidth;
+            const natHeight = imgRef.current.naturalHeight;
+            if (natWidth > 0 && natHeight > 0) {
+                setNaturalDimensions({ width: natWidth, height: natHeight });
+                logger.debug('Overlay', `Natural image dimensions: ${natWidth}x${natHeight}`);
+            }
+
+            logger.debug('Overlay', `Rendered image dimensions: ${rect.width}x${rect.height}`);
+        }
+    }, []);
+
+    // Listen for window resize to update image dimensions
+    useEffect(() => {
+        window.addEventListener('resize', updateImageDimensions);
+        return () => {
+            window.removeEventListener('resize', updateImageDimensions);
+        };
+    }, [updateImageDimensions]);
+
+    // Function to calculate the scaling factor based on actual rendered image size
+    function getScalingFactor() {
+        // Use natural image dimensions as base (the actual screenshot resolution)
+        // OCR coordinates are based on these dimensions
+        const baseWidth = naturalDimensions.width;
+        const baseHeight = naturalDimensions.height;
+
+        // Use actual rendered image dimensions if available
+        let renderedWidth = imageDimensions.width;
+        let renderedHeight = imageDimensions.height;
+
+        // Fallback: try to get dimensions from the img element directly
+        if ((renderedWidth === 0 || renderedHeight === 0) && imgRef.current) {
+            const rect = imgRef.current.getBoundingClientRect();
+            renderedWidth = rect.width;
+            renderedHeight = rect.height;
         }
 
-        elementWidth = 854;
-        elementHeight = 534;
+        // Final fallback: use viewport dimensions if image not yet loaded
+        if (renderedWidth === 0 || renderedHeight === 0) {
+            // Calculate based on viewport while maintaining aspect ratio
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const aspectRatio = baseWidth / baseHeight;
+
+            if (viewportWidth / viewportHeight > aspectRatio) {
+                // Viewport is wider - height is the constraint
+                renderedHeight = viewportHeight;
+                renderedWidth = viewportHeight * aspectRatio;
+            } else {
+                // Viewport is taller - width is the constraint
+                renderedWidth = viewportWidth;
+                renderedHeight = viewportWidth / aspectRatio;
+            }
+        }
 
         return {
-            widthFactor: elementWidth / baseWidth,
-            heightFactor: elementHeight / baseHeight,
-            generalFactor: ((elementWidth / baseWidth) + (elementHeight / baseHeight)) / 2
+            widthFactor: renderedWidth / baseWidth,
+            heightFactor: renderedHeight / baseHeight,
+            generalFactor: ((renderedWidth / baseWidth) + (renderedHeight / baseHeight)) / 2
         };
     }
 
@@ -317,6 +373,8 @@ export const TranslatedTextOverlay: VFC<{
                  alignItems: "center",
                  zIndex: 7002,
                  position: "fixed",
+                 top: 0,
+                 left: 0,
                  backgroundColor: "transparent",
                  // Use opacity and pointer-events to hide instead of unmounting
                  // This keeps useUIComposition hook active and prevents Steam UI flash
@@ -333,8 +391,10 @@ export const TranslatedTextOverlay: VFC<{
                 }}>
                     {/* Base screenshot image - adding key to force re-render with new image */}
                     <img
+                        ref={imgRef}
                         key={`img-${Date.now()}`}
                         src={formattedImageData}
+                        onLoad={updateImageDimensions}
                         style={{
                             maxHeight: "calc(100vh - 2px)",
                             maxWidth: "calc(100vw - 2px)",
