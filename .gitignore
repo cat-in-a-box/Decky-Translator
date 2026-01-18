@@ -71,3 +71,7 @@ dist/
 # Build artifacts
 temp-build/
 *.zip
+
+# Local files
+/docs
+/nul
