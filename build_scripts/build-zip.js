@@ -147,6 +147,25 @@ async function buildZip() {
     if (fs.existsSync(pyModulesSrc)) {
       copyRecursive(pyModulesSrc, pyModulesDest);
       console.log('   ✓ py_modules/ directory copied');
+
+      // Fix ELF executable stack issue in onnxruntime .so files
+      console.log('\n🔧 Fixing ELF executable stack flags...');
+      const fixElfScript = path.join(projectRoot, 'build_scripts', 'fix-elf-execstack.py');
+      const onnxruntimeDir = path.join(pyModulesDest, 'onnxruntime');
+
+      if (fs.existsSync(fixElfScript) && fs.existsSync(onnxruntimeDir)) {
+        try {
+          execSync(`python "${fixElfScript}" "${onnxruntimeDir}"`, {
+            cwd: projectRoot,
+            stdio: 'inherit'
+          });
+          console.log('   ✓ ELF files fixed');
+        } catch (error) {
+          console.log('   ⚠ Could not fix ELF files (may need to run fix script on Steam Deck)');
+        }
+      } else {
+        console.log('   ⚠ Skipping ELF fix (onnxruntime not found or script missing)');
+      }
     } else {
       fs.mkdirSync(pyModulesDest);
       console.log('   ✓ py_modules/ directory created (empty)');
