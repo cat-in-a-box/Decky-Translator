@@ -16,10 +16,13 @@ export interface Settings {
     holdTimeDismiss: number;
     confidenceThreshold: number; // New setting for confidence threshold
     tesseractConfidence: number; // Tesseract-specific confidence threshold (0-100)
+    rapidocrConfidence: number; // RapidOCR-specific confidence threshold (0.0-1.0)
+    rapidocrBoxThresh: number; // RapidOCR box detection threshold (0.0-1.0)
+    rapidocrUnclipRatio: number; // RapidOCR box expansion ratio (1.0-3.0)
     pauseGameOnOverlay: boolean; // Setting to control pausing game when overlay is shown
     quickToggleEnabled: boolean; // Quick toggle overlay with right button in combo modes
     useFreeProviders: boolean; // Use free providers (OCR.space + free Google Translate) - deprecated, use ocrProvider
-    ocrProvider: 'local' | 'simple' | 'advanced'; // OCR provider: local (Tesseract), simple (OCR.space), advanced (Google Cloud)
+    ocrProvider: 'local' | 'rapidocr' | 'simple' | 'advanced'; // OCR provider: local (Tesseract), rapidocr (RapidOCR), simple (OCR.space), advanced (Google Cloud)
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
 }
@@ -41,6 +44,9 @@ const initialSettings: Settings = {
     holdTimeDismiss: 500,    // Default to 0.5 seconds (500ms)
     confidenceThreshold: 0.6, // Default confidence threshold
     tesseractConfidence: 40, // Default Tesseract confidence threshold (0-100)
+    rapidocrConfidence: 0.5, // Default RapidOCR confidence threshold (0.0-1.0)
+    rapidocrBoxThresh: 0.5, // Default RapidOCR box detection threshold (0.0-1.0)
+    rapidocrUnclipRatio: 1.6, // Default RapidOCR box expansion ratio (1.0-3.0)
     pauseGameOnOverlay: false, // Default to not pausing game
     quickToggleEnabled: false, // Default to disabled
     useFreeProviders: true, // Default to free providers (no API key needed) - deprecated
@@ -104,6 +110,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     holdTimeDismiss: serverSettings.hold_time_dismiss,
                     confidenceThreshold: serverSettings.confidence_threshold || 0.6, // Add default if not present
                     tesseractConfidence: serverSettings.tesseract_confidence ?? 40, // Tesseract confidence (0-100)
+                    rapidocrConfidence: serverSettings.rapidocr_confidence ?? 0.5, // RapidOCR confidence (0.0-1.0)
+                    rapidocrBoxThresh: serverSettings.rapidocr_box_thresh ?? 0.5, // RapidOCR box threshold (0.0-1.0)
+                    rapidocrUnclipRatio: serverSettings.rapidocr_unclip_ratio ?? 1.6, // RapidOCR unclip ratio (1.0-3.0)
                     pauseGameOnOverlay: serverSettings.pause_game_on_overlay || false, // Add default if not present
                     quickToggleEnabled: serverSettings.quick_toggle_enabled || false, // Add default if not present
                     useFreeProviders: serverSettings.use_free_providers !== false, // Default to true (deprecated)
@@ -156,6 +165,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 holdTimeDismiss: 'hold_time_dismiss',
                 confidenceThreshold: 'confidence_threshold',
                 tesseractConfidence: 'tesseract_confidence',
+                rapidocrConfidence: 'rapidocr_confidence',
+                rapidocrBoxThresh: 'rapidocr_box_thresh',
+                rapidocrUnclipRatio: 'rapidocr_unclip_ratio',
                 pauseGameOnOverlay: 'pause_game_on_overlay',
                 quickToggleEnabled: 'quick_toggle_enabled',
                 useFreeProviders: 'use_free_providers',

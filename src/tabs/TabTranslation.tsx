@@ -25,6 +25,7 @@ import googlecloudLogo from "../../assets/googlecloud-logo.png";
 import googletranslateLogo from "../../assets/googletranslate-logo.png";
 // @ts-ignore
 import tesseractLogo from "../../assets/tesseract-logo.png";
+// RapidOCR uses lightning icon (⚡) instead of logo image
 
 // Language options with flag emojis
 const languageOptions = [
@@ -124,6 +125,7 @@ export const TabTranslation: VFC = () => {
                         label="Text Recognition + Translation"
                         rgOptions={[
                             { label: <span>Tesseract</span>, data: "local" },
+                            { label: <span>RapidOCR</span>, data: "rapidocr" },
                             { label: <span>OCR.space</span>, data: "simple" },
                             { label: <span>Google Cloud</span>, data: "advanced" }
                         ]}
@@ -150,6 +152,21 @@ export const TabTranslation: VFC = () => {
                                     <div>- Translates found text via Google Translate</div>
                                     <div>- Screenshots do not leave your device</div>
                                     <div>- Provides average results</div>
+                                </>
+                            )}
+                            {settings.ocrProvider === 'rapidocr' && (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                        <span style={{ fontSize: "18px" }}>⚡</span>
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>RapidOCR</span>
+                                        <span>+</span>
+                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
+                                    </div>
+                                    <div>- Fast local OCR using ONNX models</div>
+                                    <div>- Excellent for Chinese, Japanese, Korean</div>
+                                    <div>- Screenshots do not leave your device</div>
+                                    <div>- Good accuracy for CJK + English text</div>
                                 </>
                             )}
                             {settings.ocrProvider === 'simple' && (
@@ -200,6 +217,66 @@ export const TabTranslation: VFC = () => {
                             }}
                         />
                     </PanelSectionRow>
+                )}
+
+                {/* RapidOCR settings - only show when using rapidocr provider */}
+                {settings.ocrProvider === 'rapidocr' && (
+                    <>
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.rapidocrConfidence ?? 0.5}
+                                max={1.0}
+                                min={0.0}
+                                step={0.05}
+                                label="Recognition Confidence"
+                                description="Filter out low-confidence results (higher = less noise, may miss text)"
+                                showValue={true}
+                                onChange={(value) => {
+                                    updateSetting('rapidocrConfidence', value, 'RapidOCR confidence');
+                                }}
+                            />
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.rapidocrBoxThresh ?? 0.5}
+                                max={1.0}
+                                min={0.1}
+                                step={0.05}
+                                label="Detection Sensitivity"
+                                description="Lower = detect more text boxes (better for small text)"
+                                showValue={true}
+                                onChange={(value) => {
+                                    updateSetting('rapidocrBoxThresh', value, 'RapidOCR box threshold');
+                                }}
+                            />
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.rapidocrUnclipRatio ?? 1.6}
+                                max={3.0}
+                                min={1.0}
+                                step={0.1}
+                                label="Box Expansion"
+                                description="Higher = larger text regions (helps capture full words)"
+                                showValue={true}
+                                onChange={(value) => {
+                                    updateSetting('rapidocrUnclipRatio', value, 'RapidOCR unclip ratio');
+                                }}
+                            />
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <ButtonItem
+                                layout="below"
+                                onClick={() => {
+                                    updateSetting('rapidocrConfidence', 0.5, 'RapidOCR confidence');
+                                    updateSetting('rapidocrBoxThresh', 0.5, 'RapidOCR box threshold');
+                                    updateSetting('rapidocrUnclipRatio', 1.6, 'RapidOCR unclip ratio');
+                                }}
+                            >
+                                Reset RapidOCR Settings to Defaults
+                            </ButtonItem>
+                        </PanelSectionRow>
+                    </>
                 )}
 
                 {/* Google Cloud API Key - only show when using advanced provider */}

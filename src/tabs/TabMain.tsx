@@ -70,6 +70,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                     <span style={{ color: '#888' }}>Text Recognition:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
                                         {settings.ocrProvider === 'local' ? 'Tesseract' :
+                                         settings.ocrProvider === 'rapidocr' ? 'RapidOCR' :
                                          settings.ocrProvider === 'simple' ? 'OCR.space' : 'Google Cloud'}
                                     </span>
                                 </div>
@@ -89,6 +90,21 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                         ) : (
                                             <span style={{ color: '#ff6b6b', fontSize: '10px' }}>
                                                 Not available - Tesseract binary not found
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                                {/* Show RapidOCR status */}
+                                {settings.ocrProvider === 'rapidocr' && (
+                                    <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
+                                        {providerStatus?.rapidocr_available ? (
+                                            <div style={{ color: '#666', fontSize: '9px' }}>
+                                                <div>On-device Text Recognition</div>
+                                                <div>Version:{providerStatus?.rapidocr_info?.version ? ` (v${providerStatus.rapidocr_info.version})` : ''}</div>
+                                            </div>
+                                        ) : (
+                                            <span style={{ color: '#ff6b6b', fontSize: '10px' }}>
+                                                {providerStatus?.rapidocr_error || 'Not available - RapidOCR not initialized'}
                                             </span>
                                         )}
                                     </div>
