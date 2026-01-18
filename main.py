@@ -614,6 +614,9 @@ class Plugin:
     _hold_time_dismiss: int = 500  # Default to 0.5 seconds for dismissal
     _confidence_threshold: float = 0.6  # Default confidence threshold
     _tesseract_confidence: int = 40  # Tesseract-specific confidence threshold (0-100)
+    _rapidocr_confidence: float = 0.5  # RapidOCR-specific confidence threshold (0.0-1.0)
+    _rapidocr_box_thresh: float = 0.5  # RapidOCR detection box threshold (0.0-1.0)
+    _rapidocr_unclip_ratio: float = 1.6  # RapidOCR box expansion ratio (1.0-3.0)
     _pause_game_on_overlay: bool = False  # Default to not pausing game on overlay
     _quick_toggle_enabled: bool = False  # Default to disabled for quick toggle
 
@@ -679,6 +682,19 @@ class Plugin:
                 # Update provider manager with new confidence
                 if self._provider_manager:
                     self._provider_manager.set_tesseract_confidence(value)
+            elif key == "rapidocr_confidence":
+                self._rapidocr_confidence = value
+                # Update provider manager with new confidence
+                if self._provider_manager:
+                    self._provider_manager.set_rapidocr_confidence(value)
+            elif key == "rapidocr_box_thresh":
+                self._rapidocr_box_thresh = value
+                if self._provider_manager:
+                    self._provider_manager.set_rapidocr_box_thresh(value)
+            elif key == "rapidocr_unclip_ratio":
+                self._rapidocr_unclip_ratio = value
+                if self._provider_manager:
+                    self._provider_manager.set_rapidocr_unclip_ratio(value)
             elif key == "pause_game_on_overlay":
                 self._pause_game_on_overlay = value
             elif key == "quick_toggle_enabled":
@@ -731,6 +747,9 @@ class Plugin:
                 "hold_time_dismiss": self._settings.get_setting("hold_time_dismiss", 500),
                 "confidence_threshold": self._settings.get_setting("confidence_threshold", 0.6),
                 "tesseract_confidence": self._settings.get_setting("tesseract_confidence", 40),
+                "rapidocr_confidence": self._settings.get_setting("rapidocr_confidence", 0.5),
+                "rapidocr_box_thresh": self._settings.get_setting("rapidocr_box_thresh", 0.5),
+                "rapidocr_unclip_ratio": self._settings.get_setting("rapidocr_unclip_ratio", 1.6),
                 "pause_game_on_overlay": self._settings.get_setting("pause_game_on_overlay", False),
                 "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
                 "debug_mode": self._settings.get_setting("debug_mode", False)
@@ -1524,6 +1543,41 @@ class Plugin:
             # Apply Tesseract confidence to provider manager
             if self._provider_manager:
                 self._provider_manager.set_tesseract_confidence(self._tesseract_confidence)
+
+            # Set RapidOCR-specific confidence threshold
+            saved_rapidocr_conf = self._settings.get_setting("rapidocr_confidence")
+            if saved_rapidocr_conf is not None:
+                logger.info(f"Using saved RapidOCR confidence: {saved_rapidocr_conf}")
+                self._rapidocr_confidence = saved_rapidocr_conf
+            else:
+                logger.info(f"No saved RapidOCR confidence, using default: {self._rapidocr_confidence}")
+                # Only save default if no setting exists
+                self._settings.set_setting("rapidocr_confidence", self._rapidocr_confidence)
+            # Apply RapidOCR confidence to provider manager
+            if self._provider_manager:
+                self._provider_manager.set_rapidocr_confidence(self._rapidocr_confidence)
+
+            # Set RapidOCR box threshold
+            saved_rapidocr_box = self._settings.get_setting("rapidocr_box_thresh")
+            if saved_rapidocr_box is not None:
+                logger.info(f"Using saved RapidOCR box_thresh: {saved_rapidocr_box}")
+                self._rapidocr_box_thresh = saved_rapidocr_box
+            else:
+                logger.info(f"No saved RapidOCR box_thresh, using default: {self._rapidocr_box_thresh}")
+                self._settings.set_setting("rapidocr_box_thresh", self._rapidocr_box_thresh)
+            if self._provider_manager:
+                self._provider_manager.set_rapidocr_box_thresh(self._rapidocr_box_thresh)
+
+            # Set RapidOCR unclip ratio
+            saved_rapidocr_unclip = self._settings.get_setting("rapidocr_unclip_ratio")
+            if saved_rapidocr_unclip is not None:
+                logger.info(f"Using saved RapidOCR unclip_ratio: {saved_rapidocr_unclip}")
+                self._rapidocr_unclip_ratio = saved_rapidocr_unclip
+            else:
+                logger.info(f"No saved RapidOCR unclip_ratio, using default: {self._rapidocr_unclip_ratio}")
+                self._settings.set_setting("rapidocr_unclip_ratio", self._rapidocr_unclip_ratio)
+            if self._provider_manager:
+                self._provider_manager.set_rapidocr_unclip_ratio(self._rapidocr_unclip_ratio)
 
             # Set pause game on overlay
             saved_pause_game = self._settings.get_setting("pause_game_on_overlay")

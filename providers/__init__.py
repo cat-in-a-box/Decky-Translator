@@ -18,6 +18,7 @@ from .google_translate import GoogleTranslateProvider
 from .ocrspace import OCRSpaceProvider
 from .free_translate import FreeTranslateProvider
 from .tesseract_ocr import TesseractProvider
+from .rapidocr_provider import RapidOCRProvider
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ __all__ = [
     'OCRSpaceProvider',
     'FreeTranslateProvider',
     'TesseractProvider',
+    'RapidOCRProvider',
     'ProviderManager',
 ]
 
@@ -51,8 +53,11 @@ class ProviderManager:
         # Configuration
         self._use_free_providers = True  # Default to free providers
         self._google_api_key = ""
-        self._ocr_provider_preference = "simple"  # "local", "simple", or "advanced"
+        self._ocr_provider_preference = "simple"  # "local", "rapidocr", "simple", or "advanced"
         self._tesseract_confidence = 40  # Default Tesseract confidence threshold (0-100)
+        self._rapidocr_confidence = 0.5  # Default RapidOCR confidence threshold (0.0-1.0)
+        self._rapidocr_box_thresh = 0.5  # Default RapidOCR box detection threshold (0.0-1.0)
+        self._rapidocr_unclip_ratio = 1.6  # Default RapidOCR box expansion ratio (1.0-3.0)
 
         logger.info("ProviderManager initialized")
 
@@ -109,6 +114,46 @@ class ProviderManager:
             tesseract.set_min_confidence(confidence)
         logger.info(f"Tesseract confidence set to {confidence}")
 
+    def set_rapidocr_confidence(self, confidence: float) -> None:
+        """
+        Set the RapidOCR confidence threshold.
+
+        Args:
+            confidence: Minimum confidence (0.0-1.0) for RapidOCR results.
+        """
+        self._rapidocr_confidence = confidence
+        # Update existing RapidOCR provider if it exists
+        rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
+        if rapidocr:
+            rapidocr.set_min_confidence(confidence)
+        logger.info(f"RapidOCR confidence set to {confidence}")
+
+    def set_rapidocr_box_thresh(self, box_thresh: float) -> None:
+        """
+        Set the RapidOCR box detection threshold.
+
+        Args:
+            box_thresh: Detection box confidence (0.0-1.0). Lower values detect more text.
+        """
+        self._rapidocr_box_thresh = box_thresh
+        rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
+        if rapidocr:
+            rapidocr.set_box_thresh(box_thresh)
+        logger.info(f"RapidOCR box_thresh set to {box_thresh}")
+
+    def set_rapidocr_unclip_ratio(self, unclip_ratio: float) -> None:
+        """
+        Set the RapidOCR box expansion ratio.
+
+        Args:
+            unclip_ratio: Box expansion ratio (1.0-3.0). Higher values expand detected boxes.
+        """
+        self._rapidocr_unclip_ratio = unclip_ratio
+        rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
+        if rapidocr:
+            rapidocr.set_unclip_ratio(unclip_ratio)
+        logger.info(f"RapidOCR unclip_ratio set to {unclip_ratio}")
+
     def get_ocr_provider(
         self,
         provider_type: Optional[ProviderType] = None
@@ -126,6 +171,8 @@ class ProviderManager:
             # Determine provider type based on preference
             if self._ocr_provider_preference == "local":
                 provider_type = ProviderType.TESSERACT
+            elif self._ocr_provider_preference == "rapidocr":
+                provider_type = ProviderType.RAPIDOCR
             elif self._ocr_provider_preference == "simple":
                 provider_type = ProviderType.OCR_SPACE
             else:  # "advanced"
@@ -135,6 +182,10 @@ class ProviderManager:
             if provider_type == ProviderType.TESSERACT:
                 self._ocr_providers[provider_type] = TesseractProvider(
                     min_confidence=self._tesseract_confidence
+                )
+            elif provider_type == ProviderType.RAPIDOCR:
+                self._ocr_providers[provider_type] = RapidOCRProvider(
+                    min_confidence=self._rapidocr_confidence
                 )
             elif provider_type == ProviderType.OCR_SPACE:
                 self._ocr_providers[provider_type] = OCRSpaceProvider()
@@ -261,5 +312,15 @@ class ProviderManager:
         status["tesseract_available"] = tesseract.is_available()
         status["tesseract_languages"] = tesseract.get_supported_languages() if tesseract.is_available() else []
         status["tesseract_info"] = tesseract.get_tesseract_info() if tesseract.is_available() else {}
+
+        # Add RapidOCR availability info
+        rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
+        if rapidocr is None:
+            # Create temporarily to check availability
+            rapidocr = RapidOCRProvider(min_confidence=self._rapidocr_confidence)
+        status["rapidocr_available"] = rapidocr.is_available()
+        status["rapidocr_languages"] = rapidocr.get_supported_languages() if rapidocr.is_available() else []
+        status["rapidocr_info"] = rapidocr.get_rapidocr_info()
+        status["rapidocr_error"] = rapidocr.get_init_error()
 
         return status
