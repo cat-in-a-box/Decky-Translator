@@ -12,40 +12,6 @@ const PY_MODULES_DIR = path.join(PROJECT_ROOT, 'py_modules');
 // CONFIGURATION
 // ============================================================================
 
-// Tesseract AppImage (Linux x86_64)
-const TESSERACT_GITHUB_REPO = 'AlexanderP/tesseract-appimage';
-const TESSERACT_FALLBACK_VERSION = '5.5.1';
-const TESSERACT_DIR = path.join(BIN_DIR, 'tesseract');
-
-// Tessdata language packs
-const TESSDATA_URL = 'https://github.com/tesseract-ocr/tessdata_fast/raw/main';
-const TESSDATA_DIR = path.join(TESSERACT_DIR, 'tessdata');
-const TESSDATA_LANGUAGES = [
-  { code: 'eng', name: 'English' },
-  { code: 'jpn', name: 'Japanese' },
-  { code: 'jpn_vert', name: 'Japanese (Vertical)' },
-  { code: 'chi_sim', name: 'Chinese Simplified' },
-  { code: 'chi_sim_vert', name: 'Chinese Simplified (Vertical)' },
-  { code: 'chi_tra', name: 'Chinese Traditional' },
-  { code: 'chi_tra_vert', name: 'Chinese Traditional (Vertical)' },
-  { code: 'kor', name: 'Korean' },
-  { code: 'kor_vert', name: 'Korean (Vertical)' },
-  { code: 'deu', name: 'German' },
-  { code: 'fra', name: 'French' },
-  { code: 'spa', name: 'Spanish' },
-  { code: 'ita', name: 'Italian' },
-  { code: 'por', name: 'Portuguese' },
-  { code: 'rus', name: 'Russian' },
-  { code: 'ara', name: 'Arabic' },
-  { code: 'nld', name: 'Dutch' },
-  { code: 'pol', name: 'Polish' },
-  { code: 'tur', name: 'Turkish' },
-  { code: 'ukr', name: 'Ukrainian' },
-  { code: 'hin', name: 'Hindi' },
-  { code: 'tha', name: 'Thai' },
-  { code: 'vie', name: 'Vietnamese' }
-];
-
 // Python standalone build (Linux x86_64 for Steam Deck)
 // We fetch the latest 3.11.x release dynamically
 const PYTHON_STANDALONE_REPO = 'indygreg/python-build-standalone';
@@ -225,152 +191,12 @@ function ensureDir(dir) {
 }
 
 // ============================================================================
-// STEP 1: TESSERACT BINARY
-// ============================================================================
-
-async function downloadTesseract() {
-  console.log('\n' + '='.repeat(60));
-  console.log('STEP 1: Tesseract OCR Binary (Linux x86_64)');
-  console.log('='.repeat(60));
-
-  ensureDir(TESSERACT_DIR);
-
-  // Check if already extracted
-  const tesseractBin = path.join(TESSERACT_DIR, 'tesseract');
-  if (fs.existsSync(tesseractBin)) {
-    console.log('   Tesseract binary already exists, skipping.');
-    return true;
-  }
-
-  // Get latest version from GitHub
-  let version = TESSERACT_FALLBACK_VERSION;
-  try {
-    console.log('   Fetching latest Tesseract version...');
-    const release = await fetchJson(`https://api.github.com/repos/${TESSERACT_GITHUB_REPO}/releases/latest`);
-    if (release.tag_name) {
-      version = release.tag_name.replace(/^v/, '');
-      console.log(`   Latest version: ${version}`);
-    }
-  } catch (e) {
-    console.log(`   Could not fetch latest version, using fallback: ${version}`);
-  }
-
-  const appImageUrl = `https://github.com/${TESSERACT_GITHUB_REPO}/releases/download/v${version}/tesseract-${version}-x86_64.AppImage`;
-  const appImagePath = path.join(TESSERACT_DIR, 'tesseract.AppImage');
-
-  // Download AppImage if not present
-  if (!fs.existsSync(appImagePath)) {
-    console.log(`   Downloading Tesseract ${version} AppImage...`);
-    try {
-      await downloadFile(appImageUrl, appImagePath);
-    } catch (e) {
-      console.error(`   Failed to download Tesseract: ${e.message}`);
-      return false;
-    }
-  }
-
-  // Extract AppImage
-  if (!canRunLinuxCommands) {
-    console.log('\n   AppImage downloaded but cannot extract (no Linux/WSL).');
-    console.log('   Install WSL or run on Linux to extract.');
-    return false;
-  }
-
-  console.log('   Extracting AppImage' + (hasWsl ? ' (using WSL)' : '') + '...');
-
-  try {
-    const tesseractDirPath = hasWsl ? toWslPath(TESSERACT_DIR) : TESSERACT_DIR;
-
-    // Run extraction steps separately for reliability
-    const steps = [
-      `cd '${tesseractDirPath}' && chmod +x tesseract.AppImage && ./tesseract.AppImage --appimage-extract`,
-      `cd '${tesseractDirPath}' && cp squashfs-root/usr/bin/tesseract . && chmod +x tesseract`,
-      `cd '${tesseractDirPath}' && mkdir -p lib`,
-      `cd '${tesseractDirPath}' && find squashfs-root/usr/lib -maxdepth 1 -name '*.so*' -exec cp {} lib/ \\; 2>/dev/null; true`,
-      `cd '${tesseractDirPath}' && find squashfs-root/usr/lib/x86_64-linux-gnu -maxdepth 1 -name '*.so*' -exec cp {} lib/ \\; 2>/dev/null; true`,
-      `cd '${tesseractDirPath}' && rm -rf squashfs-root tesseract.AppImage`
-    ];
-
-    for (const step of steps) {
-      if (hasWsl) {
-        runInWsl(step, { stdio: 'pipe' });
-      } else {
-        execSync(`bash -c "${step}"`, { stdio: 'pipe' });
-      }
-    }
-
-    // Create wrapper script
-    const wrapperScript = `#!/bin/bash
-SCRIPT_DIR="\${0%/*}"
-[[ "$SCRIPT_DIR" == "$0" ]] && SCRIPT_DIR="."
-[[ "$SCRIPT_DIR" != /* ]] && SCRIPT_DIR="$PWD/$SCRIPT_DIR"
-export LD_LIBRARY_PATH="$SCRIPT_DIR/lib:$LD_LIBRARY_PATH"
-export TESSDATA_PREFIX="$SCRIPT_DIR/tessdata"
-exec "$SCRIPT_DIR/tesseract" "$@"
-`;
-    fs.writeFileSync(path.join(TESSERACT_DIR, 'run-tesseract.sh'), wrapperScript);
-
-    console.log('   Tesseract extracted successfully!');
-    return true;
-  } catch (e) {
-    console.error(`   Failed to extract AppImage: ${e.message}`);
-    return false;
-  }
-}
-
-// ============================================================================
-// STEP 2: TESSDATA LANGUAGE PACKS
-// ============================================================================
-
-async function downloadTessdata() {
-  console.log('\n' + '='.repeat(60));
-  console.log('STEP 2: Tessdata Language Packs');
-  console.log('='.repeat(60));
-
-  ensureDir(TESSDATA_DIR);
-
-  let downloaded = 0;
-  let skipped = 0;
-  let failed = 0;
-
-  for (let i = 0; i < TESSDATA_LANGUAGES.length; i++) {
-    const lang = TESSDATA_LANGUAGES[i];
-    const destPath = path.join(TESSDATA_DIR, `${lang.code}.traineddata`);
-    const progress = `[${String(i + 1).padStart(2)}/${TESSDATA_LANGUAGES.length}]`;
-
-    if (fs.existsSync(destPath)) {
-      const size = (fs.statSync(destPath).size / 1024 / 1024).toFixed(1);
-      console.log(`   ${progress} ${lang.name.padEnd(30)} - Already exists (${size} MB)`);
-      skipped++;
-      continue;
-    }
-
-    process.stdout.write(`   ${progress} ${lang.name.padEnd(30)} - Downloading...`);
-
-    try {
-      await downloadFile(
-        `${TESSDATA_URL}/${lang.code}.traineddata`,
-        destPath
-      );
-      downloaded++;
-    } catch (e) {
-      console.log(' FAILED');
-      failed++;
-      if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
-    }
-  }
-
-  console.log(`\n   Summary: ${downloaded} downloaded, ${skipped} skipped, ${failed} failed`);
-  return failed === 0;
-}
-
-// ============================================================================
-// STEP 3: RAPIDOCR ONNX MODELS
+// STEP 1: RAPIDOCR ONNX MODELS
 // ============================================================================
 
 async function downloadRapidOCRModels() {
   console.log('\n' + '='.repeat(60));
-  console.log('STEP 3: RapidOCR ONNX Models');
+  console.log('STEP 1: RapidOCR ONNX Models');
   console.log('='.repeat(60));
 
   ensureDir(RAPIDOCR_MODELS_DIR);
@@ -400,7 +226,7 @@ async function downloadRapidOCRModels() {
 }
 
 // ============================================================================
-// STEP 4: PYTHON 3.11 STANDALONE
+// STEP 2: PYTHON 3.11 STANDALONE
 // ============================================================================
 
 async function findLatestPython311Release() {
@@ -439,7 +265,7 @@ async function findLatestPython311Release() {
 
 async function downloadPython() {
   console.log('\n' + '='.repeat(60));
-  console.log('STEP 4: Python 3.11 Standalone (Linux x86_64)');
+  console.log('STEP 2: Python 3.11 Standalone (Linux x86_64)');
   console.log('='.repeat(60));
 
   ensureDir(PYTHON_DIR);
@@ -483,12 +309,12 @@ async function downloadPython() {
 }
 
 // ============================================================================
-// STEP 5: PY_MODULES (RapidOCR Python Dependencies)
+// STEP 3: PY_MODULES (RapidOCR Python Dependencies)
 // ============================================================================
 
 async function installPyModules() {
   console.log('\n' + '='.repeat(60));
-  console.log('STEP 5: Python Packages (py_modules)');
+  console.log('STEP 3: Python Packages (py_modules)');
   console.log('='.repeat(60));
 
   // Check if already installed
@@ -555,8 +381,6 @@ function printSummary() {
   console.log('DOWNLOAD SUMMARY');
   console.log('='.repeat(60));
 
-  const tesseractOk = fs.existsSync(path.join(TESSERACT_DIR, 'tesseract'));
-  const tessdataOk = fs.existsSync(path.join(TESSDATA_DIR, 'eng.traineddata'));
   const modelsOk = fs.existsSync(path.join(RAPIDOCR_MODELS_DIR, 'ch_PP-OCRv4_det_infer.onnx'));
   const pythonOk = fs.existsSync(path.join(PYTHON_DIR, PYTHON_TARBALL));
   const pyModulesOk = fs.existsSync(path.join(PY_MODULES_DIR, 'onnxruntime'));
@@ -564,16 +388,12 @@ function printSummary() {
   const status = (ok) => ok ? 'OK' : 'MISSING';
 
   console.log('');
-  console.log('   TESSERACT OCR:');
-  console.log(`     Binary:        ${status(tesseractOk).padEnd(10)} ${TESSERACT_DIR}`);
-  console.log(`     Tessdata:      ${status(tessdataOk).padEnd(10)} ${TESSDATA_DIR}`);
-  console.log('');
   console.log('   RAPIDOCR:');
   console.log(`     ONNX Models:   ${status(modelsOk).padEnd(10)} ${RAPIDOCR_MODELS_DIR}`);
   console.log(`     Python 3.11:   ${status(pythonOk).padEnd(10)} ${PYTHON_DIR}`);
   console.log(`     py_modules:    ${status(pyModulesOk).padEnd(10)} ${PY_MODULES_DIR}`);
 
-  const allOk = tesseractOk && tessdataOk && modelsOk && pythonOk && pyModulesOk;
+  const allOk = modelsOk && pythonOk && pyModulesOk;
 
   if (allOk) {
     console.log('\n   All dependencies ready!');
@@ -596,7 +416,7 @@ async function main() {
   console.log('');
   console.log('='.repeat(60));
   console.log('DECKY TRANSLATOR - DEPENDENCY DOWNLOADER');
-  console.log('Downloads everything needed for Tesseract and RapidOCR');
+  console.log('Downloads everything needed for RapidOCR');
   console.log('='.repeat(60));
 
   console.log('\n   Platform: ' + process.platform);
@@ -609,8 +429,6 @@ async function main() {
   }
 
   const results = {
-    tesseract: await downloadTesseract(),
-    tessdata: await downloadTessdata(),
     rapidocrModels: await downloadRapidOCRModels(),
     python: await downloadPython(),
     pyModules: await installPyModules()

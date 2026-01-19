@@ -23,8 +23,6 @@ import ocrspaceLogo from "../../assets/ocrspace-logo.png";
 import googlecloudLogo from "../../assets/googlecloud-logo.png";
 // @ts-ignore
 import googletranslateLogo from "../../assets/googletranslate-logo.png";
-// @ts-ignore
-import tesseractLogo from "../../assets/tesseract-logo.png";
 // RapidOCR uses lightning icon (⚡) instead of logo image
 
 // Language options with flag emojis
@@ -124,10 +122,9 @@ export const TabTranslation: VFC = () => {
                     <DropdownItem
                         label="Text Recognition + Translation"
                         rgOptions={[
-                            { label: <span>Tesseract</span>, data: "local" },
                             { label: <span>RapidOCR</span>, data: "rapidocr" },
-                            { label: <span>OCR.space</span>, data: "simple" },
-                            { label: <span>Google Cloud</span>, data: "advanced" }
+                            { label: <span>OCR.space</span>, data: "ocrspace" },
+                            { label: <span>Google Cloud</span>, data: "googlecloud" }
                         ]}
                         selectedOption={settings.ocrProvider}
                         onChange={(option) => updateSetting('ocrProvider', option.data, 'OCR provider')}
@@ -139,21 +136,6 @@ export const TabTranslation: VFC = () => {
                         childrenContainerWidth="max"
                     >
                         <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
-                            {settings.ocrProvider === 'local' && (
-                                <>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                                        <img src={tesseractLogo} alt="" style={{ height: "18px" }} />
-                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Tesseract</span>
-                                        <span>+</span>
-                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
-                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
-                                    </div>
-                                    <div>- Recognizes text locally on your device</div>
-                                    <div>- Translates found text via Google Translate</div>
-                                    <div>- Screenshots do not leave your device</div>
-                                    <div>- Provides average results</div>
-                                </>
-                            )}
                             {settings.ocrProvider === 'rapidocr' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
@@ -169,7 +151,7 @@ export const TabTranslation: VFC = () => {
                                     <div>- Good accuracy for CJK + English text</div>
                                 </>
                             )}
-                            {settings.ocrProvider === 'simple' && (
+                            {settings.ocrProvider === 'ocrspace' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <img src={ocrspaceLogo} alt="" style={{ height: "18px" }} />
@@ -184,7 +166,7 @@ export const TabTranslation: VFC = () => {
                                     <div>- Good accuracy for clean text</div>
                                 </>
                             )}
-                            {settings.ocrProvider === 'advanced' && (
+                            {settings.ocrProvider === 'googlecloud' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <img src={googlecloudLogo} alt="" style={{ height: "18px" }} />
@@ -200,26 +182,7 @@ export const TabTranslation: VFC = () => {
                     </Field>
                 </PanelSectionRow>
 
-                {/* Tesseract confidence slider - only show when using local provider */}
-                {settings.ocrProvider === 'local' && (
-                    <PanelSectionRow>
-                        <SliderField
-                            value={settings.tesseractConfidence}
-                            max={100}
-                            min={0}
-                            step={5}
-                            label="Recognition Confidence"
-                            description="Filter out low-confidence results (higher = less noise, may miss text)"
-                            showValue={true}
-                            valueSuffix="%"
-                            onChange={(value) => {
-                                updateSetting('tesseractConfidence', value, 'Tesseract confidence');
-                            }}
-                        />
-                    </PanelSectionRow>
-                )}
-
-                {/* RapidOCR settings - only show when using rapidocr provider */}
+                {/* RapidOCR settings */}
                 {settings.ocrProvider === 'rapidocr' && (
                     <>
                         <PanelSectionRow>
@@ -279,8 +242,8 @@ export const TabTranslation: VFC = () => {
                     </>
                 )}
 
-                {/* Google Cloud API Key - only show when using advanced provider */}
-                {settings.ocrProvider === 'advanced' && (
+                {/* Google Cloud API Key - only show when using googlecloud provider */}
+                {settings.ocrProvider === 'googlecloud' && (
                     <>
                         <PanelSectionRow>
                             <ButtonItem
