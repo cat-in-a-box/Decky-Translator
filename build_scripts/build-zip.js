@@ -109,34 +109,17 @@ async function buildZip() {
       copyRecursive(binSrc, binDest);
       console.log('   ✓ bin/ directory copied');
 
-      // Check for Tesseract binary
-      const tesseractPath = path.join(binDest, 'tesseract', 'tesseract');
-      const tessdataPath = path.join(binDest, 'tesseract', 'tessdata');
-
-      if (fs.existsSync(tesseractPath)) {
-        console.log('   ✓ Tesseract binary found');
-        // Try to set executable permissions (will fail on Windows, that's OK)
-        try {
-          fs.chmodSync(tesseractPath, 0o755);
-          console.log('   ✓ Tesseract permissions set');
-        } catch (e) {
-          // Ignore chmod errors on Windows
-        }
+      // Check for RapidOCR models
+      const rapidocrModelsPath = path.join(binDest, 'rapidocr', 'models');
+      if (fs.existsSync(rapidocrModelsPath)) {
+        const modelFiles = fs.readdirSync(rapidocrModelsPath).filter(f => f.endsWith('.onnx'));
+        console.log(`   ✓ RapidOCR: ${modelFiles.length} ONNX models found`);
       } else {
-        console.log('   ⚠ Tesseract binary not found - local OCR will not be available');
-        console.log('     Run "npm run download:tesseract" to download');
-      }
-
-      if (fs.existsSync(tessdataPath)) {
-        const tessdataFiles = fs.readdirSync(tessdataPath).filter(f => f.endsWith('.traineddata'));
-        console.log(`   ✓ Tessdata: ${tessdataFiles.length} language packs found`);
-      } else {
-        console.log('   ⚠ Tessdata not found - run "npm run download:tessdata" to download');
+        console.log('   ⚠ RapidOCR models not found - run "npm run download:all" to download');
       }
     } else {
       fs.mkdirSync(binDest);
       console.log('   ✓ bin/ directory created (empty)');
-      console.log('   ⚠ No Tesseract binary - local OCR will not be available');
     }
 
     // Handle py_modules directory (copy if exists, create empty if not)

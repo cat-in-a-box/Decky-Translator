@@ -613,7 +613,6 @@ class Plugin:
     _hold_time_translate: int = 1000  # Default to 1 second
     _hold_time_dismiss: int = 500  # Default to 0.5 seconds for dismissal
     _confidence_threshold: float = 0.6  # Default confidence threshold
-    _tesseract_confidence: int = 40  # Tesseract-specific confidence threshold (0-100)
     _rapidocr_confidence: float = 0.5  # RapidOCR-specific confidence threshold (0.0-1.0)
     _rapidocr_box_thresh: float = 0.5  # RapidOCR detection box threshold (0.0-1.0)
     _rapidocr_unclip_ratio: float = 1.6  # RapidOCR box expansion ratio (1.0-3.0)
@@ -626,7 +625,7 @@ class Plugin:
     # Provider system
     _provider_manager: ProviderManager = None
     _use_free_providers: bool = True  # Default to free providers (no API key needed)
-    _ocr_provider: str = "simple"  # "local" (Tesseract), "simple" (OCR.space), or "advanced" (Google Cloud)
+    _ocr_provider: str = "rapidocr"  # "rapidocr" (RapidOCR), "ocrspace" (OCR.space), or "googlecloud" (Google Cloud)
 
     # OCR API configurations - user must provide their own API key
     _google_vision_api_key: str = ""
@@ -677,11 +676,6 @@ class Plugin:
                 self._hold_time_dismiss = value
             elif key == "confidence_threshold":
                 self._confidence_threshold = value
-            elif key == "tesseract_confidence":
-                self._tesseract_confidence = value
-                # Update provider manager with new confidence
-                if self._provider_manager:
-                    self._provider_manager.set_tesseract_confidence(value)
             elif key == "rapidocr_confidence":
                 self._rapidocr_confidence = value
                 # Update provider manager with new confidence
@@ -710,7 +704,7 @@ class Plugin:
             elif key == "ocr_provider":
                 self._ocr_provider = value
                 # Derive use_free_providers for backwards compatibility
-                self._use_free_providers = (value != "advanced")
+                self._use_free_providers = (value != "googlecloud")
                 # Update provider manager configuration
                 if self._provider_manager:
                     self._provider_manager.configure(
@@ -746,7 +740,6 @@ class Plugin:
                 "hold_time_translate": self._settings.get_setting("hold_time_translate", 1000),
                 "hold_time_dismiss": self._settings.get_setting("hold_time_dismiss", 500),
                 "confidence_threshold": self._settings.get_setting("confidence_threshold", 0.6),
-                "tesseract_confidence": self._settings.get_setting("tesseract_confidence", 40),
                 "rapidocr_confidence": self._settings.get_setting("rapidocr_confidence", 0.5),
                 "rapidocr_box_thresh": self._settings.get_setting("rapidocr_box_thresh", 0.5),
                 "rapidocr_unclip_ratio": self._settings.get_setting("rapidocr_unclip_ratio", 1.6),
@@ -1496,15 +1489,15 @@ class Plugin:
                 logger.info(f"Using saved ocr_provider: {saved_ocr_provider}")
                 self._ocr_provider = saved_ocr_provider
                 # Derive use_free_providers for backwards compatibility
-                self._use_free_providers = (saved_ocr_provider != "advanced")
+                self._use_free_providers = (saved_ocr_provider != "googlecloud")
             else:
                 # Try to migrate from old use_free_providers setting
                 saved_use_free = self._settings.get_setting("use_free_providers")
                 if saved_use_free is not None:
                     logger.info(f"Migrating from use_free_providers: {saved_use_free}")
                     self._use_free_providers = saved_use_free
-                    # Map old setting to new: True -> "simple", False -> "advanced"
-                    self._ocr_provider = "simple" if saved_use_free else "advanced"
+                    # Map old setting to new: True -> "rapidocr", False -> "googlecloud"
+                    self._ocr_provider = "rapidocr" if saved_use_free else "googlecloud"
                 else:
                     logger.info(f"No saved ocr_provider, using default: {self._ocr_provider}")
                 # Save the new ocr_provider setting
@@ -1530,19 +1523,6 @@ class Plugin:
                 logger.info(f"No saved confidence threshold, using default: {self._confidence_threshold}")
                 # Only save default if no setting exists
                 self._settings.set_setting("confidence_threshold", self._confidence_threshold)
-
-            # Set Tesseract-specific confidence threshold
-            saved_tesseract_conf = self._settings.get_setting("tesseract_confidence")
-            if saved_tesseract_conf is not None:
-                logger.info(f"Using saved Tesseract confidence: {saved_tesseract_conf}")
-                self._tesseract_confidence = saved_tesseract_conf
-            else:
-                logger.info(f"No saved Tesseract confidence, using default: {self._tesseract_confidence}")
-                # Only save default if no setting exists
-                self._settings.set_setting("tesseract_confidence", self._tesseract_confidence)
-            # Apply Tesseract confidence to provider manager
-            if self._provider_manager:
-                self._provider_manager.set_tesseract_confidence(self._tesseract_confidence)
 
             # Set RapidOCR-specific confidence threshold
             saved_rapidocr_conf = self._settings.get_setting("rapidocr_confidence")

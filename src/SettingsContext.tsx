@@ -15,14 +15,13 @@ export interface Settings {
     holdTimeTranslate: number;
     holdTimeDismiss: number;
     confidenceThreshold: number; // New setting for confidence threshold
-    tesseractConfidence: number; // Tesseract-specific confidence threshold (0-100)
     rapidocrConfidence: number; // RapidOCR-specific confidence threshold (0.0-1.0)
     rapidocrBoxThresh: number; // RapidOCR box detection threshold (0.0-1.0)
     rapidocrUnclipRatio: number; // RapidOCR box expansion ratio (1.0-3.0)
     pauseGameOnOverlay: boolean; // Setting to control pausing game when overlay is shown
     quickToggleEnabled: boolean; // Quick toggle overlay with right button in combo modes
     useFreeProviders: boolean; // Use free providers (OCR.space + free Google Translate) - deprecated, use ocrProvider
-    ocrProvider: 'local' | 'rapidocr' | 'simple' | 'advanced'; // OCR provider: local (Tesseract), rapidocr (RapidOCR), simple (OCR.space), advanced (Google Cloud)
+    ocrProvider: 'rapidocr' | 'ocrspace' | 'googlecloud'; // OCR provider: rapidocr (RapidOCR), ocrspace (OCR.space), googlecloud (Google Cloud)
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
 }
@@ -43,14 +42,13 @@ const initialSettings: Settings = {
     holdTimeTranslate: 1000, // Default to 1 second (1000ms)
     holdTimeDismiss: 500,    // Default to 0.5 seconds (500ms)
     confidenceThreshold: 0.6, // Default confidence threshold
-    tesseractConfidence: 40, // Default Tesseract confidence threshold (0-100)
     rapidocrConfidence: 0.5, // Default RapidOCR confidence threshold (0.0-1.0)
     rapidocrBoxThresh: 0.5, // Default RapidOCR box detection threshold (0.0-1.0)
     rapidocrUnclipRatio: 1.6, // Default RapidOCR box expansion ratio (1.0-3.0)
     pauseGameOnOverlay: false, // Default to not pausing game
     quickToggleEnabled: false, // Default to disabled
     useFreeProviders: true, // Default to free providers (no API key needed) - deprecated
-    ocrProvider: "simple", // Default to simple (OCR.space) provider
+    ocrProvider: "rapidocr", // Default to rapidocr (RapidOCR) provider
     googleApiKey: "", // Empty by default, only needed for Google Cloud
     debugMode: false // Debug mode off by default
 };
@@ -109,14 +107,13 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     holdTimeTranslate: serverSettings.hold_time_translate,
                     holdTimeDismiss: serverSettings.hold_time_dismiss,
                     confidenceThreshold: serverSettings.confidence_threshold || 0.6, // Add default if not present
-                    tesseractConfidence: serverSettings.tesseract_confidence ?? 40, // Tesseract confidence (0-100)
                     rapidocrConfidence: serverSettings.rapidocr_confidence ?? 0.5, // RapidOCR confidence (0.0-1.0)
                     rapidocrBoxThresh: serverSettings.rapidocr_box_thresh ?? 0.5, // RapidOCR box threshold (0.0-1.0)
                     rapidocrUnclipRatio: serverSettings.rapidocr_unclip_ratio ?? 1.6, // RapidOCR unclip ratio (1.0-3.0)
                     pauseGameOnOverlay: serverSettings.pause_game_on_overlay || false, // Add default if not present
                     quickToggleEnabled: serverSettings.quick_toggle_enabled || false, // Add default if not present
                     useFreeProviders: serverSettings.use_free_providers !== false, // Default to true (deprecated)
-                    ocrProvider: serverSettings.ocr_provider || "simple", // OCR provider setting
+                    ocrProvider: serverSettings.ocr_provider || "rapidocr", // OCR provider setting
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
                     debugMode: serverSettings.debug_mode || false // Debug mode
                 };
@@ -164,7 +161,6 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 holdTimeTranslate: 'hold_time_translate',
                 holdTimeDismiss: 'hold_time_dismiss',
                 confidenceThreshold: 'confidence_threshold',
-                tesseractConfidence: 'tesseract_confidence',
                 rapidocrConfidence: 'rapidocr_confidence',
                 rapidocrBoxThresh: 'rapidocr_box_thresh',
                 rapidocrUnclipRatio: 'rapidocr_unclip_ratio',

@@ -65,35 +65,14 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                         {/* Provider Status */}
                         <PanelSectionRow>
                             <div style={{ fontSize: '12px', marginTop: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: settings.ocrProvider === 'simple' && providerStatus?.ocr_usage ? '2px' : '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: settings.ocrProvider === 'ocrspace' && providerStatus?.ocr_usage ? '2px' : '4px' }}>
                                     <BsEye style={{ marginRight: '8px', color: '#aaa' }} />
                                     <span style={{ color: '#888' }}>Text Recognition:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
-                                        {settings.ocrProvider === 'local' ? 'Tesseract' :
-                                         settings.ocrProvider === 'rapidocr' ? 'RapidOCR' :
-                                         settings.ocrProvider === 'simple' ? 'OCR.space' : 'Google Cloud'}
+                                        {settings.ocrProvider === 'rapidocr' ? 'RapidOCR' :
+                                         settings.ocrProvider === 'ocrspace' ? 'OCR.space' : 'Google Cloud'}
                                     </span>
                                 </div>
-                                {/* Show local Tesseract status */}
-                                {settings.ocrProvider === 'local' && (
-                                    <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
-                                        {providerStatus?.tesseract_available ? (
-                                            <>
-                                                {providerStatus?.tesseract_info && (
-                                                    <div style={{ color: '#666', fontSize: '10px' }}>
-                                                        <div>On-device text recognition</div>
-                                                        <div>v{providerStatus.tesseract_info.version || 'unknown'} ({providerStatus.tesseract_info.tessdata_type || 'tessdata'})</div>
-                                                        <div>{providerStatus.tesseract_info.languages_count || 0} languages installed</div>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <span style={{ color: '#ff6b6b', fontSize: '10px' }}>
-                                                Not available - Tesseract binary not found
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
                                 {/* Show RapidOCR status */}
                                 {settings.ocrProvider === 'rapidocr' && (
                                     <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
@@ -110,7 +89,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                     </div>
                                 )}
                                 {/* Show OCR.space usage stats right under text recognition */}
-                                {settings.ocrProvider === 'simple' && providerStatus?.ocr_usage && (
+                                {settings.ocrProvider === 'ocrspace' && providerStatus?.ocr_usage && (
                                     <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
                                         {/* Rate limit (10 per 10 minutes) */}
                                         <div style={{
@@ -201,11 +180,11 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                     <BsTranslate style={{ marginRight: '8px', color: '#aaa' }} />
                                     <span style={{ color: '#888' }}>Translation:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
-                                        {settings.ocrProvider === 'advanced' ? 'Google Cloud' : 'Google Translate'}
+                                        {settings.ocrProvider === 'googlecloud' ? 'Google Cloud' : 'Google Translate'}
                                     </span>
                                 </div>
                                 <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
-                                    {settings.ocrProvider === 'advanced' && (
+                                    {settings.ocrProvider === 'googlecloud' && (
                                         <div style={{ color: settings.googleApiKey ? '#666' : '#ff6b6b', fontSize: '10px' }}>
                                             {settings.googleApiKey ? 'API key configured' : 'API key required'}
                                         </div>

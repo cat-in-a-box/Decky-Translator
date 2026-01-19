@@ -27,7 +27,6 @@ class ProviderType(Enum):
     GOOGLE = "google"           # Google Cloud (requires API key)
     OCR_SPACE = "ocrspace"      # OCR.space (free, no key needed)
     FREE_GOOGLE = "freegoogle"  # Free Google Translate via deep-translator
-    TESSERACT = "tesseract"     # Local Tesseract OCR (no internet required)
     RAPIDOCR = "rapidocr"       # Local RapidOCR via ONNX Runtime (no internet required)
 
 
