@@ -80,7 +80,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                         {providerStatus?.tesseract_available ? (
                                             <>
                                                 {providerStatus?.tesseract_info && (
-                                                    <div style={{ color: '#666', fontSize: '9px' }}>
+                                                    <div style={{ color: '#666', fontSize: '10px' }}>
                                                         <div>On-device text recognition</div>
                                                         <div>v{providerStatus.tesseract_info.version || 'unknown'} ({providerStatus.tesseract_info.tessdata_type || 'tessdata'})</div>
                                                         <div>{providerStatus.tesseract_info.languages_count || 0} languages installed</div>
@@ -98,7 +98,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                 {settings.ocrProvider === 'rapidocr' && (
                                     <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
                                         {providerStatus?.rapidocr_available ? (
-                                            <div style={{ color: '#666', fontSize: '9px' }}>
+                                            <div style={{ color: '#666', fontSize: '10px' }}>
                                                 <div>On-device Text Recognition</div>
                                                 <div>Version:{providerStatus?.rapidocr_info?.version ? ` (v${providerStatus.rapidocr_info.version})` : ''}</div>
                                             </div>
@@ -149,7 +149,7 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                             }} />
                                         </div>
                                         {providerStatus.ocr_usage.rate_remaining === 0 && providerStatus.ocr_usage.rate_reset_seconds > 0 && (
-                                            <div style={{ color: '#ff6b6b', fontSize: '9px', marginBottom: '4px' }}>
+                                            <div style={{ color: '#ff6b6b', fontSize: '10px', marginBottom: '4px' }}>
                                                 Rate limit exceeded - resets in {Math.ceil(providerStatus.ocr_usage.rate_reset_seconds / 60)} min
                                             </div>
                                         )}
@@ -190,32 +190,30 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                             }} />
                                         </div>
                                         {providerStatus.ocr_usage.remaining < 50 && (
-                                            <div style={{ color: '#ff6b6b', fontSize: '9px', marginTop: '2px' }}>
+                                            <div style={{ color: '#ff6b6b', fontSize: '10px', marginTop: '2px' }}>
                                                 Low daily requests remaining
                                             </div>
                                         )}
                                     </div>
                                 )}
                                 {/* Show Google Cloud status */}
-                                {settings.ocrProvider === 'advanced' && (
-                                    <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
-                                        <span style={{ color: settings.googleApiKey ? '#4caf50' : '#ff6b6b', fontSize: '10px' }}>
-                                            {settings.googleApiKey ? 'API key configured' : 'API key required'}
-                                        </span>
-                                    </div>
-                                )}
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
                                     <BsTranslate style={{ marginRight: '8px', color: '#aaa' }} />
                                     <span style={{ color: '#888' }}>Translation:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
                                         {settings.ocrProvider === 'advanced' ? 'Google Cloud' : 'Google Translate'}
                                     </span>
                                 </div>
-                                {settings.ocrProvider === 'advanced' && !settings.googleApiKey && (
-                                    <div style={{ color: '#ff6b6b', marginTop: '8px', fontSize: '11px' }}>
-                                        API key required - configure in Translation tab
+                                <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
+                                    {settings.ocrProvider === 'advanced' && (
+                                        <div style={{ color: settings.googleApiKey ? '#666' : '#ff6b6b', fontSize: '10px' }}>
+                                            {settings.googleApiKey ? 'API key configured' : 'API key required'}
+                                        </div>
+                                    )}
+                                    <div style={{ color: '#666', fontSize: '10px' }}>
+                                        Requires internet connection
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </PanelSectionRow>
                     </>
