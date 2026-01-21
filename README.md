@@ -1,13 +1,14 @@
 # Decky Translator
 
-A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen. Might be helpful for playing games while learning a new language.
+A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen. 
+Might be helpful for playing games while learning a new language or some other purposes (you tell me!).
 
 ![Screenshot](assets/screenshot_1.jpg)
 
 ## Features
 
-- **Text Recognition**: Capture your current screen and extract text using OCR technology
-- **On-Screen Translation**: Translate detected text to your preferred language
+- **On-Screen Text Recognition**: Capture your current screen and extract text using OCR technology
+- **Text Translation**: Translate detected text to your preferred language
 - **18 Supported Languages**: Including auto-detection for source language
 - **Customizable Controls**: Multiple button/combo options with adjustable hold times
 - **Game Pause Option**: Optionally pause the game while the translation overlay is visible
@@ -25,75 +26,55 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that 
 
 ### Manual Installation
 1. Download the latest release from the [Releases](https://github.com/cat-in-a-box/decky-translator/releases) page
-2. Extract the zip file to any directory on your Steam Deck
+2. Upload the zip archive to any directory on your Steam Deck
 3. Open Decky Loader settings and go to Developer section
-4. Press "Install Plugin from ZIP file -> Browse" button and select downloaded .zip file
+4. Install Plugin from ZIP file -> "Browse" and then select .zip file
 5. Open Decky menu and select "Decky Translator"
 6. Enjoy!
 
-## Usage
+## How to use it?
 
-1. Enable the plugin using the toggle in the Main tab
-4. Select your input and output languages in the Translation tab
-5. Configure your preferred button/combo in the Controls tab
-6. In-game, hold the configured button(s) to capture and translate
-7. Hold the same button(s) used to activate translation
+1. Press "Translate" button in the main tab of the plugin
+2. Press (...) to open the menu again and press "Close Overlay"
 
-## Provider Modes
+## How to quickly use it?
 
-Currently the plugin offers two translation modes to suit different needs:
+1. Hold L4 button for a Quick Translation
+2. Hold L4 button again to disable the translation overlay
 
-| Service                 | Simple           | Advanced      |
-|-------------------------|------------------|---------------|
-| Text Recognition (OCR)  | [OCR.space](https://ocr.space/)        | [Google Cloud](https://cloud.google.com/vision)  |
-| Translation             | [Google Translate](https://translate.google.com/) | [Google Cloud](https://cloud.google.com/translate)  |
+Button or Combinations can be configured in the Controls tab
 
-**Simple** uses free public API with no setup required but unfortunately has daily limits.  
-**Advanced** uses Google Cloud API for better accuracy and speed but requires an API key.
+## How does it do that? 
 
-|                        | Simple Mode  | Advanced Mode |
-|------------------------|:------------:|:-------------:|
-| Setup required         |      -       | API key       |
-| Daily limit            | 500 requests | Unlimited*   |
-| Recognition speed      |   Standard   | Fast          |
-| Recognition accuracy   |     Good     | Excellent     |
-| Translation quality    |     Good     | Excellent     |
-| Confidence threshold   |      -       | Configurable  |
-| Cost                   |     Free     | Free tier**   |
+Decky Translator allows you to choose different Text Recognition and Translation services to suit your needs.
 
-*Subject to Google Cloud quotas  
-**Google Cloud Free tier is generous for personal use; see [Pricing Note](#pricing-note)
+### Text Recognition (OCR)
 
-## Supported Languages
+| Provider                                                   | Description                                                                                                   | Requirements        |
+|------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|---------------------|
+| [**RapidOCR**](https://github.com/RapidAI/RapidOCR)        | On-device OCR. Screenshots never leave your device                                                            | -                   |
+| [**OCR.space**](https://ocr.space/)                        | Free EU-based Cloud OCR API with some usage limitations. Good choice if you dont need to translate very often | Internet            |
+| [**Google Cloud Vision**](https://cloud.google.com/vision) | Best accuracy and speed. Great for complex/stylized text. Has a great free tier, but requires some setup      | Internet + API key  |
 
-| Language | Flag |
-|----------|------|
-| Arabic | 🇸🇦 |
-| Chinese (Simplified) | 🇨🇳 |
-| Chinese (Traditional) | 🇹🇼 |
-| English | 🇬🇧 |
-| French | 🇫🇷 |
-| German | 🇩🇪 |
-| Hindi | 🇮🇳 |
-| Italian | 🇮🇹 |
-| Japanese | 🇯🇵 |
-| Korean | 🇰🇷 |
-| Polish | 🇵🇱 |
-| Portuguese | 🇵🇹 |
-| Russian | 🇷🇺 |
-| Spanish | 🇪🇸 |
-| Turkish | 🇹🇷 |
-| Ukrainian | 🇺🇦 |
+### Translation
+
+| Provider                                                           | Description                    | Requirements |
+|--------------------------------------------------------------------|--------------------------------|--------------|
+| [**Google Translate**](https://translate.google.com/)              | It's Google. And it translates | Internet     |
+| [**Google Cloud Translation**](https://cloud.google.com/translate) | High quality translations      | API key      |
 
 
-## Google Cloud API Setup (Advanced Mode)
+**Note:** Google Cloud services require an API key but offer a generous free tier for personal use. 
 
-If you want to use Advanced mode for better accuracy, you'll need a Google Cloud API key:
+<details>
+<summary><h2>Hey, I want better results. How do I get this Google Cloud API Key?</h2></summary>
+
+You'll need a Google Cloud API key:
 
 ### Step 1: Create a Google Cloud Project
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Click "Select a project" at the top, then "New Project"
-3. Give your project a name and click "Create"
+3. Give your project a name (any name would work) and click "Create"
 
 ### Step 2: Enable Required APIs
 1. Go to [APIs & Services > Library](https://console.cloud.google.com/apis/library)
@@ -116,10 +97,12 @@ For security, you can restrict the API key to only the Vision and Translation AP
 ### Step 5: Add API Key to Plugin
 1. Open the Decky Translator plugin on your Steam Deck
 2. Go to the Translation tab
-3. Select "Advanced" provider mode
-4. Click "Set API Key"
+3. Select Google Cloud Vision and/or Google Cloud Translation as your providers
+4. Click "Set Key"
 5. Enter your Google Cloud API key
 6. Click "Save"
+
+### IMPORTANT: NEVER SHARE THIS API KEY WITH ANYONE!
 
 ### Pricing Note
 Google Cloud offers a free tier that should be sufficient for personal use:
@@ -128,22 +111,32 @@ Google Cloud offers a free tier that should be sufficient for personal use:
 
 Check [Google Cloud Pricing](https://cloud.google.com/pricing) for current rates.
 
+</details>
+
 ## Troubleshooting
 
 ### Black Screen on Capture
-- This is usually a timing issue
 - Try triggering translation again
-- If persistent, restart Decky Loader
+- If persistent, reboot Steam Deck
 
 ## To-Do
-- [ ] Add local/offline translation functionality
+- [x] Add local/offline translation functionality
 - [ ] Disable in-game buttons while overlay is active
-- [ ] Fix interface scaling issues on non-default SteamOS values
-- [ ] Rework temporary files solution
+- [x] Fix interface scaling issues on non-default SteamOS values
+- [x] Rework temporary files solution
 - [ ] External gamepad support
 - [ ] Desktop mode support
 
 ## Changelog
+
+### 0.7.1
+- Separated setting dropdowns for OCR and Translation
+
+### 0.7
+- On-Device Text Recognition (RapidOCR)
+- SteamOS UI experimental Scaling Support
+- Visual display for OCR.space API Usage Tracking
+- UI improvements
 
 ### 0.6.1
 - Added flag icons for all supported languages
@@ -173,36 +166,19 @@ Check [Google Cloud Pricing](https://cloud.google.com/pricing) for current rates
 - Confidence threshold setting
 - 18 language support with auto-detection
 
-## Building from Source
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build the plugin
-pnpm run build
-
-# Create distributable zip
-pnpm run build:zip
-```
-
-## License
-
-This project is licensed under GNU GPLv3.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## Support
 
-If you find this plugin useful, consider supporting the development:
+If you find this plugin useful - feel free to buy me a cup of coffee ❤️
 
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/alexanderdev)
 
-## Acknowledgments
+## Thanks to
 
+- [Valve](https://www.valvesoftware.com/) for creating the Steam Deck - a beautiful device that makes projects like this possible
+- [UGT (Universal Game Translator)](https://github.com/SethRobinson/UGT) by Seth Robinson for inspiration and the idea of using game translation as a language learning tool
 - [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) team for the plugin framework
-- [Steam Deck Homebrew](https://github.com/SteamDeckHomebrew) community
+- [Steam Deck Homebrew](https://github.com/SteamDeckHomebrew) community for plugin development guides
 - [OCR.space](https://ocr.space/) for the free OCR API
-- Google Cloud for Vision and Translation APIs
+- [Google Cloud](https://cloud.google.com/) for Vision and Translation APIs
+- And You. Yes, You 😉
