@@ -1,6 +1,6 @@
 // TextRecognizer.tsx - Enhanced version with improved paragraph detection
 
-import { ServerAPI } from "decky-frontend-lib";
+import { call } from "@decky/api";
 import { logger } from "./Logger";
 
 // Error response from backend
@@ -80,7 +80,6 @@ enum TextAlignment {
 }
 
 export class TextRecognizer {
-    private serverAPI: ServerAPI;
     private confidenceThreshold: number = 0.6;
     private screenWidth: number = 1280; // Default screen width, can be updated
     private screenHeight: number = 800; // Default screen height
@@ -114,8 +113,7 @@ export class TextRecognizer {
         HEADING_MERGE_ALLOWED: false    // Whether to allow merging headings
     };
 
-    constructor(serverAPI: ServerAPI) {
-        this.serverAPI = serverAPI;
+    constructor() {
         logger.info('TextRecognizer', 'Enhanced TextRecognizer initialized with improved paragraph detection');
     }
 
@@ -898,13 +896,11 @@ export class TextRecognizer {
      */
     async recognizeText(imageData: string): Promise<TextRegion[]> {
         try {
-            // Call to the Python backend remains the same
-            const response = await this.serverAPI.callPluginMethod('recognize_text', {
-                image_data: imageData
-            });
+            // Call to the Python backend
+            const response = await call<TextRegion[]>('recognize_text', imageData);
 
-            if (response.success && response.result) {
-                const regions = response.result as TextRegion[];
+            if (response) {
+                const regions = response;
                 logger.info('TextRecognizer', `Got ${regions.length} raw text regions from OCR`);
 
                 // Try to estimate screen dimensions from image data if not already set
@@ -949,13 +945,11 @@ export class TextRecognizer {
      */
     async recognizeTextFile(imagePath: string): Promise<TextRegion[]> {
         try {
-            const response = await this.serverAPI.callPluginMethod('recognize_text_file', {
-                image_path: imagePath
-            });
-            if (response.success && response.result) {
+            const response = await call<TextRegion[] | ErrorResponse>('recognize_text_file', imagePath);
+            if (response) {
                 // Check for error response (network error, API key error)
-                if (isErrorResponse(response.result)) {
-                    const errorResponse = response.result as ErrorResponse;
+                if (isErrorResponse(response)) {
+                    const errorResponse = response as ErrorResponse;
                     if (errorResponse.error === 'network_error') {
                         logger.error('TextRecognizer', `Network error: ${errorResponse.message}`);
                         throw new NetworkError(errorResponse.message);
@@ -973,7 +967,7 @@ export class TextRecognizer {
                     return [];
                 }
 
-                const regions = response.result as TextRegion[];
+                const regions = response as TextRegion[];
                 logger.info('TextRecognizer', `Got ${regions.length} regions from file-based OCR`);
 
                 // Apply auto-glue to combine text regions

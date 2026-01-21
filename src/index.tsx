@@ -2,13 +2,16 @@
 
 import {
     definePlugin,
+    routerHook,
+    call
+} from "@decky/api";
+
+import {
     PanelSection,
     PanelSectionRow,
-    ServerAPI,
-    staticClasses
-} from "decky-frontend-lib";
-
-import { Tabs } from "@decky/ui";
+    staticClasses,
+    Tabs
+} from "@decky/ui";
 
 import {
     VFC,
@@ -47,7 +50,7 @@ const IconGamepad = () => (
 );
 
 // Main plugin component
-const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> = ({ serverAPI, logic }) => {
+const GameTranslator: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
     const { settings, initialized } = useSettings();
     const [overlayVisible, setOverlayVisible] = useState<boolean>(logic.isOverlayVisible());
     const [inputDiagnostics, setInputDiagnostics] = useState<any>(null);
@@ -82,9 +85,9 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
 
         const fetchProviderStatus = async () => {
             try {
-                const response = await serverAPI.callPluginMethod('get_provider_status', {});
-                if (response.success && response.result) {
-                    setProviderStatus(response.result);
+                const result = await call<any>('get_provider_status');
+                if (result) {
+                    setProviderStatus(result);
                 }
             } catch (error) {
                 logger.error('GameTranslator', 'Failed to fetch provider status', error);
@@ -98,7 +101,7 @@ const GameTranslator: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> 
         return () => {
             clearInterval(intervalId);
         };
-    }, [serverAPI, settings.useFreeProviders]);
+    }, [settings.useFreeProviders]);
 
     // Refresh diagnostics while debug mode is on
     useEffect(() => {
@@ -256,53 +259,50 @@ const HoldActivationIndicator: VFC<{ logic: GameTranslatorLogic }> = ({logic}) =
 };
 
 // Main App wrapped with Settings provider
-const TranslatorApp: VFC<{ serverAPI: ServerAPI, logic: GameTranslatorLogic }> = ({serverAPI, logic}) => {
+const TranslatorApp: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
     return (
-        <SettingsProvider serverAPI={serverAPI} logic={logic}>
-            <GameTranslator serverAPI={serverAPI} logic={logic}/>
+        <SettingsProvider logic={logic}>
+            <GameTranslator logic={logic}/>
         </SettingsProvider>
     );
 };
 
 // Indicator wrapped with Settings provider
-const ActivationIndicatorWithSettings: VFC<{ logic: GameTranslatorLogic, serverAPI: ServerAPI }> = ({
-                                                                                                        logic,
-                                                                                                        serverAPI
-                                                                                                    }) => {
+const ActivationIndicatorWithSettings: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
     return (
-        <SettingsProvider serverAPI={serverAPI} logic={logic}>
+        <SettingsProvider logic={logic}>
             <HoldActivationIndicator logic={logic}/>
         </SettingsProvider>
     );
 };
 
 // Export the plugin
-export default definePlugin((serverApi: ServerAPI) => {
+export default definePlugin(() => {
     // Create image state to manage the overlay
     const imageState = new ImageState();
 
     // Create logic instance
-    const logic = new GameTranslatorLogic(serverApi, imageState);
+    const logic = new GameTranslatorLogic(imageState);
 
     // Add image overlay as a global component
-    serverApi.routerHook.addGlobalComponent("ImageOverlay", () => (
+    routerHook.addGlobalComponent("ImageOverlay", () => (
         <ImageOverlay state={imageState}/>
     ));
 
     // Add activation indicator as a global component
-    serverApi.routerHook.addGlobalComponent("HoldActivationIndicator", () => (
-        <ActivationIndicatorWithSettings logic={logic} serverAPI={serverApi}/>
+    routerHook.addGlobalComponent("HoldActivationIndicator", () => (
+        <ActivationIndicatorWithSettings logic={logic}/>
     ));
 
     return {
         title: <div className={staticClasses.Title}>Decky Translator</div>,
-        content: <TranslatorApp serverAPI={serverApi} logic={logic}/>,
+        content: <TranslatorApp logic={logic}/>,
         icon: <BsTranslate/>,
         onDismount() {
             // Clean up resources
             logic.cleanup();
-            serverApi.routerHook.removeGlobalComponent("ImageOverlay");
-            serverApi.routerHook.removeGlobalComponent("HoldActivationIndicator");
+            routerHook.removeGlobalComponent("ImageOverlay");
+            routerHook.removeGlobalComponent("HoldActivationIndicator");
         },
         alwaysRender: true
     };

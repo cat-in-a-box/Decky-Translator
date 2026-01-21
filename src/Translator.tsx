@@ -1,6 +1,7 @@
 // Translator.tsx - Handles translator logic and API interactions
 
-import { Router, ServerAPI } from "decky-frontend-lib";
+import { call, toaster } from "@decky/api";
+import { Router } from "@decky/ui";
 import { TextRecognizer, NetworkError, ApiKeyError, RateLimitError } from "./TextRecognizer";
 import { TextTranslator } from "./TextTranslator";
 import { Input, InputMode, ActionType, ProgressInfo } from "./Input";
@@ -16,7 +17,6 @@ export interface ScreenshotResponse {
 // Main app logic
 export class GameTranslatorLogic {
     private isProcessing = false;
-    private serverAPI: ServerAPI;
     public imageState: ImageState;
     private textRecognizer: TextRecognizer;
     private textTranslator: TextTranslator;
@@ -40,14 +40,13 @@ export class GameTranslatorLogic {
         return this.shortcutInput;
     }
 
-    constructor(serverAPI: ServerAPI, imageState: ImageState) {
-        this.serverAPI = serverAPI;
+    constructor(imageState: ImageState) {
         this.imageState = imageState;
-        this.textRecognizer = new TextRecognizer(serverAPI);
-        this.textTranslator = new TextTranslator(serverAPI);
+        this.textRecognizer = new TextRecognizer();
+        this.textTranslator = new TextTranslator();
 
         // Initialize for hidraw-based button detection
-        this.shortcutInput = new Input([], serverAPI);
+        this.shortcutInput = new Input([]);
 
         // Set up listener for translate, dismiss, and toggle actions
         this.shortcutInput.onShortcutPressed((actionType: ActionType) => {
@@ -106,22 +105,20 @@ export class GameTranslatorLogic {
     // Load initial state from server
     private async loadInitialState() {
         try {
-            const response = await this.serverAPI.callPluginMethod('get_enabled_state', {});
-            if (response.success) {
-                this.enabled = !!response.result;
-                logger.info('Translator', `Loaded initial enabled state: ${this.enabled}`);
+            const result = await call<boolean>('get_enabled_state');
+            this.enabled = !!result;
+            logger.info('Translator', `Loaded initial enabled state: ${this.enabled}`);
 
-                if (this.shortcutInput) {
-                    this.shortcutInput.setEnabled(this.enabled);
-                }
+            if (this.shortcutInput) {
+                this.shortcutInput.setEnabled(this.enabled);
+            }
 
-                // If plugin starts disabled, stop the hidraw monitor that was auto-started
-                if (!this.enabled) {
-                    logger.info('Translator', 'Plugin is disabled on startup, stopping hidraw monitor');
-                    this.serverAPI.callPluginMethod('stop_hidraw_monitor', {}).catch(error => {
-                        logger.error('Translator', 'Failed to stop hidraw monitor on startup', error);
-                    });
-                }
+            // If plugin starts disabled, stop the hidraw monitor that was auto-started
+            if (!this.enabled) {
+                logger.info('Translator', 'Plugin is disabled on startup, stopping hidraw monitor');
+                call('stop_hidraw_monitor').catch(error => {
+                    logger.error('Translator', 'Failed to stop hidraw monitor on startup', error);
+                });
             }
         } catch (error) {
             logger.error('Translator', 'Failed to load initial state', error);
@@ -137,10 +134,7 @@ export class GameTranslatorLogic {
         }
 
         // Save to server settings file
-        this.serverAPI.callPluginMethod('set_setting', {
-            key: 'enabled',
-            value: enabled
-        }).catch(error => {
+        call('set_setting', 'enabled', enabled).catch(error => {
             logger.error('Translator', 'Failed to save enabled state to server', error);
         });
 
@@ -153,14 +147,14 @@ export class GameTranslatorLogic {
         // Stop or start the backend hidraw monitor based on enabled state
         if (enabled) {
             // Re-start hidraw monitor when re-enabling
-            this.serverAPI.callPluginMethod('start_hidraw_monitor', {}).then(result => {
+            call('start_hidraw_monitor').then(result => {
                 logger.info('Translator', `Hidraw monitor start result: ${JSON.stringify(result)}`);
             }).catch(error => {
                 logger.error('Translator', 'Failed to start hidraw monitor', error);
             });
         } else {
             // Stop hidraw monitor when disabling to save resources
-            this.serverAPI.callPluginMethod('stop_hidraw_monitor', {}).then(result => {
+            call('stop_hidraw_monitor').then(result => {
                 logger.info('Translator', `Hidraw monitor stop result: ${JSON.stringify(result)}`);
             }).catch(error => {
                 logger.error('Translator', 'Failed to stop hidraw monitor', error);
@@ -219,23 +213,20 @@ export class GameTranslatorLogic {
             }
 
             // Use the pid_from_appid function to get the process ID
-            const response = await this.serverAPI.callPluginMethod('pid_from_appid', {
-                appid: Number(mainApp.appid)
-            });
+            const pid = await call<number>('pid_from_appid', Number(mainApp.appid));
 
-            if (response.success && response.result) {
-                const pid = response.result;
+            if (pid) {
                 logger.info('Translator', `Pausing game with appid ${mainApp.appid}, pid ${pid}`);
 
                 // Call the pause function in the backend
-                const pauseResult = await this.serverAPI.callPluginMethod('pause', { pid });
-                if (pauseResult.success) {
+                const pauseResult = await call<boolean>('pause', pid);
+                if (pauseResult) {
                     logger.info('Translator', 'Game paused successfully');
                 } else {
-                    logger.error('Translator', `Failed to pause game: ${pauseResult.result}`);
+                    logger.error('Translator', 'Failed to pause game');
                 }
             } else {
-                logger.error('Translator', `Failed to get PID for game: ${response.result}`);
+                logger.error('Translator', 'Failed to get PID for game');
             }
         } catch (error) {
             logger.error('Translator', 'Error pausing game', error);
@@ -253,23 +244,20 @@ export class GameTranslatorLogic {
             }
 
             // Use the pid_from_appid function to get the process ID
-            const response = await this.serverAPI.callPluginMethod('pid_from_appid', {
-                appid: Number(mainApp.appid)
-            });
+            const pid = await call<number>('pid_from_appid', Number(mainApp.appid));
 
-            if (response.success && response.result) {
-                const pid = response.result;
+            if (pid) {
                 logger.info('Translator', `Resuming game with appid ${mainApp.appid}, pid ${pid}`);
 
                 // Call the resume function in the backend
-                const resumeResult = await this.serverAPI.callPluginMethod('resume', { pid });
-                if (resumeResult.success) {
+                const resumeResult = await call<boolean>('resume', pid);
+                if (resumeResult) {
                     logger.info('Translator', 'Game resumed successfully');
                 } else {
-                    logger.error('Translator', `Failed to resume game: ${resumeResult.result}`);
+                    logger.error('Translator', 'Failed to resume game');
                 }
             } else {
-                logger.error('Translator', `Failed to get PID for game: ${response.result}`);
+                logger.error('Translator', 'Failed to get PID for game');
             }
         } catch (error) {
             logger.error('Translator', 'Error resuming game', error);
@@ -301,13 +289,13 @@ export class GameTranslatorLogic {
         }
 
         // Stop backend hidraw monitor
-        this.serverAPI.callPluginMethod('stop_hidraw_monitor', {}).catch(error => {
+        call('stop_hidraw_monitor').catch(error => {
             logger.error('Translator', 'Failed to stop hidraw monitor', error);
         });
     }
 
     notify = async (message: string, duration: number = 1000, body?: string): Promise<void> => {
-        this.serverAPI.toaster.toast({
+        toaster.toast({
             title: message,
             body: body || message,
             duration: duration,
@@ -336,14 +324,13 @@ export class GameTranslatorLogic {
             // Take screenshot FIRST while screen is clean (no overlay visible)
             const appName = Router.MainRunningApp?.display_name || "";
             logger.info('Translator', `Taking new screenshot for: ${appName}`);
-            const res = await this.serverAPI.callPluginMethod('take_screenshot', { app_name: appName });
+            const result = await call<ScreenshotResponse>('take_screenshot', appName);
 
             // NOW show the overlay - after screenshot is captured
             this.imageState.hideImage();
             this.imageState.startLoading("Processing");
 
-            if (res.success && res.result) {
-                const result = res.result as ScreenshotResponse;
+            if (result) {
                 logger.debug('Translator', `Screenshot captured, path: ${result.path}`);
 
                 if (result.base64) {

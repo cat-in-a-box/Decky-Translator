@@ -12,7 +12,7 @@ import {
     TextField,
     Field,
     Focusable
-} from "decky-frontend-lib";
+} from "@decky/ui";
 
 import { VFC, useState } from "react";
 import { useSettings } from "../SettingsContext";

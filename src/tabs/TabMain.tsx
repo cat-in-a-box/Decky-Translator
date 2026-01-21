@@ -5,9 +5,11 @@ import {
     PanelSection,
     PanelSectionRow,
     ToggleField,
-    Router
-} from "decky-frontend-lib";
-import { Navigation, DialogButton, Focusable } from "@decky/ui";
+    Router,
+    Navigation,
+    DialogButton,
+    Focusable
+} from "@decky/ui";
 
 import { VFC } from "react";
 import { BsTranslate, BsXLg, BsEye } from "react-icons/bs";

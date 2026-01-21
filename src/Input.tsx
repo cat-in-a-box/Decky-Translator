@@ -1,4 +1,4 @@
-import { ServerAPI } from 'decky-frontend-lib';
+import { call } from '@decky/api';
 import { logger } from './Logger';
 
 export const enum Button {
@@ -97,8 +97,6 @@ export class Input {
     private onProgressListeners: Array<(progressInfo: ProgressInfo) => void> = [];
     private touchStartTime: number | null = null;
 
-    // ServerAPI for backend communication
-    private serverAPI: ServerAPI;
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
     private pollingRate = 100; // 10Hz polling
 
@@ -143,9 +141,8 @@ export class Input {
     // Track currently pressed buttons (using Button enum values now)
     private currentlyPressedButtons: Set<Button> = new Set();
 
-    constructor(shortcut: Button[], serverAPI: ServerAPI) {
+    constructor(shortcut: Button[]) {
         logger.info('Input', 'Initializing with hidraw-based detection');
-        this.serverAPI = serverAPI;
         this.startHidrawPolling();
         this.startHealthCheck();
     }
@@ -168,13 +165,10 @@ export class Input {
         if (!this.enabled) return;
 
         try {
-            const result = await this.serverAPI.callPluginMethod<object, { success: boolean; buttons: string[] }>(
-                'get_hidraw_button_state',
-                {}
-            );
+            const result = await call<{ success: boolean; buttons: string[] }>('get_hidraw_button_state');
 
-            if (result.success && result.result && result.result.buttons) {
-                this.handleButtonState(result.result.buttons);
+            if (result && result.success && result.buttons) {
+                this.handleButtonState(result.buttons);
             }
         } catch (error) {
             // Silently handle polling errors to avoid log spam
