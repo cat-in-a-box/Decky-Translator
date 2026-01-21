@@ -16,6 +16,7 @@ import {
 
 import { VFC, useState } from "react";
 import { useSettings } from "../SettingsContext";
+import { BsTrash } from "react-icons/bs";
 
 // @ts-ignore
 import ocrspaceLogo from "../../assets/ocrspace-logo.png";
@@ -72,7 +73,10 @@ const ApiKeyModal: VFC<{
                     bShowClearAction={true}
                     onChange={(e) => setApiKey(e.target.value)}
                 />
-                <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+                <Focusable
+                    style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}
+                    flow-children="horizontal"
+                >
                     <DialogButton onClick={closeModal}>
                         Cancel
                     </DialogButton>
@@ -84,7 +88,7 @@ const ApiKeyModal: VFC<{
                     >
                         Save
                     </DialogButton>
-                </div>
+                </Focusable>
             </div>
         </ModalRoot>
     );
@@ -225,20 +229,40 @@ export const TabTranslation: VFC = () => {
                 {/* Google Cloud API Key - show when either OCR or Translation uses Google Cloud */}
                 {(settings.ocrProvider === 'googlecloud' || settings.translationProvider === 'googlecloud') && (
                     <PanelSectionRow>
-                        <ButtonItem
-                            label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
-                            description="Required for Google Cloud Vision and/or Translation"
-                            layout="below"
-                            onClick={() => {
-                                showModal(
-                                    <ApiKeyModal
-                                        currentKey={settings.googleApiKey}
-                                        onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
-                                    />
-                                );
-                            }}>
-                            Set Google Cloud API Key
-                        </ButtonItem>
+                        <Field
+                            label={settings.googleApiKey ? "Google Cloud API Key: ••••••" + settings.googleApiKey.slice(-3) : "No API Key Set"}
+                            description="Required for Google Cloud services"
+                            focusable={false}
+                            childrenContainerWidth="fixed"
+                        >
+                            <Focusable style={{ display: "flex", gap: "8px" }}>
+                                <DialogButton
+                                    onClick={() => {
+                                        showModal(
+                                            <ApiKeyModal
+                                                currentKey={settings.googleApiKey}
+                                                onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
+                                            />
+                                        );
+                                    }}
+                                    style={{ minWidth: "auto", padding: "10px 16px" }}
+                                >
+                                    {settings.googleApiKey ? "Change Key" : "Set Key"}
+                                </DialogButton>
+                                {settings.googleApiKey && (
+                                    <DialogButton
+                                        onClick={() => updateSetting('googleApiKey', '', 'Google API Key')}
+                                        style={{
+                                            minWidth: "40px",
+                                            width: "40px",
+                                            padding: "10px 0"
+                                        }}
+                                    >
+                                        <BsTrash />
+                                    </DialogButton>
+                                )}
+                            </Focusable>
+                        </Field>
                     </PanelSectionRow>
                 )}
 
