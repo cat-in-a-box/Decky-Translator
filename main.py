@@ -626,6 +626,7 @@ class Plugin:
     _provider_manager: ProviderManager = None
     _use_free_providers: bool = True  # Default to free providers (no API key needed)
     _ocr_provider: str = "rapidocr"  # "rapidocr" (RapidOCR), "ocrspace" (OCR.space), or "googlecloud" (Google Cloud)
+    _translation_provider: str = "freegoogle"  # "freegoogle" or "googlecloud"
 
     # OCR API configurations - user must provide their own API key
     _google_vision_api_key: str = ""
@@ -658,7 +659,9 @@ class Plugin:
                 if self._provider_manager:
                     self._provider_manager.configure(
                         use_free_providers=self._use_free_providers,
-                        google_api_key=value
+                        google_api_key=value,
+                        ocr_provider=self._ocr_provider,
+                        translation_provider=self._translation_provider
                     )
             elif key == "google_vision_api_key":
                 self._google_vision_api_key = value
@@ -666,7 +669,9 @@ class Plugin:
                 if self._provider_manager:
                     self._provider_manager.configure(
                         use_free_providers=self._use_free_providers,
-                        google_api_key=value
+                        google_api_key=value,
+                        ocr_provider=self._ocr_provider,
+                        translation_provider=self._translation_provider
                     )
             elif key == "google_translate_api_key":
                 self._google_translate_api_key = value
@@ -699,7 +704,9 @@ class Plugin:
                 if self._provider_manager:
                     self._provider_manager.configure(
                         use_free_providers=value,
-                        google_api_key=self._google_vision_api_key
+                        google_api_key=self._google_vision_api_key,
+                        ocr_provider=self._ocr_provider,
+                        translation_provider=self._translation_provider
                     )
             elif key == "ocr_provider":
                 self._ocr_provider = value
@@ -710,7 +717,18 @@ class Plugin:
                     self._provider_manager.configure(
                         use_free_providers=self._use_free_providers,
                         google_api_key=self._google_vision_api_key,
-                        ocr_provider=value
+                        ocr_provider=value,
+                        translation_provider=self._translation_provider
+                    )
+            elif key == "translation_provider":
+                self._translation_provider = value
+                # Update provider manager configuration
+                if self._provider_manager:
+                    self._provider_manager.configure(
+                        use_free_providers=self._use_free_providers,
+                        google_api_key=self._google_vision_api_key,
+                        ocr_provider=self._ocr_provider,
+                        translation_provider=value
                     )
             else:
                 logger.warning(f"Unknown setting key: {key}")
@@ -734,6 +752,7 @@ class Plugin:
                 "enabled": self._settings.get_setting("enabled", True),
                 "use_free_providers": self._use_free_providers,
                 "ocr_provider": self._ocr_provider,
+                "translation_provider": self._translation_provider,
                 "google_api_key": self._google_vision_api_key,  # Single key for frontend
                 "google_vision_api_key": self._google_vision_api_key,
                 "google_translate_api_key": self._google_translate_api_key,
@@ -1503,13 +1522,30 @@ class Plugin:
                 # Save the new ocr_provider setting
                 self._settings.set_setting("ocr_provider", self._ocr_provider)
 
+            # Load translation_provider setting
+            saved_translation_provider = self._settings.get_setting("translation_provider")
+            if saved_translation_provider is not None:
+                logger.info(f"Using saved translation_provider: {saved_translation_provider}")
+                self._translation_provider = saved_translation_provider
+            else:
+                # Backwards compatibility: derive from ocr_provider
+                # If ocr_provider is googlecloud, use googlecloud translation; otherwise use free
+                if self._ocr_provider == "googlecloud":
+                    self._translation_provider = "googlecloud"
+                else:
+                    self._translation_provider = "freegoogle"
+                logger.info(f"No saved translation_provider, derived from ocr_provider: {self._translation_provider}")
+                # Save the translation_provider setting
+                self._settings.set_setting("translation_provider", self._translation_provider)
+
             # Initialize provider manager
             logger.info("Initializing provider manager...")
             self._provider_manager = ProviderManager()
             self._provider_manager.configure(
                 use_free_providers=self._use_free_providers,
                 google_api_key=google_api_key,
-                ocr_provider=self._ocr_provider
+                ocr_provider=self._ocr_provider,
+                translation_provider=self._translation_provider
             )
             provider_status = self._provider_manager.get_provider_status()
             logger.info(f"Provider manager initialized: {provider_status}")

@@ -118,13 +118,14 @@ export const TabTranslation: VFC = () => {
             </PanelSection>
 
             <PanelSection title="Providers">
+                {/* OCR Provider Selection */}
                 <PanelSectionRow>
                     <DropdownItem
-                        label="Text Recognition + Translation"
+                        label="Text Recognition (OCR)"
                         rgOptions={[
                             { label: <span>RapidOCR</span>, data: "rapidocr" },
                             { label: <span>OCR.space</span>, data: "ocrspace" },
-                            { label: <span>Google Cloud</span>, data: "googlecloud" }
+                            { label: <span>Google Cloud Vision</span>, data: "googlecloud" }
                         ]}
                         selectedOption={settings.ocrProvider}
                         onChange={(option) => updateSetting('ocrProvider', option.data, 'OCR provider')}
@@ -141,14 +142,10 @@ export const TabTranslation: VFC = () => {
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <span style={{ fontSize: "18px" }}>⚡</span>
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>RapidOCR</span>
-                                        <span>+</span>
-                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
-                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
                                     </div>
-                                    <div>- Fast local OCR using ONNX models</div>
-                                    <div>- Excellent for Chinese, Japanese, Korean</div>
+                                    <div>- On-Device Text Recognition</div>
+                                    <div>- Provides Good Results</div>
                                     <div>- Screenshots do not leave your device</div>
-                                    <div>- Good accuracy for CJK + English text</div>
                                 </>
                             )}
                             {settings.ocrProvider === 'ocrspace' && (
@@ -156,31 +153,94 @@ export const TabTranslation: VFC = () => {
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <img src={ocrspaceLogo} alt="" style={{ height: "18px" }} />
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>OCR.space</span>
-                                        <span>+</span>
-                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
-                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
                                     </div>
-                                    <div>- Recognizes text with ocr.space free API</div>
-                                    <div>- API usage limits: 500 requests/day + 10 requests/10 min</div>
-                                    <div>- Translates found text via Google Translate</div>
-                                    <div>- Good accuracy for clean text</div>
+                                    <div>- Free EU-based cloud OCR API</div>
+                                    <div>- Max Usage limits: 500/day and 10/10min</div>
+                                    <div>- Provides Even Better Results</div>
                                 </>
                             )}
                             {settings.ocrProvider === 'googlecloud' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                                         <img src={googlecloudLogo} alt="" style={{ height: "18px" }} />
-                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Cloud</span>
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Cloud Vision</span>
                                     </div>
-                                    <div>- Requires API key</div>
-                                    <div>- Best accuracy available</div>
-                                    <div>- Pay-as-you-go pricing</div>
+                                    <div>- Best accuracy and speed available</div>
                                     <div>- Ideal for complex/stylized text</div>
+                                    <div>- Requires API key</div>
+                                    {!settings.googleApiKey && (
+                                        <div style={{ color: "#ffc107", marginTop: "4px" }}>⚠ API key required</div>
+                                    )}
                                 </>
                             )}
                         </div>
                     </Field>
                 </PanelSectionRow>
+
+                {/* Translation Provider Selection */}
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Translation"
+                        rgOptions={[
+                            { label: <span>Google Translate</span>, data: "freegoogle" },
+                            { label: <span>Google Cloud Translation</span>, data: "googlecloud" }
+                        ]}
+                        selectedOption={settings.translationProvider}
+                        onChange={(option) => updateSetting('translationProvider', option.data, 'Translation provider')}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <Field
+                        focusable={true}
+                        childrenContainerWidth="max"
+                    >
+                        <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
+                            {settings.translationProvider === 'freegoogle' && (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                        <img src={googletranslateLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Translate</span>
+                                    </div>
+                                    <div>- Free, no API key needed</div>
+                                    <div>- Good quality for most languages</div>
+                                </>
+                            )}
+                            {settings.translationProvider === 'googlecloud' && (
+                                <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                                        <img src={googlecloudLogo} alt="" style={{ height: "18px" }} />
+                                        <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Cloud Translation</span>
+                                    </div>
+                                    <div>- High quality translations</div>
+                                    <div>- Requires API key</div>
+                                    {!settings.googleApiKey && (
+                                        <div style={{ color: "#ffc107", marginTop: "4px" }}>⚠ API key required</div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </Field>
+                </PanelSectionRow>
+
+                {/* Google Cloud API Key - show when either OCR or Translation uses Google Cloud */}
+                {(settings.ocrProvider === 'googlecloud' || settings.translationProvider === 'googlecloud') && (
+                    <PanelSectionRow>
+                        <ButtonItem
+                            label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
+                            description="Required for Google Cloud Vision and/or Translation"
+                            layout="below"
+                            onClick={() => {
+                                showModal(
+                                    <ApiKeyModal
+                                        currentKey={settings.googleApiKey}
+                                        onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
+                                    />
+                                );
+                            }}>
+                            Set Google Cloud API Key
+                        </ButtonItem>
+                    </PanelSectionRow>
+                )}
 
                 {/* RapidOCR settings */}
                 {settings.ocrProvider === 'rapidocr' && (
@@ -242,43 +302,23 @@ export const TabTranslation: VFC = () => {
                     </>
                 )}
 
-                {/* Google Cloud API Key - only show when using googlecloud provider */}
+                {/* Confidence threshold slider - only show for Google Cloud Vision */}
                 {settings.ocrProvider === 'googlecloud' && (
-                    <>
-                        <PanelSectionRow>
-                            <ButtonItem
-                                label={settings.googleApiKey ? "API Key: ••••••••" + settings.googleApiKey.slice(-4) : "No API Key Set"}
-                                description="You can find it in your Google Cloud Console"
-                                layout="below"
-                                onClick={() => {
-                                    showModal(
-                                        <ApiKeyModal
-                                            currentKey={settings.googleApiKey}
-                                            onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
-                                        />
-                                    );
-                                }}>
-                                Set API Key
-                            </ButtonItem>
-                        </PanelSectionRow>
-
-                        {/* Confidence threshold slider - only show for Google Cloud */}
-                        <PanelSectionRow>
-                            <SliderField
-                                value={settings.confidenceThreshold}
-                                max={1.0}
-                                min={0.0}
-                                step={0.05}
-                                label="Text Recognition Confidence"
-                                description="Minimum confidence level for detected text (higher = fewer false positives)"
-                                showValue={true}
-                                valueSuffix=""
-                                onChange={(value) => {
-                                    updateSetting('confidenceThreshold', value, 'Text recognition confidence');
-                                }}
-                            />
-                        </PanelSectionRow>
-                    </>
+                    <PanelSectionRow>
+                        <SliderField
+                            value={settings.confidenceThreshold}
+                            max={1.0}
+                            min={0.0}
+                            step={0.05}
+                            label="Text Recognition Confidence"
+                            description="Minimum confidence level for detected text (higher = fewer false positives)"
+                            showValue={true}
+                            valueSuffix=""
+                            onChange={(value) => {
+                                updateSetting('confidenceThreshold', value, 'Text recognition confidence');
+                            }}
+                        />
+                    </PanelSectionRow>
                 )}
 
                 {/* Invisible spacer to help with scroll when focusing last element */}

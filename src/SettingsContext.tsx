@@ -22,6 +22,7 @@ export interface Settings {
     quickToggleEnabled: boolean; // Quick toggle overlay with right button in combo modes
     useFreeProviders: boolean; // Use free providers (OCR.space + free Google Translate) - deprecated, use ocrProvider
     ocrProvider: 'rapidocr' | 'ocrspace' | 'googlecloud'; // OCR provider: rapidocr (RapidOCR), ocrspace (OCR.space), googlecloud (Google Cloud)
+    translationProvider: 'freegoogle' | 'googlecloud'; // Translation provider: freegoogle (Free Google Translate), googlecloud (Google Cloud Translation)
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
 }
@@ -49,6 +50,7 @@ const initialSettings: Settings = {
     quickToggleEnabled: false, // Default to disabled
     useFreeProviders: true, // Default to free providers (no API key needed) - deprecated
     ocrProvider: "rapidocr", // Default to rapidocr (RapidOCR) provider
+    translationProvider: "freegoogle", // Default to free Google Translate
     googleApiKey: "", // Empty by default, only needed for Google Cloud
     debugMode: false // Debug mode off by default
 };
@@ -114,6 +116,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     quickToggleEnabled: serverSettings.quick_toggle_enabled || false, // Add default if not present
                     useFreeProviders: serverSettings.use_free_providers !== false, // Default to true (deprecated)
                     ocrProvider: serverSettings.ocr_provider || "rapidocr", // OCR provider setting
+                    translationProvider: serverSettings.translation_provider || "freegoogle", // Translation provider setting
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
                     debugMode: serverSettings.debug_mode || false // Debug mode
                 };
@@ -132,6 +135,11 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setPauseGameOnOverlay(serverSettings.pause_game_on_overlay || false); // Set pause on overlay setting
                 logic.setQuickToggleEnabled(serverSettings.quick_toggle_enabled || false); // Set quick toggle setting
                 logger.setEnabled(serverSettings.debug_mode || false); // Set debug mode for logger
+
+                // Set provider settings for upfront API key validation
+                logic.setOcrProvider(serverSettings.ocr_provider || "rapidocr");
+                logic.setTranslationProvider(serverSettings.translation_provider || "freegoogle");
+                logic.setHasGoogleApiKey(!!serverSettings.google_api_key);
 
                 logger.info('SettingsContext', 'All settings loaded successfully');
                 logger.logObject('SettingsContext', 'Settings', mappedSettings);
@@ -168,6 +176,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 quickToggleEnabled: 'quick_toggle_enabled',
                 useFreeProviders: 'use_free_providers',
                 ocrProvider: 'ocr_provider',
+                translationProvider: 'translation_provider',
                 googleApiKey: 'google_api_key',
                 debugMode: 'debug_mode'
             };
@@ -208,6 +217,15 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'debugMode':
                     logger.setEnabled(value);
+                    break;
+                case 'ocrProvider':
+                    logic.setOcrProvider(value);
+                    break;
+                case 'translationProvider':
+                    logic.setTranslationProvider(value);
+                    break;
+                case 'googleApiKey':
+                    logic.setHasGoogleApiKey(!!value);
                     break;
             }
 

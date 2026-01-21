@@ -52,6 +52,7 @@ class ProviderManager:
         self._use_free_providers = True  # Default to free providers
         self._google_api_key = ""
         self._ocr_provider_preference = "rapidocr"  # "rapidocr", "ocrspace", or "googlecloud"
+        self._translation_provider_preference = "freegoogle"  # "freegoogle" or "googlecloud"
         self._rapidocr_confidence = 0.5  # Default RapidOCR confidence threshold (0.0-1.0)
         self._rapidocr_box_thresh = 0.5  # Default RapidOCR box detection threshold (0.0-1.0)
         self._rapidocr_unclip_ratio = 1.6  # Default RapidOCR box expansion ratio (1.0-3.0)
@@ -62,7 +63,8 @@ class ProviderManager:
         self,
         use_free_providers: bool = True,
         google_api_key: str = "",
-        ocr_provider: str = ""
+        ocr_provider: str = "",
+        translation_provider: str = ""
     ) -> None:
         """
         Configure provider preferences.
@@ -70,9 +72,10 @@ class ProviderManager:
         Args:
             use_free_providers: If True, use OCR.space + free Google Translate.
                                 If False, use Google Cloud APIs (requires API key).
-                                (Deprecated: use ocr_provider instead)
-            google_api_key: Google Cloud API key (only needed for googlecloud provider)
+                                (Deprecated: use ocr_provider and translation_provider instead)
+            google_api_key: Google Cloud API key (only needed for googlecloud providers)
             ocr_provider: OCR provider preference - "rapidocr", "ocrspace", or "googlecloud"
+            translation_provider: Translation provider preference - "freegoogle" or "googlecloud"
         """
         self._google_api_key = google_api_key
 
@@ -86,6 +89,17 @@ class ProviderManager:
             self._use_free_providers = use_free_providers
             self._ocr_provider_preference = "rapidocr" if use_free_providers else "googlecloud"
 
+        # Handle translation_provider setting
+        if translation_provider:
+            self._translation_provider_preference = translation_provider
+        elif not translation_provider and ocr_provider:
+            # Backwards compatibility: if only ocr_provider is set, derive translation from it
+            # googlecloud OCR -> googlecloud translation, others -> freegoogle
+            self._translation_provider_preference = "googlecloud" if ocr_provider == "googlecloud" else "freegoogle"
+        elif not use_free_providers:
+            # Legacy: use_free_providers=False means Google Cloud for both
+            self._translation_provider_preference = "googlecloud"
+
         # Update Google Cloud providers with new API key
         if ProviderType.GOOGLE in self._ocr_providers:
             self._ocr_providers[ProviderType.GOOGLE].set_api_key(google_api_key)
@@ -94,6 +108,7 @@ class ProviderManager:
 
         logger.info(
             f"Provider config updated: ocr_provider={self._ocr_provider_preference}, "
+            f"translation_provider={self._translation_provider_preference}, "
             f"google_api_key_set={bool(google_api_key)}"
         )
 
@@ -181,14 +196,14 @@ class ProviderManager:
         Get translation provider, creating if necessary.
 
         Args:
-            provider_type: Specific provider type, or None for default
+            provider_type: Specific provider type, or None for default based on preference
 
         Returns:
             TranslationProvider instance or None
         """
         if provider_type is None:
-            # Only "googlecloud" uses Google Cloud Translation, others use free
-            if self._ocr_provider_preference == "googlecloud":
+            # Use translation provider preference (independent of OCR choice)
+            if self._translation_provider_preference == "googlecloud":
                 provider_type = ProviderType.GOOGLE
             else:
                 provider_type = ProviderType.FREE_GOOGLE
@@ -269,6 +284,7 @@ class ProviderManager:
         status = {
             "use_free_providers": self._use_free_providers,
             "ocr_provider_preference": self._ocr_provider_preference,
+            "translation_provider_preference": self._translation_provider_preference,
             "google_api_configured": bool(self._google_api_key),
             "ocr_provider": ocr_provider.name if ocr_provider else "None",
             "translation_provider": trans_provider.name if trans_provider else "None",

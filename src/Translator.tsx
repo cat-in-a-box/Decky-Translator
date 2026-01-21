@@ -26,6 +26,11 @@ export class GameTranslatorLogic {
     private confidenceThreshold: number = 0.6; // Default confidence threshold
     private pauseGameOnOverlay: boolean = false; // Track pause-on-overlay setting
 
+    // Provider settings for upfront validation
+    private ocrProvider: string = "rapidocr";
+    private translationProvider: string = "freegoogle";
+    private hasGoogleApiKey: boolean = false;
+
     isOverlayVisible(): boolean {
         return this.imageState.isVisible();
     }
@@ -316,6 +321,15 @@ export class GameTranslatorLogic {
             logger.debug('Translator', 'Already processing a screenshot or plugin disabled, skipping');
             return;
         }
+
+        // Check if API key is required but missing BEFORE starting the process
+        const apiKeyCheck = this.requiresApiKeyButMissing();
+        if (apiKeyCheck.missing) {
+            logger.warn('Translator', `Cannot start translation: ${apiKeyCheck.message}`);
+            this.notify(apiKeyCheck.message, 3000, "Please configure your Google Cloud API key in settings or switch to a free provider.");
+            return;
+        }
+
         try {
             this.isProcessing = true;
 
@@ -472,5 +486,38 @@ export class GameTranslatorLogic {
     // Method to get quick toggle enabled state
     getQuickToggleEnabled = (): boolean => {
         return this.shortcutInput ? this.shortcutInput.getQuickToggleEnabled() : false;
+    }
+
+    // Methods for provider settings (used for upfront API key validation)
+    setOcrProvider = (provider: string): void => {
+        this.ocrProvider = provider;
+        logger.debug('Translator', `OCR provider set to: ${provider}`);
+    }
+
+    setTranslationProvider = (provider: string): void => {
+        this.translationProvider = provider;
+        logger.debug('Translator', `Translation provider set to: ${provider}`);
+    }
+
+    setHasGoogleApiKey = (hasKey: boolean): void => {
+        this.hasGoogleApiKey = hasKey;
+        logger.debug('Translator', `Google API key available: ${hasKey}`);
+    }
+
+    // Check if the current provider configuration requires an API key that's missing
+    private requiresApiKeyButMissing(): { missing: boolean; message: string } {
+        const ocrNeedsKey = this.ocrProvider === 'googlecloud';
+        const translationNeedsKey = this.translationProvider === 'googlecloud';
+
+        if ((ocrNeedsKey || translationNeedsKey) && !this.hasGoogleApiKey) {
+            if (ocrNeedsKey && translationNeedsKey) {
+                return { missing: true, message: "API key required for OCR & Translation" };
+            } else if (ocrNeedsKey) {
+                return { missing: true, message: "API key required for OCR" };
+            } else {
+                return { missing: true, message: "API key required for Translation" };
+            }
+        }
+        return { missing: false, message: "" };
     }
 }
