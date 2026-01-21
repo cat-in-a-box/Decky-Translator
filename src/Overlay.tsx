@@ -1,8 +1,6 @@
 // Overlay.tsx - Handles overlay components and UI
 
-import {
-    findModuleChild
-} from "decky-frontend-lib";
+import { findModuleChild } from "@decky/ui";
 
 
 import { VFC, useEffect, useState, useRef, useCallback } from "react";

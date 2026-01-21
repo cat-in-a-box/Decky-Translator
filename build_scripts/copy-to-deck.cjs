@@ -57,10 +57,6 @@ async function copyToDeck() {
 
   if (!config.password) {
     console.error('Error: No password configured.');
-    console.error('Create a .deck file with your Steam Deck credentials:');
-    console.error('  host=steamdeck');
-    console.error('  user=deck');
-    console.error('  password=your_password');
     process.exit(1);
   }
 
@@ -96,11 +92,6 @@ async function copyToDeck() {
     console.log(`\nSuccessfully copied to ${destPath}`);
   } catch (error) {
     console.error('\nFailed to copy to Steam Deck.');
-    console.error(`   Error: ${error.message}`);
-    console.error('   Make sure:');
-    console.error('   - SSH is enabled on your Steam Deck');
-    console.error(`   - You can reach your Deck at ${config.host}`);
-    console.error('   - The password in .deck file is correct');
     process.exit(1);
   }
 }

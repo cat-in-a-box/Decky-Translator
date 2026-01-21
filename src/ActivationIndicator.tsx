@@ -1,5 +1,5 @@
 import { VFC } from "react";
-import { findModuleChild } from "decky-frontend-lib";
+import { findModuleChild } from "@decky/ui";
 
 // UI Composition layers provided by Decky
 enum UIComposition {

@@ -1,6 +1,6 @@
 // src/SettingsContext.tsx
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
-import { ServerAPI } from 'decky-frontend-lib';
+import { call } from '@decky/api';
 import { GameTranslatorLogic } from './Translator';
 import { InputMode } from './Input';
 import { logger } from './Logger';
@@ -81,13 +81,11 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 // Create the provider component
 interface SettingsProviderProps {
     children: React.ReactNode;
-    serverAPI: ServerAPI;
     logic: GameTranslatorLogic;
 }
 
 export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                                                                       children,
-                                                                      serverAPI,
                                                                       logic
                                                                   }) => {
     const [settings, dispatch] = useReducer(settingsReducer, initialSettings);
@@ -95,10 +93,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
     // Load all settings at once
     const loadAllSettings = async () => {
         try {
-            const response = await serverAPI.callPluginMethod('get_all_settings', {});
+            const serverSettings = await call<any>('get_all_settings');
 
-            if (response.success && response.result) {
-                const serverSettings = response.result as any;
+            if (serverSettings) {
 
                 // Map backend settings to frontend settings
                 const mappedSettings: Partial<Settings> = {
@@ -230,12 +227,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
             }
 
             // Save to backend
-            const response = await serverAPI.callPluginMethod('set_setting', {
-                key: backendKey,
-                value: value
-            });
+            const result = await call<boolean>('set_setting', backendKey, value);
 
-            if (response.success) {
+            if (result) {
                 // if (label) logic.notify(`${label} updated successfully`);
                 return true;
             } else {

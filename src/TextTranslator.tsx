@@ -1,6 +1,6 @@
 // TextTranslator.tsx
 
-import { ServerAPI } from "decky-frontend-lib";
+import { call } from "@decky/api";
 import { TextRegion, NetworkError, ApiKeyError, ErrorResponse } from "./TextRecognizer";
 import { logger } from "./Logger";
 
@@ -15,12 +15,10 @@ export interface TranslatedRegion extends TextRegion {
 }
 
 export class TextTranslator {
-    private serverAPI: ServerAPI;
     private targetLanguage: string;
     private inputLanguage: string = "auto"; // Default to auto-detect
 
-    constructor(serverAPI: ServerAPI, initialLanguage: string = "en") {
-        this.serverAPI = serverAPI;
+    constructor(initialLanguage: string = "en") {
         this.targetLanguage = initialLanguage;
     }
 
@@ -49,16 +47,17 @@ export class TextTranslator {
             }
 
             // Call the Python backend method for translation, now including input language
-            const response = await this.serverAPI.callPluginMethod('translate_text', {
-                text_regions: textRegions,
-                target_language: this.targetLanguage,
-                input_language: this.inputLanguage
-            });
+            const response = await call<TranslatedRegion[] | ErrorResponse>(
+                'translate_text',
+                textRegions,
+                this.targetLanguage,
+                this.inputLanguage
+            );
 
-            if (response.success && response.result) {
+            if (response) {
                 // Check for error response (network error, API key error)
-                if (isErrorResponse(response.result)) {
-                    const errorResponse = response.result as ErrorResponse;
+                if (isErrorResponse(response)) {
+                    const errorResponse = response as ErrorResponse;
                     if (errorResponse.error === 'network_error') {
                         logger.error('TextTranslator', `Network error: ${errorResponse.message}`);
                         throw new NetworkError(errorResponse.message);
@@ -69,9 +68,14 @@ export class TextTranslator {
                     }
                     // Handle other error types if needed
                     logger.error('TextTranslator', `Error from backend: ${errorResponse.error} - ${errorResponse.message}`);
+                    // Return original text on error
+                    return textRegions.map(region => ({
+                        ...region,
+                        translatedText: region.text
+                    }));
                 }
 
-                return response.result as TranslatedRegion[];
+                return response as TranslatedRegion[];
             }
 
             logger.error('TextTranslator', 'Failed to translate text');

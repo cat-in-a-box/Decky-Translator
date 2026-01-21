@@ -1,15 +1,16 @@
 {
   "name": "decky-translator",
-  "version": "0.6.1",
+  "version": "0.7",
+  "type": "module",
   "description": "Translate anything on your screen to your language",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "download:all": "node build_scripts/download-all-dependencies.js",
-    "build:zip": "npm run build && node build_scripts/build-zip.js",
-    "copy-to-deck": "node build_scripts/copy-to-deck.js",
-    "build:zip and copy-to-deck": "npm run build:zip && npm run copy-to-deck"
+    "download:all": "node build_scripts/download-all-dependencies.cjs",
+    "build:zip": "pnpm run build && node build_scripts/build-zip.cjs",
+    "copy-to-deck": "node build_scripts/copy-to-deck.cjs",
+    "build:zip and copy-to-deck": "pnpm run build:zip && pnpm run copy-to-deck"
   },
   "repository": {
     "type": "git",
@@ -30,27 +31,21 @@
   },
   "homepage": "https://github.com/cat-in-a-box/decky-translator",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^21.1.0",
-    "@rollup/plugin-json": "^4.1.0",
-    "@rollup/plugin-node-resolve": "^13.3.0",
-    "@rollup/plugin-replace": "^4.0.0",
-    "@rollup/plugin-typescript": "^8.3.3",
+    "@decky/api": "^1.1.3",
+    "@decky/rollup": "^1.0.1",
+    "@decky/ui": "^4.11.1",
     "@types/react": "16.14.0",
     "@types/react-dom": "^19.1.2",
     "@types/webpack": "^5.28.0",
     "bestzip": "^2.2.1",
     "node-scp": "^0.0.25",
-    "rollup": "^2.77.1",
-    "rollup-plugin-import-assets": "^1.1.1",
+    "rollup": "^4.24.0",
     "shx": "^0.3.4",
     "tslib": "^2.4.0",
-    "typescript": "^4.7.4"
+    "typescript": "^5.6.0"
   },
   "dependencies": {
-    "@decky/ui": "^4.11.1",
-    "decky-frontend-lib": "^3.24.5",
     "qrcode.react": "^4.2.0",
-    "react-dom": "^19.1.0",
     "react-icons": "^4.4.0"
   },
   "pnpm": {

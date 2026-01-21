@@ -7,7 +7,7 @@ import {
     ToggleField,
     SliderField,
     Field
-} from "decky-frontend-lib";
+} from "@decky/ui";
 
 import { VFC } from "react";
 import { useSettings } from "../SettingsContext";
