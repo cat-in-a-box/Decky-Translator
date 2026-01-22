@@ -32,10 +32,14 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
     const handleButtonClick = () => {
         if (overlayVisible) {
             logic.imageState.hideImage();
+            Router.CloseSideMenus();
         } else {
-            logic.takeScreenshotAndTranslate().catch(err => logger.error('TabMain', 'Screenshot failed', err));
+            // Close menu first, then wait for UI to fully close before taking screenshot
+            Router.CloseSideMenus();
+            setTimeout(() => {
+                logic.takeScreenshotAndTranslate().catch(err => logger.error('TabMain', 'Screenshot failed', err));
+            }, 200);
         }
-        Router.CloseSideMenus();
     };
 
     return (
