@@ -104,7 +104,7 @@ class RapidOCRProvider(OCRProvider):
 
         # Path to subprocess script
         self._subprocess_script = os.path.join(
-            self._plugin_dir, "providers", "rapidocr_subprocess.py"
+            self._plugin_dir, "py_modules", "providers", "rapidocr_subprocess.py"
         )
 
         logger.info(

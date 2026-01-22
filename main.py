@@ -24,6 +24,11 @@ PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
+# Add py_modules to path for provider imports
+PY_MODULES_DIR = os.path.join(PLUGIN_DIR, "py_modules")
+if PY_MODULES_DIR not in sys.path:
+    sys.path.insert(0, PY_MODULES_DIR)
+
 # Import provider system
 from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError, RateLimitError
 
