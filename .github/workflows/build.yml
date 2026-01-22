@@ -1,0 +1,67 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main, dev]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm run build
+
+      - name: Download Decky CLI
+        run: |
+          mkdir -p cli
+          curl -L -o cli/decky "https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.8/decky-linux-x86_64"
+          chmod +x cli/decky
+
+      - name: Build plugin with Decky CLI
+        run: |
+          cli/decky plugin build $(pwd) -o ./out
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decky-translator
+          path: out/*.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: decky-translator
+          path: ./
+
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.zip"
+          draft: true
+          generate_release_notes: true
