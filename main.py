@@ -827,14 +827,15 @@ class Plugin:
                 "HOME": DECKY_HOME
             })
 
-            # GStreamer pipeline: grab one frame then EOS
+            # GStreamer pipeline: grab a few frames then EOS
+            # Using num-buffers=5 to skip potentially invalid first frames from PipeWire
             cmd = (
                 # keep only the path to your plugins, without GST_VAAPI_ALL_DRIVERS
                 f"GST_PLUGIN_PATH={GSTPLUGINSPATH} "
                 f"LD_LIBRARY_PATH={DEPSPATH} "
                 f"gst-launch-1.0 -e "
-                # capture one buffer
-                f"pipewiresrc do-timestamp=true num-buffers=1 ! "
+                # capture multiple buffers to ensure valid frame (pngenc snapshot=true saves last)
+                f"pipewiresrc do-timestamp=true num-buffers=5 ! "
                 # let videoconvert work by default (CPU), it will create normal raw
                 f"videoconvert ! "
                 # then directly to PNG
@@ -849,7 +850,7 @@ class Plugin:
                 '-e',
                 'pipewiresrc',
                 'do-timestamp=true',
-                'num-buffers=1',
+                'num-buffers=5',
                 '!',
                 'videoconvert',
                 '!',
