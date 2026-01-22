@@ -18,7 +18,10 @@ coverage
 # Dependency directory
 node_modules
 bower_components
-py_modules
+
+# Python modules
+py_modules/*
+!py_modules/providers/
 
 # Editors
 .idea
@@ -39,10 +42,6 @@ yalc.lock
 backend/out
 bin
 /.pnpm-store
-
-# Code-Assit tools
-.claude/
-claude-instructions/
 
 # Deploy Folder
 deploy/
@@ -71,6 +70,8 @@ dist/
 # Build artifacts
 temp-build/
 *.zip
+out/
+cli/
 
 # Local files
 /docs
