@@ -7,10 +7,9 @@
     "build": "shx rm -rf dist && rollup -c",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "download:all": "node build_scripts/download-all-dependencies.cjs",
-    "build:zip": "pnpm run build && node build_scripts/build-zip.cjs",
-    "copy-to-deck": "node build_scripts/copy-to-deck.cjs",
-    "build:zip and copy-to-deck": "pnpm run build:zip && pnpm run copy-to-deck"
+    "copy-to-deck": "node build_scripts/copy-to-deck.js",
+    "build:deck": "wsl -e sh -c \"rm -rf out node_modules && ./cli/decky plugin build . -o ./out\"",
+    "build:deck-and-copy": "pnpm run build:deck && pnpm run copy-to-deck"
   },
   "repository": {
     "type": "git",
@@ -37,7 +36,6 @@
     "@types/react": "16.14.0",
     "@types/react-dom": "^19.1.2",
     "@types/webpack": "^5.28.0",
-    "bestzip": "^2.2.1",
     "node-scp": "^0.0.25",
     "rollup": "^4.24.0",
     "shx": "^0.3.4",
