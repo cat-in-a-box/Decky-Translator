@@ -314,18 +314,27 @@ class RapidOCRProvider(OCRProvider):
         info["available"] = self._available
 
         # Get RapidOCR version from package metadata (no import needed)
+        # Check both locations: bin/py_modules (store install) and py_modules (dev install)
         try:
-            py_modules = os.path.join(self._plugin_dir, 'py_modules')
-            # Look for rapidocr_onnxruntime-*.dist-info/METADATA
-            for item in os.listdir(py_modules):
-                if item.startswith('rapidocr_onnxruntime') and item.endswith('.dist-info'):
-                    metadata_file = os.path.join(py_modules, item, 'METADATA')
-                    if os.path.exists(metadata_file):
-                        with open(metadata_file, 'r') as f:
-                            for line in f:
-                                if line.startswith('Version:'):
-                                    info["version"] = line.split(':', 1)[1].strip()
-                                    break
+            py_modules_paths = [
+                os.path.join(self._plugin_dir, 'bin', 'py_modules'),  # Store install
+                os.path.join(self._plugin_dir, 'py_modules'),         # Dev install
+            ]
+            for py_modules in py_modules_paths:
+                if not os.path.exists(py_modules):
+                    continue
+                # Look for rapidocr_onnxruntime-*.dist-info/METADATA
+                for item in os.listdir(py_modules):
+                    if item.startswith('rapidocr_onnxruntime') and item.endswith('.dist-info'):
+                        metadata_file = os.path.join(py_modules, item, 'METADATA')
+                        if os.path.exists(metadata_file):
+                            with open(metadata_file, 'r') as f:
+                                for line in f:
+                                    if line.startswith('Version:'):
+                                        info["version"] = line.split(':', 1)[1].strip()
+                                        break
+                        break
+                if info["version"]:
                     break
         except Exception:
             pass
