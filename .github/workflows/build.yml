@@ -69,12 +69,12 @@ jobs:
       - name: Create dependencies archive
         run: |
           cd dependencies_build
-          tar -czvf ../decky-translator-dependencies.tar.gz py_modules python311 rapidocr
+          tar -czvf ../plugin-dependencies.tar.gz py_modules python311 rapidocr
 
       - name: Calculate dependencies SHA256
         id: dependencies_hash
         run: |
-          HASH=$(sha256sum decky-translator-dependencies.tar.gz | cut -d' ' -f1)
+          HASH=$(sha256sum plugin-dependencies.tar.gz | cut -d' ' -f1)
           echo "sha256=$HASH" >> $GITHUB_OUTPUT
           echo "Dependencies SHA256: $HASH"
 
@@ -111,8 +111,8 @@ jobs:
       - name: Upload dependencies artifact
         uses: actions/upload-artifact@v4
         with:
-          name: decky-translator-dependencies
-          path: decky-translator-dependencies.tar.gz
+          name: plugin-dependencies
+          path: plugin-dependencies.tar.gz
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -130,17 +130,15 @@ jobs:
       - name: Download dependencies artifact
         uses: actions/download-artifact@v4
         with:
-          name: decky-translator-dependencies
+          name: plugin-dependencies
           path: ./
-
-      - name: List release files
-        run: ls -la
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_TOKEN }}
           files: |
-            *.zip
-            decky-translator-dependencies.tar.gz
+            Decky Translator.zip
+            plugin-dependencies.tar.gz
           draft: true
           generate_release_notes: true

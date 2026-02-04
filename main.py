@@ -24,7 +24,7 @@ if PLUGIN_DIR not in sys.path:
 # Auto-extract dependencies archive if needed (for Decky Store installs)
 # This must happen BEFORE importing third-party libraries
 BIN_DIR = os.path.join(PLUGIN_DIR, "bin")
-DEPENDENCIES_ARCHIVE = os.path.join(BIN_DIR, "decky-translator-dependencies.tar.gz")
+DEPENDENCIES_ARCHIVE = os.path.join(BIN_DIR, "plugin-dependencies.tar.gz")
 EXTRACTION_MARKER = os.path.join(BIN_DIR, ".dependencies-extracted")
 BIN_PY_MODULES_DIR = os.path.join(BIN_DIR, "py_modules")
 BIN_PYTHON_DIR = os.path.join(BIN_DIR, "python311")
