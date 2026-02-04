@@ -1,4 +1,5 @@
 # Decky Translator
+[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/alexanderdev)
 
 A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen. 
 Might be helpful for playing games while learning a new language or some other purposes (you tell me!).
@@ -126,45 +127,35 @@ Check [Google Cloud Pricing](https://cloud.google.com/pricing) for current rates
 - [x] Rework temporary files solution
 - [ ] External gamepad support
 - [ ] Desktop mode support
+- [ ] Nicer look for translation overlay
 
-## Changelog
+<h2>Third-Party Dependencies</h2>
 
-### 0.7.1
-- Separated setting dropdowns for OCR and Translation
+This plugin downloads and uses the following third-party components:
 
-### 0.7
-- On-Device Text Recognition (RapidOCR)
-- SteamOS UI experimental Scaling Support
-- Visual display for OCR.space API Usage Tracking
-- UI improvements
+### Python 3.11 (required by RapidOCR)
+- Source: [astral-sh/python-build-standalone](https://github.com/astral-sh/python-build-standalone)
+- URL: https://github.com/astral-sh/python-build-standalone/releases/download/20251010/cpython-3.11.14+20251010-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+- SHA256: `e84da4b01a4017222ed3d172f4ba261c930cca40b7db5d6ad97149a41b98a14c`
 
-### 0.6.1
-- Added flag icons for all supported languages
-- Improved Providers section UI with visual comparison
-- Small text improvements throughout the plugin
+### RapidOCR Models
+- Source: [SWHL/RapidOCR on Hugging Face](https://huggingface.co/SWHL/RapidOCR)
 
-### 0.6.0
-- Added Simple mode with free providers (OCR.space + Google Translate)
-- Settings reorganized into three tabs (Main, Translation, Controls)
-- Added Ko-fi button with QR code support
+| File | Purpose |
+|------|---------|
+| [ch_PP-OCRv4_det_infer.onnx](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_det_infer.onnx) | Text detection model - finds where text is located in the image |
+| [ch_PP-OCRv4_rec_infer.onnx](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx) | Text recognition model - reads the actual characters from detected regions |
+| [ch_ppocr_mobile_v2.0_cls_train.onnx](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_ppocr_mobile_v2.0_cls_train.onnx) | Text direction classifier - corrects orientation of rotated/upside-down text |
+| [ppocr_keys_v1.txt](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ppocr_keys_v1.txt) | Character dictionary - list of all recognizable characters |
 
-### 0.5.2
-- Improved translation speed with parallel requests
-- Better error messages for network and API key issues
-- Debug mode UI improvements
-- Various UI polish and improvements
+### Python Packages (from PyPI)
 
-### 0.5.1
-- Reduced front-end polling frequency for better performance
-- Initial performance optimizations
-
-### 0.5.0
-- Google Cloud Vision and Translation API support
-- Multiple input methods (L4, R4, L5, R5, combos, touchpads)
-- Configurable hold times
-- Game pause option
-- Confidence threshold setting
-- 18 language support with auto-detection
+| Package | Purpose |
+|---------|---------|
+| Pillow==11.2.1 | Image processing library for screenshot handling |
+| requests==2.32.3 | HTTP library for API calls to translation services |
+| urllib3==2.4.0 | HTTP client (dependency of requests) |
+| rapidocr-onnxruntime>=1.3.0 | OCR engine that runs the ONNX models |
 
 
 ## Support
