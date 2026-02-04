@@ -9,25 +9,81 @@ import signal
 import time
 from datetime import datetime
 from pathlib import Path
-import decky_plugin
 import logging
 import shutil
 import json
 import base64  # Add base64 module for encoding screenshots
-import urllib3
-import requests
-from PIL import Image
 import io
+import tarfile
 
-# Add plugin directory to Python path for local imports
+# IMPORTANT: Set up plugin directory FIRST
 PLUGIN_DIR = os.path.dirname(os.path.abspath(__file__))
 if PLUGIN_DIR not in sys.path:
     sys.path.insert(0, PLUGIN_DIR)
 
+# Auto-extract dependencies archive if needed (for Decky Store installs)
+# This must happen BEFORE importing third-party libraries
+BIN_DIR = os.path.join(PLUGIN_DIR, "bin")
+DEPENDENCIES_ARCHIVE = os.path.join(BIN_DIR, "decky-translator-dependencies.tar.gz")
+EXTRACTION_MARKER = os.path.join(BIN_DIR, ".dependencies-extracted")
+BIN_PY_MODULES_DIR = os.path.join(BIN_DIR, "py_modules")
+BIN_PYTHON_DIR = os.path.join(BIN_DIR, "python311")
+BIN_RAPIDOCR_DIR = os.path.join(BIN_DIR, "rapidocr")
+
+def _should_extract_dependencies():
+    """Check if dependencies archive needs to be extracted."""
+    if not os.path.exists(DEPENDENCIES_ARCHIVE):
+        return False  # No dependencies archive to extract
+
+    # Check if extraction marker exists
+    if not os.path.exists(EXTRACTION_MARKER):
+        return True  # Never extracted successfully
+
+    # Check if dependencies were updated (archive is newer than marker)
+    archive_mtime = os.path.getmtime(DEPENDENCIES_ARCHIVE)
+    marker_mtime = os.path.getmtime(EXTRACTION_MARKER)
+    if archive_mtime > marker_mtime:
+        return True  # Dependencies were updated, need to re-extract
+
+    # Check if all expected directories exist (partial extraction detection)
+    if not all(os.path.exists(d) for d in [BIN_PY_MODULES_DIR, BIN_PYTHON_DIR, BIN_RAPIDOCR_DIR]):
+        return True  # Some directories missing, need to re-extract
+
+    return False  # Already extracted and up-to-date
+
+if _should_extract_dependencies():
+    try:
+        print(f"[Decky Translator] Extracting dependencies from {DEPENDENCIES_ARCHIVE}...")
+        with tarfile.open(DEPENDENCIES_ARCHIVE, "r:gz") as tar:
+            tar.extractall(path=BIN_DIR)
+        # Create marker file to indicate successful extraction
+        with open(EXTRACTION_MARKER, "w") as f:
+            f.write(f"Extracted at {datetime.now().isoformat()}\n")
+        print(f"[Decky Translator] Dependencies extracted successfully")
+    except Exception as e:
+        print(f"[Decky Translator] Failed to extract dependencies: {e}")
+        # Remove marker if it exists, so we retry next time
+        if os.path.exists(EXTRACTION_MARKER):
+            os.remove(EXTRACTION_MARKER)
+
 # Add py_modules to path for provider imports
-PY_MODULES_DIR = os.path.join(PLUGIN_DIR, "py_modules")
+# Check bin/py_modules first (Decky Store install via remote_binary)
+# Then fall back to root py_modules (dev/manual install)
+ROOT_PY_MODULES_DIR = os.path.join(PLUGIN_DIR, "py_modules")
+
+if os.path.exists(BIN_PY_MODULES_DIR):
+    PY_MODULES_DIR = BIN_PY_MODULES_DIR
+else:
+    PY_MODULES_DIR = ROOT_PY_MODULES_DIR
+
 if PY_MODULES_DIR not in sys.path:
     sys.path.insert(0, PY_MODULES_DIR)
+
+# Now import third-party libraries (after sys.path is configured)
+import decky_plugin
+import urllib3
+import requests
+from PIL import Image
 
 # Import provider system
 from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError, RateLimitError
