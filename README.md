@@ -1,4 +1,9 @@
 # Decky Translator
+
+![GitHub Release](https://img.shields.io/github/v/release/cat-in-a-box/Decky-Translator)
+![License](https://img.shields.io/github/license/cat-in-a-box/Decky-Translator?color=green)
+![Build Status](https://img.shields.io/github/actions/workflow/status/cat-in-a-box/Decky-Translator/build.yml)
+
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/alexanderdev)
 
 A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen. 
