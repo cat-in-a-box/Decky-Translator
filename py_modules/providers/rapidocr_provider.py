@@ -103,9 +103,23 @@ class RapidOCRProvider(OCRProvider):
         self._python_path = None  # Path to Python 3.11 interpreter
 
         # Path to subprocess script
-        self._subprocess_script = os.path.join(
+        # Check bin/py_modules first (Decky Store install via remote_binary)
+        # Then fall back to root py_modules (dev/manual install)
+        bin_subprocess_script = os.path.join(
+            self._plugin_dir, "bin", "py_modules", "providers", "rapidocr_subprocess.py"
+        )
+        root_subprocess_script = os.path.join(
             self._plugin_dir, "py_modules", "providers", "rapidocr_subprocess.py"
         )
+        if os.path.exists(bin_subprocess_script):
+            self._subprocess_script = bin_subprocess_script
+        else:
+            self._subprocess_script = root_subprocess_script
+
+        # Determine py_modules path for subprocess PYTHONPATH
+        bin_py_modules = os.path.join(self._plugin_dir, "bin", "py_modules")
+        root_py_modules = os.path.join(self._plugin_dir, "py_modules")
+        self._py_modules_dir = bin_py_modules if os.path.exists(bin_py_modules) else root_py_modules
 
         logger.info(
             f"RapidOCRProvider initialized "
@@ -113,17 +127,17 @@ class RapidOCRProvider(OCRProvider):
         )
 
     def _extract_bundled_python(self) -> bool:
-        """Extract bundled Python 3.11 tarball if present."""
+        """Extract bundled Python 3.11 archive if present."""
         python311_dir = os.path.join(self._plugin_dir, 'bin', 'python311')
-        tarball = os.path.join(python311_dir, 'python-3.11.tar.gz')
+        python_archive = os.path.join(python311_dir, 'python-3.11.tar.gz')
 
-        if not os.path.exists(tarball):
+        if not os.path.exists(python_archive):
             return False
 
-        logger.info(f"Extracting bundled Python 3.11 from {tarball}...")
+        logger.info(f"Extracting bundled Python 3.11 from {python_archive}...")
         try:
             import tarfile
-            with tarfile.open(tarball, 'r:gz') as tar:
+            with tarfile.open(python_archive, 'r:gz') as tar:
                 tar.extractall(path=python311_dir)
             logger.info("Python 3.11 extracted successfully")
             return True
@@ -136,10 +150,10 @@ class RapidOCRProvider(OCRProvider):
         # First check for bundled Python (extracted from python-3.11.tar.gz)
         bundled_python = os.path.join(self._plugin_dir, 'bin', 'python311', 'python', 'bin', 'python3.11')
 
-        # Auto-extract if tarball exists but Python not yet extracted
+        # Auto-extract if archive exists but Python not yet extracted
         if not os.path.exists(bundled_python):
-            tarball = os.path.join(self._plugin_dir, 'bin', 'python311', 'python-3.11.tar.gz')
-            if os.path.exists(tarball):
+            python_archive = os.path.join(self._plugin_dir, 'bin', 'python311', 'python-3.11.tar.gz')
+            if os.path.exists(python_archive):
                 self._extract_bundled_python()
 
         if os.path.exists(bundled_python) and os.access(bundled_python, os.X_OK):
@@ -360,10 +374,9 @@ class RapidOCRProvider(OCRProvider):
             # Build environment with py_modules as ONLY Python path
             # This ensures we use our bundled packages, not the standalone Python's
             env = os.environ.copy()
-            py_modules = os.path.join(self._plugin_dir, 'py_modules')
 
-            # Set py_modules as the ONLY source for packages
-            env['PYTHONPATH'] = py_modules
+            # Use detected py_modules path (bin/py_modules for store, root for dev)
+            env['PYTHONPATH'] = self._py_modules_dir
             # Disable user site-packages
             env['PYTHONNOUSERSITE'] = '1'
             # Ensure isolated mode-like behavior

@@ -69,7 +69,9 @@ dist/
 
 # Build artifacts
 temp-build/
+dependencies_build/
 *.zip
+*.tar.gz
 out/
 cli/
 

@@ -1,6 +1,6 @@
 {
   "name": "decky-translator",
-  "version": "0.7",
+  "version": "0.7.1",
   "type": "module",
   "description": "Translate anything on your screen to your language",
   "scripts": {
@@ -53,5 +53,12 @@
         "react-dom"
       ]
     }
-  }
+  },
+  "remote_binary": [
+    {
+      "name": "decky-translator-dependencies.tar.gz",
+      "url": "https://github.com/cat-in-a-box/Decky-Translator/releases/download/__VERSION__/decky-translator-dependencies.tar.gz",
+      "sha256hash": "__SHA256__"
+    }
+  ]
 }

@@ -24,7 +24,7 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm@9
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         run: pnpm install
 
       - name: Build frontend
@@ -36,15 +36,83 @@ jobs:
           curl -L -o cli/decky "https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.8/decky-linux-x86_64"
           chmod +x cli/decky
 
+      # === Build Dependencies Tarball ===
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create dependencies directory
+        run: mkdir -p dependencies_build
+
+      - name: Install Python packages (Python 3.11)
+        run: |
+          pip install -r requirements.txt -t dependencies_build/py_modules --no-cache-dir
+
+      - name: Download Python 3.11 portable runtime
+        run: |
+          mkdir -p dependencies_build/python311
+          curl -L -o dependencies_build/python311/python-3.11.tar.gz \
+            "https://github.com/astral-sh/python-build-standalone/releases/download/20251010/cpython-3.11.14+20251010-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+          echo "e84da4b01a4017222ed3d172f4ba261c930cca40b7db5d6ad97149a41b98a14c  dependencies_build/python311/python-3.11.tar.gz" | sha256sum -c
+          cd dependencies_build/python311 && tar -xzf python-3.11.tar.gz && rm python-3.11.tar.gz
+
+      - name: Download RapidOCR models
+        run: |
+          mkdir -p dependencies_build/rapidocr/models
+          cd dependencies_build/rapidocr/models
+          curl -L -O "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_det_infer.onnx"
+          curl -L -O "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx"
+          curl -L -o ch_ppocr_mobile_v2.0_cls_infer.onnx "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_ppocr_mobile_v2.0_cls_train.onnx"
+          curl -L -O "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ppocr_keys_v1.txt"
+
+      - name: Create dependencies archive
+        run: |
+          cd dependencies_build
+          tar -czvf ../decky-translator-dependencies.tar.gz py_modules python311 rapidocr
+
+      - name: Calculate dependencies SHA256
+        id: dependencies_hash
+        run: |
+          HASH=$(sha256sum decky-translator-dependencies.tar.gz | cut -d' ' -f1)
+          echo "sha256=$HASH" >> $GITHUB_OUTPUT
+          echo "Dependencies SHA256: $HASH"
+
+      # === Update package.json with version and hash ===
+      - name: Get version tag
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="dev-${{ github.sha }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update package.json with version and hash
+        run: |
+          sed -i "s|__VERSION__|${{ steps.version.outputs.version }}|g" package.json
+          sed -i "s|__SHA256__|${{ steps.dependencies_hash.outputs.sha256 }}|g" package.json
+          echo "Updated package.json:"
+          grep -A5 "remote_binary" package.json
+
+      # === Build Plugin ===
       - name: Build plugin with Decky CLI
         run: |
           cli/decky plugin build $(pwd) -o ./out
 
-      - name: Upload build artifact
+      - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:
-          name: decky-translator
+          name: decky-translator-plugin
           path: out/*.zip
+
+      - name: Upload dependencies artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: decky-translator-dependencies
+          path: decky-translator-dependencies.tar.gz
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -53,15 +121,26 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download artifact
+      - name: Download plugin artifact
         uses: actions/download-artifact@v4
         with:
-          name: decky-translator
+          name: decky-translator-plugin
           path: ./
+
+      - name: Download dependencies artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: decky-translator-dependencies
+          path: ./
+
+      - name: List release files
+        run: ls -la
 
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          files: "*.zip"
+          files: |
+            *.zip
+            decky-translator-dependencies.tar.gz
           draft: true
           generate_release_notes: true
