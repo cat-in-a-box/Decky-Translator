@@ -3,18 +3,30 @@ name: Build and Release
 on:
   push:
     branches: [main, dev]
-    tags:
-      - 'v*.*.*'
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Version to release (e.g., v0.7.2). Leave empty for dev build only.'
+        required: false
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_release: ${{ steps.version.outputs.is_release }}
+      sha256: ${{ steps.dependencies_hash.outputs.sha256 }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -36,7 +48,6 @@ jobs:
           curl -L -o cli/decky "https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.8/decky-linux-x86_64"
           chmod +x cli/decky
 
-      # === Build Dependencies Tarball ===
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -78,26 +89,55 @@ jobs:
           echo "sha256=$HASH" >> $GITHUB_OUTPUT
           echo "Dependencies SHA256: $HASH"
 
-      # === Update package.json with version and hash ===
-      - name: Get version tag
+      - name: Get version
         id: version
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION="${{ github.ref_name }}"
+          if [[ -n "${{ inputs.release_version }}" ]]; then
+            VERSION="${{ inputs.release_version }}"
+            IS_RELEASE="true"
           else
-            VERSION="dev-${{ github.sha }}"
+            VERSION="dev-$(echo ${{ github.sha }} | cut -c1-7)"
+            IS_RELEASE="false"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
+          echo "is_release=$IS_RELEASE" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION (is_release: $IS_RELEASE)"
 
-      - name: Update package.json with version and hash
+      - name: Update package.json with release values
+        if: steps.version.outputs.is_release == 'true'
         run: |
-          sed -i "s|__VERSION__|${{ steps.version.outputs.version }}|g" package.json
-          sed -i "s|__SHA256__|${{ steps.dependencies_hash.outputs.sha256 }}|g" package.json
-          echo "Updated package.json:"
+          sed -i -E "s#/download/(__VERSION__|v[0-9]+\.[0-9]+\.[0-9]+|dev-[a-f0-9]+)/#/download/${{ steps.version.outputs.version }}/#g" package.json
+          sed -i -E "s#\"sha256hash\": \"(__SHA256__|[a-f0-9]{64})\"#\"sha256hash\": \"${{ steps.dependencies_hash.outputs.sha256 }}\"#g" package.json
           grep -A5 "remote_binary" package.json
 
-      # === Build Plugin ===
+      - name: Commit and tag release
+        if: steps.version.outputs.is_release == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet package.json; then
+            echo "No changes to package.json"
+          else
+            git add package.json
+            git commit -m "chore: update package.json for release ${{ steps.version.outputs.version }}
+
+          - Set remote_binary URL to ${{ steps.version.outputs.version }}
+          - Set SHA256 hash to ${{ steps.dependencies_hash.outputs.sha256 }}"
+
+            git push origin HEAD:main
+          fi
+
+          git tag -fa "${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin "${{ steps.version.outputs.version }}" --force
+
+      - name: Update package.json for dev build
+        if: steps.version.outputs.is_release != 'true'
+        run: |
+          sed -i -E "s#/download/(__VERSION__|v[0-9]+\.[0-9]+\.[0-9]+|dev-[a-f0-9]+)/#/download/${{ steps.version.outputs.version }}/#g" package.json
+          sed -i -E "s#\"sha256hash\": \"(__SHA256__|[a-f0-9]{64})\"#\"sha256hash\": \"${{ steps.dependencies_hash.outputs.sha256 }}\"#g" package.json
+          grep -A5 "remote_binary" package.json
+
       - name: Build plugin with Decky CLI
         run: |
           cli/decky plugin build $(pwd) -o ./out
@@ -115,7 +155,7 @@ jobs:
           path: plugin-dependencies.tar.gz
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.build.outputs.is_release == 'true'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -136,7 +176,8 @@ jobs:
       - name: Publish to GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.RELEASE_TOKEN }}
+          tag_name: ${{ needs.build.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           files: |
             Decky Translator.zip
             plugin-dependencies.tar.gz
