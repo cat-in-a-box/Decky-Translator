@@ -7,9 +7,7 @@
     "build": "shx rm -rf dist && rollup -c",
     "watch": "rollup -c -w",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "copy-to-deck": "node build_scripts/copy-to-deck.js",
-    "build:deck": "wsl -e sh -c \"rm -rf out node_modules && ./cli/decky plugin build . -o ./out\"",
-    "build:deck-and-copy": "pnpm run build:deck && pnpm run copy-to-deck"
+    "build:deck": "wsl -e sh -c \"rm -rf out node_modules && ./cli/decky plugin build . -o ./out\""
   },
   "repository": {
     "type": "git",
@@ -36,7 +34,6 @@
     "@types/react": "16.14.0",
     "@types/react-dom": "^19.1.2",
     "@types/webpack": "^5.28.0",
-    "node-scp": "^0.0.25",
     "rollup": "^4.24.0",
     "shx": "^0.3.4",
     "tslib": "^2.4.0",
