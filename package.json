@@ -57,8 +57,8 @@
   "remote_binary": [
     {
       "name": "plugin-dependencies.tar.gz",
-      "url": "https://github.com/cat-in-a-box/Decky-Translator/releases/download/__VERSION__/plugin-dependencies.tar.gz",
-      "sha256hash": "__SHA256__"
+      "url": "https://github.com/cat-in-a-box/Decky-Translator/releases/download/0.7.2/plugin-dependencies.tar.gz",
+      "sha256hash": "ee5c9cc3ba6bf9ed7122f1ca85f40047da11233857da4ca1e575b603b8df0825"
     }
   ]
 }
