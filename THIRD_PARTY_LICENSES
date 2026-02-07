@@ -1,0 +1,34 @@
+This file lists the third-party dependencies used by Decky Translator and their respective licenses.
+All pip packages also include full license files in their .dist-info directories within the plugin-dependencies.tar.gz archive.
+
+RapidOCR (rapidocr-onnxruntime)
+https://github.com/RapidAI/RapidOCR
+License: Apache License 2.0
+
+PaddleOCR (OCR models)
+https://github.com/PaddlePaddle/PaddleOCR
+License: Apache License 2.0
+
+ONNX Runtime
+https://github.com/microsoft/onnxruntime
+License: MIT License
+
+Pillow
+https://github.com/python-pillow/Pillow
+License: MIT-CMU
+
+OpenCV
+https://github.com/opencv/opencv-python
+License: MIT License
+
+Requests
+https://github.com/psf/requests
+License: Apache License 2.0
+
+urllib3
+https://github.com/urllib3/urllib3
+License: MIT License
+
+Python 3.11
+https://github.com/astral-sh/python-build-standalone
+License: Mozilla Public License 2.0
