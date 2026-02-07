@@ -76,7 +76,7 @@ class OCRSpaceProvider(OCRProvider):
             "/home/deck/homebrew/settings"
         )
         self._usage_file = os.path.join(self._data_dir, "ocrspace_usage.json")
-        logger.info("OCRSpaceProvider initialized")
+        logger.debug("OCRSpaceProvider initialized")
 
     def _load_usage(self) -> dict:
         """Load usage data from file."""
@@ -221,7 +221,7 @@ class OCRSpaceProvider(OCRProvider):
         if len(image_data) <= MAX_FILE_SIZE:
             return image_data
 
-        logger.info(f"Image size {len(image_data)} bytes exceeds limit, compressing...")
+        logger.debug(f"Image size {len(image_data)} bytes exceeds limit, compressing...")
 
         try:
             img = Image.open(io.BytesIO(image_data))
@@ -248,7 +248,7 @@ class OCRSpaceProvider(OCRProvider):
                 compressed = output.getvalue()
 
                 if len(compressed) <= MAX_FILE_SIZE:
-                    logger.info(f"Compressed to {len(compressed)} bytes (quality={quality}, scale={scale:.2f})")
+                    logger.debug(f"Compressed to {len(compressed)} bytes (quality={quality}, scale={scale:.2f})")
                     return compressed
 
                 # Reduce quality first, then scale
@@ -266,7 +266,7 @@ class OCRSpaceProvider(OCRProvider):
                     resized = img.resize(new_size, Image.Resampling.LANCZOS)
                     resized.save(output, format='JPEG', quality=quality, optimize=True)
                     compressed = output.getvalue()
-                    logger.info(f"Aggressively compressed to {len(compressed)} bytes")
+                    logger.debug(f"Aggressively compressed to {len(compressed)} bytes")
                     return compressed
 
         except Exception as e:
@@ -323,7 +323,7 @@ class OCRSpaceProvider(OCRProvider):
             # Track rate limit BEFORE making the request (API counts all attempts)
             self._track_rate_limit()
 
-            logger.info(f"Sending request to OCR.space (lang={ocr_language}, engine={engine})")
+            logger.debug(f"Sending request to OCR.space (lang={ocr_language}, engine={engine})")
             response = await asyncio.to_thread(do_request)
 
             if response.status_code == 403:
@@ -392,7 +392,7 @@ class OCRSpaceProvider(OCRProvider):
                 text_overlay = parsed_result.get('TextOverlay', {})
                 lines = text_overlay.get('Lines', [])
 
-                logger.info(f"Found {len(lines)} lines from OCR.space")
+                logger.debug(f"Found {len(lines)} lines from OCR.space")
 
                 for line_idx, line in enumerate(lines):
                     region = self._parse_line(line, line_idx)
@@ -403,7 +403,7 @@ class OCRSpaceProvider(OCRProvider):
                 if not lines:
                     parsed_text = parsed_result.get('ParsedText', '').strip()
                     if parsed_text:
-                        logger.info("Using plain text fallback (no overlay)")
+                        logger.debug("Using plain text fallback (no overlay)")
                         # Create a single region for all text
                         text_regions.append(TextRegion(
                             text=parsed_text,
@@ -415,7 +415,7 @@ class OCRSpaceProvider(OCRProvider):
         except Exception as e:
             logger.error(f"Error parsing OCR.space response: {e}")
 
-        logger.info(f"Extracted {len(text_regions)} text regions from OCR.space")
+        logger.debug(f"Extracted {len(text_regions)} text regions from OCR.space")
         return text_regions
 
     def _parse_line(self, line: dict, line_idx: int) -> TextRegion:

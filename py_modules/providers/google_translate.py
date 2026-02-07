@@ -24,7 +24,7 @@ class GoogleTranslateProvider(TranslationProvider):
         """Initialize the Google Translate provider."""
         self._api_key = api_key
         self._endpoint = "https://translation.googleapis.com/language/translate/v2"
-        logger.info("GoogleTranslateProvider initialized")
+        logger.debug("GoogleTranslateProvider initialized")
 
     def set_api_key(self, api_key: str) -> None:
         """Update the API key."""
@@ -112,7 +112,7 @@ class GoogleTranslateProvider(TranslationProvider):
             def do_request():
                 return requests.post(url, json=request_data, timeout=10.0)
 
-            logger.info(f"Translating {len(texts)} texts: {source_lang} -> {target_lang}")
+            logger.debug(f"Translating {len(texts)} texts: {source_lang} -> {target_lang}")
             response = await asyncio.to_thread(do_request)
 
             if response.status_code != 200:
@@ -137,7 +137,7 @@ class GoogleTranslateProvider(TranslationProvider):
                 for i, translation in enumerate(translations):
                     translated_text = translation.get('translatedText', texts[i] if i < len(texts) else '')
                     translated_texts.append(translated_text)
-                logger.info(f"Successfully translated {len(translated_texts)} texts")
+                logger.debug(f"Successfully translated {len(translated_texts)} texts")
                 return translated_texts
             else:
                 logger.error("Unexpected response format from Translation API")

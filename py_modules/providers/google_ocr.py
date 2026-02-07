@@ -27,7 +27,7 @@ class GoogleVisionProvider(OCRProvider):
         """Initialize the Google Vision provider."""
         self._api_key = api_key
         self._endpoint = "https://vision.googleapis.com/v1/images:annotate"
-        logger.info("GoogleVisionProvider initialized")
+        logger.debug("GoogleVisionProvider initialized")
 
     def set_api_key(self, api_key: str) -> None:
         """Update the API key."""
@@ -89,7 +89,7 @@ class GoogleVisionProvider(OCRProvider):
             def do_request():
                 return requests.post(url, json=request_data, timeout=10.0)
 
-            logger.info("Sending request to Google Cloud Vision API")
+            logger.debug("Sending request to Google Cloud Vision API")
             response = await asyncio.to_thread(do_request)
 
             if response.status_code != 200:
@@ -137,7 +137,7 @@ class GoogleVisionProvider(OCRProvider):
             if pages:
                 # Extract blocks from the first page
                 blocks = pages[0].get('blocks', [])
-                logger.info(f"Found {len(blocks)} text blocks")
+                logger.debug(f"Found {len(blocks)} text blocks")
 
                 for block_idx, block in enumerate(blocks):
                     paragraphs = block.get('paragraphs', [])
@@ -148,7 +148,7 @@ class GoogleVisionProvider(OCRProvider):
             else:
                 # Fallback to text annotations
                 text_annotations = response.get('textAnnotations', [])
-                logger.info(f"Using {len(text_annotations)} text annotations")
+                logger.debug(f"Using {len(text_annotations)} text annotations")
 
                 for idx, annotation in enumerate(text_annotations[1:], 1):
                     region = self._parse_annotation(annotation, idx)
@@ -158,7 +158,7 @@ class GoogleVisionProvider(OCRProvider):
         except Exception as e:
             logger.error(f"Error parsing Google Vision response: {e}")
 
-        logger.info(f"Extracted {len(text_regions)} text regions")
+        logger.debug(f"Extracted {len(text_regions)} text regions")
         return text_regions
 
     def _parse_paragraph(self, paragraph: dict, block_idx: int, para_idx: int) -> TextRegion:

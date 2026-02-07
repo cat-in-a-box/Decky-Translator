@@ -10,10 +10,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 import logging
-import shutil
 import json
-import base64  # Add base64 module for encoding screenshots
-import io
+import base64
 import tarfile
 
 # IMPORTANT: Set up plugin directory FIRST
@@ -108,21 +106,20 @@ if not DEPSPATH.exists():
 GSTPLUGINSPATH = DEPSPATH / "gstreamer-1.0"
 
 # Log configured paths for debugging
-logger.info(f"DECKY_PLUGIN_DIR: {DECKY_PLUGIN_DIR}")
-logger.info(f"DECKY_PLUGIN_LOG_DIR: {DECKY_PLUGIN_LOG_DIR}")
-logger.info(f"DECKY_HOME: {DECKY_HOME}")
-logger.info(f"Dependencies path: {DEPSPATH}")
-logger.info(f"GStreamer plugins path: {GSTPLUGINSPATH}")
+logger.debug(f"DECKY_PLUGIN_DIR: {DECKY_PLUGIN_DIR}")
+logger.debug(f"DECKY_PLUGIN_LOG_DIR: {DECKY_PLUGIN_LOG_DIR}")
+logger.debug(f"DECKY_HOME: {DECKY_HOME}")
+logger.debug(f"Dependencies path: {DEPSPATH}")
+logger.debug(f"GStreamer plugins path: {GSTPLUGINSPATH}")
 
 # Ensure log directory exists
 os.makedirs(DECKY_PLUGIN_LOG_DIR, exist_ok=True)
-logger.info(f"Log directory ensured: {DECKY_PLUGIN_LOG_DIR}")
 
 # Set up log files
 std_out_file_path = Path(DECKY_PLUGIN_LOG_DIR) / "decky-translator-std-out.log"
 std_out_file = open(std_out_file_path, "w")
 std_err_file = open(Path(DECKY_PLUGIN_LOG_DIR) / "decky-translator-std-err.log", "w")
-logger.info(f"Standard output logs: {std_out_file_path}")
+logger.debug(f"Standard output logs: {std_out_file_path}")
 
 # Set up file logging
 from logging.handlers import TimedRotatingFileHandler
@@ -132,7 +129,7 @@ log_file_handler = TimedRotatingFileHandler(log_file, when="midnight", backupCou
 log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logger.handlers.clear()
 logger.addHandler(log_file_handler)
-logger.setLevel(logging.DEBUG)  # Setting logger to DEBUG level for more verbose output
+logger.setLevel(logging.INFO)
 logger.info(f"Configured rotating log file: {log_file}")
 
 
@@ -212,7 +209,7 @@ class HidrawButtonMonitor:
         self.error_count = 0
         self.initialized = False
         self.lock = threading.Lock()
-        logger.info("HidrawButtonMonitor initialized")
+        logger.debug("HidrawButtonMonitor initialized")
 
     def find_device(self):
         """Find the Steam Deck controller hidraw device.
@@ -257,7 +254,6 @@ class HidrawButtonMonitor:
                 logger.debug(f"Cannot read symlink for hidraw{i}: {e}")
 
         # Fallback: try each candidate with a blocking read to see which has data
-        import select
         for i, path in candidates:
             try:
                 fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
@@ -356,8 +352,6 @@ class HidrawButtonMonitor:
         return True
 
     def stop(self):
-        """Stop the monitoring thread and close device."""
-        logger.info("Stopping HidrawButtonMonitor")
         self.running = False
 
         if self.thread is not None:
@@ -526,14 +520,14 @@ class SettingsManager:
     def __init__(self, name, settings_directory):
         self.settings_path = os.path.join(settings_directory, f"{name}.json")
         self.settings = {}
-        logger.info(f"SettingsManager initialized with path: {self.settings_path}")
+        logger.debug(f"SettingsManager initialized with path: {self.settings_path}")
 
     def read(self):
         try:
             if os.path.exists(self.settings_path):
                 with open(self.settings_path, 'r') as f:
                     self.settings = json.load(f)
-                logger.info(f"Settings loaded from {self.settings_path}: {json.dumps(self.settings)}")
+                logger.debug(f"Settings loaded from {self.settings_path}")
             else:
                 logger.warning(f"Settings file does not exist: {self.settings_path}")
         except Exception as e:
@@ -543,16 +537,11 @@ class SettingsManager:
 
     def set_setting(self, key, value):
         try:
-            previous_value = self.settings.get(key, "not_set")
             self.settings[key] = value
-            logger.info(f"Setting {key} changing from {previous_value} to {value}")
-
-            # Create directory if it doesn't exist
             os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
-
             with open(self.settings_path, 'w') as f:
                 json.dump(self.settings, f, indent=4)
-            logger.info(f"Setting {key} saved to {self.settings_path}")
+            logger.debug(f"Saved setting {key}={value}")
             return True
         except Exception as e:
             logger.error(f"Failed to save setting {key}: {str(e)}")
@@ -567,11 +556,11 @@ class SettingsManager:
 
 def get_cmd_output(cmd, log=True):
     if log:
-        logger.info(f"Executing command: {cmd}")
+        logger.debug(f"Executing command: {cmd}")
 
     try:
         output = subprocess.getoutput(cmd).strip()
-        logger.info(f"Command output: {output[:100]}{'...' if len(output) > 100 else ''}")
+        logger.debug(f"Command output: {output[:100]}{'...' if len(output) > 100 else ''}")
         return output
     except Exception as e:
         logger.error(f"Command execution failed: {str(e)}")
@@ -580,88 +569,51 @@ def get_cmd_output(cmd, log=True):
 
 
 def get_all_children(pid: int) -> list[str]:
-    logger.info(f"get_all_children: Starting to find children processes for pid {pid}")
     pids = []
     tmpPids = [str(pid)]
     try:
         while tmpPids:
             ppid = tmpPids.pop(0)
-            logger.debug(f"get_all_children: Processing parent pid {ppid}")
-            lines = []
             cmd = ["ps", "--ppid", ppid, "-o", "pid="]
-            logger.debug(f"get_all_children: Running command: {' '.join(cmd)}")
             with subprocess.Popen(cmd, stdout=subprocess.PIPE) as p:
                 lines = p.stdout.readlines()
 
-            logger.debug(f"get_all_children: Found {len(lines)} child processes for ppid {ppid}")
             for chldPid in lines:
-                # Important: decode bytes to str!
                 if isinstance(chldPid, bytes):
                     chldPid = chldPid.decode('utf-8')
                 chldPid = chldPid.strip()
                 if not chldPid:
                     continue
-                logger.debug(f"get_all_children: Adding child pid {chldPid}")
                 pids.append(chldPid)
                 tmpPids.append(chldPid)
 
-        logger.info(f"get_all_children: Found total {len(pids)} child processes: {pids}")
         return pids
     except Exception as e:
-        logger.error(f"get_all_children: Error finding child processes: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"Error finding child processes for pid {pid}: {e}")
         return pids
 
 
 def get_base64_image(image_path):
-    """Read an image file and convert it to base64 string"""
-    logger.info(f"Starting base64 encoding of image: {image_path}")
     try:
-        # Make sure the file exists and is readable
         if not os.path.exists(image_path):
             logger.error(f"Image file does not exist: {image_path}")
             return ""
 
-        # Get file size for logging
         file_size = os.path.getsize(image_path)
-        logger.info(f"Reading image file: {image_path} (size: {file_size} bytes)")
+        if file_size > 10 * 1024 * 1024:
+            logger.warning(f"Image file is very large ({file_size} bytes)")
 
-        # Check if file size is reasonable
-        if file_size > 10 * 1024 * 1024:  # 10MB limit
-            logger.warning(f"Image file is very large ({file_size} bytes), encoding may take time")
-
-        # Try to read the entire file
-        try:
-            with open(image_path, "rb") as image_file:
-                logger.debug(f"File opened successfully, reading content...")
-                content = image_file.read()  # Read the entire file
-                logger.debug(f"Content read successfully, size: {len(content)} bytes")
-                encoded_string = base64.b64encode(content).decode('utf-8')
-                logger.info(f"Base64 encoding successful for full image, length: {len(encoded_string)}")
-                return encoded_string
-        except MemoryError:
-            logger.error("Memory error when encoding full image to base64, trying with 1MB chunk")
-            with open(image_path, "rb") as image_file:
-                content = image_file.read(1024 * 1024)  # Try with 1MB
-                encoded_string = base64.b64encode(content).decode('utf-8')
-                logger.info(f"Base64 encoding successful with 1MB chunk, length: {len(encoded_string)}")
-                return encoded_string
+        with open(image_path, "rb") as image_file:
+            content = image_file.read()
+            return base64.b64encode(content).decode('utf-8')
+    except MemoryError:
+        logger.error("Memory error encoding image, trying 1MB chunk")
+        with open(image_path, "rb") as image_file:
+            content = image_file.read(1024 * 1024)
+            return base64.b64encode(content).decode('utf-8')
     except Exception as e:
-        logger.error(f"Failed to convert image to base64: {str(e)}")
-        logger.error(traceback.format_exc())
-
-        # Try one last time with a very small chunk as fallback
-        try:
-            logger.debug("Attempting last-resort encoding with small chunk size")
-            with open(image_path, "rb") as image_file:
-                content = image_file.read(50 * 1024)  # Last attempt with 50KB
-                encoded_string = base64.b64encode(content).decode('utf-8')
-                logger.info(f"Base64 encoding successful with 50KB chunk, length: {len(encoded_string)}")
-                return encoded_string
-        except Exception as inner_e:
-            logger.error(f"All base64 encoding attempts failed: {str(inner_e)}")
-            logger.error(traceback.format_exc())
-            return ""
+        logger.error(f"Failed to convert image to base64: {e}")
+        return ""
 
 
 class Plugin:
@@ -695,13 +647,10 @@ class Plugin:
 
     # Generic settings handlers
     async def get_setting(self, key, default=None):
-        """Generic method to get any setting by key"""
-        logger.info(f"Getting setting: {key}, default: {default}")
         return self._settings.get_setting(key, default)
 
     async def set_setting(self, key, value):
-        """Generic method to set any setting by key"""
-        logger.info(f"Setting {key} to: {value}")
+        logger.debug(f"Setting {key} to: {value}")
         try:
             if key == "target_language":
                 self._target_language = value
@@ -759,6 +708,8 @@ class Plugin:
                 self._pause_game_on_overlay = value
             elif key == "quick_toggle_enabled":
                 self._quick_toggle_enabled = value
+            elif key == "debug_mode":
+                logger.setLevel(logging.DEBUG if value else logging.INFO)
             elif key == "use_free_providers":
                 self._use_free_providers = value
                 # Update provider manager configuration (backwards compatibility)
@@ -794,17 +745,13 @@ class Plugin:
             else:
                 logger.warning(f"Unknown setting key: {key}")
 
-            success = self._settings.set_setting(key, value)
-            logger.info(f"Saved setting {key}: {success}")
-            return success
+            return self._settings.set_setting(key, value)
         except Exception as e:
             logger.error(f"Error setting {key}: {str(e)}")
             logger.error(traceback.format_exc())
             return False
 
     async def get_all_settings(self):
-        """Get all settings at once"""
-        logger.info("Getting all settings")
         try:
             settings = {
                 "target_language": self._target_language,
@@ -827,7 +774,6 @@ class Plugin:
                 "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
                 "debug_mode": self._settings.get_setting("debug_mode", False)
             }
-            logger.info(f"Returning all settings: {json.dumps(settings)}")
             return settings
         except Exception as e:
             logger.error(f"Error getting all settings: {str(e)}")
@@ -835,8 +781,6 @@ class Plugin:
             return {}
 
     async def get_provider_status(self):
-        """Get current provider status including usage stats."""
-        logger.info("Getting provider status")
         try:
             if self._provider_manager:
                 return self._provider_manager.get_provider_status()
@@ -846,7 +790,7 @@ class Plugin:
             return {"error": str(e)}
 
     async def take_screenshot(self, app_name: str = ""):
-        logger.info(f"Taking screenshot for app: {app_name}")
+        logger.debug(f"Taking screenshot for app: {app_name}")
         global _processing_lock
 
         if _processing_lock:
@@ -873,7 +817,7 @@ class Plugin:
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             os.makedirs(self._screenshotPath, exist_ok=True)
             screenshot_path = f"{self._screenshotPath}/{app_name}_{timestamp}.png"
-            logger.info(f"Screenshot will be saved to: {screenshot_path}")
+            logger.debug(f"Screenshot path: {screenshot_path}")
 
             # Prepare environment
             env = os.environ.copy()
@@ -898,7 +842,7 @@ class Plugin:
                 f"pngenc snapshot=true ! "
                 f"filesink location=\"{screenshot_path}\""
             )
-            logger.info(f"GStreamer screenshot command: {cmd}")
+            logger.debug(f"GStreamer command: {cmd}")
 
             # Launch subprocess asynchronously
             proc = await asyncio.create_subprocess_exec(
@@ -934,8 +878,10 @@ class Plugin:
                     out, err = await proc.communicate()
 
             logger.debug(f"GStreamer stdout: {out.decode().strip() or 'None'}")
-            logger.error(f"GStreamer stderr: {err.decode().strip() or 'None'}")
-            logger.info(f"GStreamer return code: {proc.returncode}")
+            stderr_output = err.decode().strip()
+            if stderr_output:
+                logger.debug(f"GStreamer stderr: {stderr_output}")
+            logger.debug(f"GStreamer return code: {proc.returncode}")
 
             # Give the filesystem a moment - seems to work without it
             # await asyncio.sleep(0.25)
@@ -943,7 +889,7 @@ class Plugin:
             # Check file and return
             if os.path.exists(screenshot_path) and os.path.getsize(screenshot_path) > 0:
                 size = os.path.getsize(screenshot_path)
-                logger.info(f"Screenshot saved ({size} bytes)")
+                logger.debug(f"Screenshot saved ({size} bytes)")
                 base64_data = get_base64_image(screenshot_path)
                 if base64_data:
                     return {"path": screenshot_path, "base64": base64_data}
@@ -962,138 +908,89 @@ class Plugin:
         finally:
             _processing_lock = False
 
-    # Save configurations
     async def saveConfig(self):
-        logger.info("Saving config")
         try:
-            if self._settings:
-                success1 = self._settings.set_setting("target_language", self._target_language)
-                success2 = self._settings.set_setting("google_api_key", self._google_vision_api_key)  # Save unified key
-                success3 = self._settings.set_setting("input_mode", self._input_mode)
-                success4 = self._settings.set_setting("input_language", self._input_language)
-                success5 = self._settings.set_setting("hold_time_translate", self._hold_time_translate)
-                success6 = self._settings.set_setting("hold_time_dismiss", self._hold_time_dismiss)
-                success7 = self._settings.set_setting("confidence_threshold", self._confidence_threshold)
-                success8 = self._settings.set_setting("pause_game_on_overlay", self._pause_game_on_overlay)
-                success9 = self._settings.set_setting("quick_toggle_enabled", self._quick_toggle_enabled)
-
-                logger.debug(f"Save results - target_language: {success1}, " +
-                             f"vision_api_key: {success2}, input_mode: {success3}, " +
-                             f"input_language: {success4}, hold_time_translate: {success5}, " +
-                             f"hold_time_dismiss: {success6}, confidence_threshold: {success7}, " +
-                             f"pause_game_on_overlay: {success8}, quick_toggle_enabled: {success9}")
-
-                return (success1 and success2 and success3 and success4 and
-                        success5 and success6 and success7 and success8 and success9)
-            else:
-                logger.error("Cannot save config - settings object is not initialized")
+            if not self._settings:
+                logger.error("Cannot save config - settings not initialized")
                 return False
+
+            results = [
+                self._settings.set_setting("target_language", self._target_language),
+                self._settings.set_setting("google_api_key", self._google_vision_api_key),
+                self._settings.set_setting("input_mode", self._input_mode),
+                self._settings.set_setting("input_language", self._input_language),
+                self._settings.set_setting("hold_time_translate", self._hold_time_translate),
+                self._settings.set_setting("hold_time_dismiss", self._hold_time_dismiss),
+                self._settings.set_setting("confidence_threshold", self._confidence_threshold),
+                self._settings.set_setting("pause_game_on_overlay", self._pause_game_on_overlay),
+                self._settings.set_setting("quick_toggle_enabled", self._quick_toggle_enabled),
+            ]
+            return all(results)
         except Exception as e:
-            logger.error(f"Error saving config: {str(e)}")
+            logger.error(f"Error saving config: {e}")
             logger.error(traceback.format_exc())
             return False
 
     async def is_paused(self, pid: int) -> bool:
-        logger.info(f"is_paused: Checking if process {pid} is paused")
         try:
             cmd = ["ps", "--pid", str(pid), "-o", "stat="]
-            logger.debug(f"is_paused: Running command: {' '.join(cmd)}")
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
                 stdout, stderr = p.communicate()
                 status = stdout.lstrip().decode('utf-8')
-                logger.debug(f"is_paused: Process {pid} status: '{status}'")
-                is_stopped = status.startswith('T')
-                logger.info(f"is_paused: Process {pid} is {'paused' if is_stopped else 'not paused'}")
-                return is_stopped
+                return status.startswith('T')
         except Exception as e:
             logger.error(f"is_paused: Error checking pause status: {e}")
             logger.error(traceback.format_exc())
             return False
 
     async def pause(self, pid: int) -> bool:
-        logger.info(f"pause: Attempting to pause process with pid {pid}")
+        logger.debug(f"Pausing process {pid}")
         if not pid:
-            logger.error("pause: Invalid pid (zero or None)")
             return False
 
         pids = get_all_children(pid)
         if pids:
-            # Also add the parent process to pause
             pids.insert(0, str(pid))
-            logger.info(f"pause: Pausing process {pid} and {len(pids)-1} child processes: {pids}")
-
             command = ["kill", "-SIGSTOP"]
             command.extend(pids)
-
-            logger.info(f"pause: Running command: {' '.join(command)}")
             try:
                 result = subprocess.run(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                logger.info(f"pause: Command result: code={result.returncode}, stdout={result.stdout.decode().strip()}, stderr={result.stderr.decode().strip()}")
-
-                # Verify if processes are actually paused
-                is_paused_result = await self.is_paused(pid)
-                logger.info(f"pause: Verification - is process {pid} paused: {is_paused_result}")
-
                 return result.returncode == 0
             except Exception as e:
-                logger.error(f"pause: Error executing pause command: {e}")
-                logger.error(traceback.format_exc())
+                logger.error(f"Error pausing process {pid}: {e}")
                 return False
         else:
-            logger.warning(f"pause: No child processes found for pid {pid}")
-            # Try to pause just the parent
             try:
-                logger.info(f"pause: Attempting to pause just parent process {pid}")
                 command = ["kill", "-SIGSTOP", str(pid)]
                 result = subprocess.run(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                logger.info(f"pause: Parent-only command result: code={result.returncode}, stdout={result.stdout.decode().strip()}, stderr={result.stderr.decode().strip()}")
                 return result.returncode == 0
             except Exception as e:
-                logger.error(f"pause: Error pausing parent process: {e}")
-                logger.error(traceback.format_exc())
+                logger.error(f"Error pausing process {pid}: {e}")
                 return False
 
     async def resume(self, pid: int) -> bool:
-        logger.info(f"resume: Attempting to resume process with pid {pid}")
+        logger.debug(f"Resuming process {pid}")
         if not pid:
-            logger.error("resume: Invalid pid (zero or None)")
             return False
 
         pids = get_all_children(pid)
         if pids:
-            # Also add the parent process to resume
             pids.insert(0, str(pid))
-            logger.info(f"resume: Resuming process {pid} and {len(pids)-1} child processes: {pids}")
-
             command = ["kill", "-SIGCONT"]
             command.extend(pids)
-
-            logger.info(f"resume: Running command: {' '.join(command)}")
             try:
                 result = subprocess.run(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                logger.info(f"resume: Command result: code={result.returncode}, stdout={result.stdout.decode().strip()}, stderr={result.stderr.decode().strip()}")
-
-                # Verify if processes are actually resumed
-                is_paused_result = await self.is_paused(pid)
-                logger.info(f"resume: Verification - is process {pid} still paused: {is_paused_result}")
-
                 return result.returncode == 0
             except Exception as e:
-                logger.error(f"resume: Error executing resume command: {e}")
-                logger.error(traceback.format_exc())
+                logger.error(f"Error resuming process {pid}: {e}")
                 return False
         else:
-            logger.warning(f"resume: No child processes found for pid {pid}")
-            # Try to resume just the parent
             try:
-                logger.info(f"resume: Attempting to resume just parent process {pid}")
                 command = ["kill", "-SIGCONT", str(pid)]
                 result = subprocess.run(command, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-                logger.info(f"resume: Parent-only command result: code={result.returncode}, stdout={result.stdout.decode().strip()}, stderr={result.stderr.decode().strip()}")
                 return result.returncode == 0
             except Exception as e:
-                logger.error(f"resume: Error resuming parent process: {e}")
-                logger.error(traceback.format_exc())
+                logger.error(f"Error resuming process {pid}: {e}")
                 return False
 
     async def terminate(self, pid: int) -> bool:
@@ -1121,107 +1018,73 @@ class Plugin:
             return False
 
     async def pid_from_appid(self, appid: int) -> int:
-        logger.info(f"pid_from_appid: Looking for process with AppId={appid}")
         pid = ""
         try:
-            # Original approach - looking for reaper process with AppId
             cmd = ["pgrep", "--full", "--oldest", f"/reaper\\s.*\\bAppId={appid}\\b"]
-            logger.debug(f"pid_from_appid: Running command: {' '.join(cmd)}")
             with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
                 stdout, stderr = p.communicate()
                 pid = stdout.strip()
-                logger.debug(f"pid_from_appid: Command result: stdout={pid}, stderr={stderr.decode().strip()}")
 
-            # If not found with primary method, try alternative method
             if not pid:
-                logger.debug(f"pid_from_appid: Primary method failed, trying alternative approach")
-                # Find Steam game processes directly
                 cmd = ["pgrep", "-f", f"GameId={appid}"]
-                logger.debug(f"pid_from_appid: Running alternative command: {' '.join(cmd)}")
                 with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
                     stdout, stderr = p.communicate()
                     pid = stdout.strip()
-                    logger.debug(f"pid_from_appid: Alternative command result: stdout={pid}, stderr={stderr.decode().strip()}")
 
             if pid:
-                logger.info(f"pid_from_appid: Found pid {pid} for AppId={appid}")
                 return int(pid)
             else:
-                logger.warning(f"pid_from_appid: No process found for AppId={appid}")
+                logger.debug(f"No process found for AppId={appid}")
                 return 0
         except Exception as e:
-            logger.error(f"pid_from_appid: Error finding pid for AppId={appid}: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"Error finding pid for AppId={appid}: {e}")
             return 0
 
     async def appid_from_pid(self, pid: int) -> int:
-        logger.info(f"appid_from_pid: Looking for AppId with pid={pid}")
-        # search upwards for the process that has the AppId= command line argument
+        logger.debug(f"Looking for AppId with pid={pid}")
         while pid and pid != 1:
             try:
-                args = []
-                cmdline_path = f"/proc/{pid}/cmdline"
-                logger.debug(f"appid_from_pid: Reading cmdline from {cmdline_path}")
-                with open(cmdline_path, "r") as f:
+                with open(f"/proc/{pid}/cmdline", "r") as f:
                     args = f.read().split('\0')
 
-                logger.debug(f"appid_from_pid: Process {pid} cmdline arguments: {args}")
                 for arg in args:
                     arg = arg.strip()
                     if arg.startswith("AppId="):
                         arg = arg.lstrip("AppId=")
                         if arg:
-                            logger.info(f"appid_from_pid: Found AppId={arg} for pid={pid}")
+                            logger.debug(f"Found AppId={arg} for pid={pid}")
                             return int(arg)
-            except Exception as e:
-                logger.debug(f"appid_from_pid: Error reading cmdline for pid={pid}: {e}")
+            except Exception:
+                pass
 
             try:
-                strppid = ""
                 cmd = ["ps", "--pid", str(pid), "-o", "ppid="]
-                logger.debug(f"appid_from_pid: Running command to get parent: {' '.join(cmd)}")
                 with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
-                    stdout, stderr = p.communicate()
+                    stdout, _ = p.communicate()
                     strppid = stdout.strip()
-                    logger.debug(f"appid_from_pid: Parent pid result: stdout={strppid}, stderr={stderr.decode().strip()}")
 
                 if strppid:
-                    new_pid = int(strppid)
-                    logger.debug(f"appid_from_pid: Moving up to parent pid={new_pid}")
-                    pid = new_pid
+                    pid = int(strppid)
                 else:
-                    logger.warning(f"appid_from_pid: No parent found for pid={pid}")
                     break
             except Exception as e:
-                logger.error(f"appid_from_pid: Error finding parent for pid={pid}: {e}")
-                logger.error(traceback.format_exc())
+                logger.error(f"Error finding parent for pid={pid}: {e}")
                 break
 
-        logger.warning(f"appid_from_pid: No AppId found for pid={pid}")
+        logger.debug(f"No AppId found for pid={pid}")
         return 0
 
-    # OCR text recognition using provider system
     async def recognize_text(self, image_data: str):
-        logger.info("Starting text recognition")
         try:
-            # If image_data is empty, return empty result
             if not image_data:
                 logger.error("Empty image data for text recognition")
                 return []
 
-            # Log the length of input data
-            logger.debug(f"Image data length: {len(image_data)}")
-
-            # If image data starts with data:image prefix, remove it
             if image_data.startswith('data:image'):
-                logger.debug("Stripping data:image prefix from image data")
                 image_data = image_data.split(',', 1)[1]
-                logger.debug(f"Base64 data length after stripping prefix: {len(image_data)}")
 
-            # Decode base64 to bytes for provider
             image_bytes = base64.b64decode(image_data)
 
-            # Use provider manager for OCR
             if not self._provider_manager:
                 logger.error("Provider manager not initialized")
                 return []
@@ -1231,29 +1094,25 @@ class Plugin:
                 image_bytes,
                 language=self._input_language
             )
-            elapsed_time = time.time() - start_time
-            logger.info(f"OCR completed in {elapsed_time:.2f}s, found {len(text_regions)} regions")
+            logger.info(f"OCR completed in {time.time() - start_time:.2f}s, found {len(text_regions)} regions")
 
-            # Convert TextRegion objects to dicts for JSON serialization
             return [region.to_dict() for region in text_regions]
 
         except NetworkError as e:
-            logger.error(f"Network error during text recognition: {str(e)}")
+            logger.error(f"Network error during OCR: {e}")
             return {"error": "network_error", "message": str(e)}
         except ApiKeyError as e:
-            logger.error(f"API key error during text recognition: {str(e)}")
+            logger.error(f"API key error during OCR: {e}")
             return {"error": "api_key_error", "message": "Invalid API key"}
         except RateLimitError as e:
-            logger.error(f"Rate limit error during text recognition: {str(e)}")
+            logger.error(f"Rate limit during OCR: {e}")
             return {"error": "rate_limit_error", "message": str(e)}
         except Exception as e:
-            logger.error(f"Text recognition error: {str(e)}")
+            logger.error(f"Text recognition error: {e}")
             logger.error(traceback.format_exc())
             return []
 
     async def recognize_text_file(self, image_path: str):
-        logger.info(f"Starting file-based text recognition for image: {image_path}")
-        base64_data = None
         try:
             if not os.path.exists(image_path):
                 logger.error(f"Image file does not exist: {image_path}")
@@ -1264,169 +1123,116 @@ class Plugin:
                 logger.error("Failed to encode image for OCR")
                 return []
 
-            # Call positional so 'self' is bound correctly
             return await Plugin.recognize_text(self, base64_data)
         except Exception as e:
             logger.error(f"recognize_text_file error: {e}")
             logger.error(traceback.format_exc())
             return []
         finally:
-            # Clean up the temporary screenshot file regardless of success or failure
             if image_path and os.path.exists(image_path):
                 try:
                     os.remove(image_path)
-                    logger.info(f"Deleted temporary screenshot file: {image_path}")
+                    logger.debug(f"Deleted temporary screenshot: {image_path}")
                 except Exception as cleanup_error:
-                    logger.warning(f"Failed to delete temporary screenshot file: {cleanup_error}")
+                    logger.warning(f"Failed to delete temporary screenshot: {cleanup_error}")
 
-    # Translation using provider system
     async def translate_text(self, text_regions, target_language=None, input_language=None):
-        logger.info(
-            f"Starting text translation to {target_language or self._target_language} from {input_language or self._input_language}")
         try:
-            # If no text regions, return empty result
             if not text_regions:
-                logger.info("No text regions to translate")
                 return []
 
-            # Use provided target language or fall back to configured one
             target_lang = target_language or self._target_language
             input_lang = input_language or self._input_language
-            logger.debug(f"Using target language: {target_lang}, input language: {input_lang}")
 
-            # Use provider manager for translation
             if not self._provider_manager:
                 logger.error("Provider manager not initialized")
                 return None
 
-            # Extract texts from regions
-            texts_to_translate = []
-            for idx, region in enumerate(text_regions):
-                texts_to_translate.append(region["text"])
-                logger.debug(
-                    f"Text region {idx} for translation: '{region['text'][:30]}{'...' if len(region['text']) > 30 else ''}'")
+            texts_to_translate = [region["text"] for region in text_regions]
 
-            # Translate using provider
             start_time = time.time()
             translated_texts = await self._provider_manager.translate_text(
                 texts_to_translate,
                 source_lang=input_lang,
                 target_lang=target_lang
             )
-            elapsed_time = time.time() - start_time
-            logger.info(f"Translation completed in {elapsed_time:.2f}s")
+            logger.info(f"Translation completed in {time.time() - start_time:.2f}s, {len(texts_to_translate)} regions")
 
-            # Combine translations with original regions
             translated_regions = []
             for i, translated_text in enumerate(translated_texts):
                 if i < len(text_regions):
-                    translated_region = {
+                    translated_regions.append({
                         **text_regions[i],
                         "translatedText": translated_text
-                    }
-                    translated_regions.append(translated_region)
+                    })
 
-            logger.info(f"Processed {len(translated_regions)} translated regions")
             return translated_regions
 
         except NetworkError as e:
-            logger.error(f"Network error during translation: {str(e)}")
+            logger.error(f"Network error during translation: {e}")
             return {"error": "network_error", "message": str(e)}
         except ApiKeyError as e:
-            logger.error(f"API key error during translation: {str(e)}")
+            logger.error(f"API key error during translation: {e}")
             return {"error": "api_key_error", "message": "Invalid API key"}
         except Exception as e:
-            logger.error(f"Translation error: {str(e)}")
+            logger.error(f"Translation error: {e}")
             logger.error(traceback.format_exc())
             return None
 
-    # Get the enabled state of the plugin from settings
     async def get_enabled_state(self):
-        """Get the enabled state of the plugin from settings"""
-        logger.info("Getting enabled state")
         return await self.get_setting("enabled", True)
 
-    # Set and save the enabled state of the plugin
     async def set_enabled_state(self, enabled):
-        """Set and save the enabled state of the plugin"""
-        logger.info(f"Setting enabled state to: {enabled}")
         return await self.set_setting("enabled", enabled)
 
     async def get_input_language(self):
-        logger.info(f"Getting input language")
         return self._input_language
 
     async def set_input_language(self, language):
-        logger.info(f"Setting input language to: {language}")
         return await self.set_setting("input_language", language)
 
     async def get_confidence_threshold(self):
-        """Get the confidence threshold for text recognition"""
-        logger.info(f"Getting confidence threshold")
         return self._confidence_threshold
 
     async def set_confidence_threshold(self, threshold: float):
-        """Set the confidence threshold for text recognition"""
-        logger.info(f"Setting confidence threshold to: {threshold}")
         return await self.set_setting("confidence_threshold", threshold)
 
     async def get_pause_game_on_overlay(self):
-        """Get the setting for pausing game when overlay is shown"""
-        logger.info(f"Getting pause game on overlay setting")
         return self._pause_game_on_overlay
 
     async def set_pause_game_on_overlay(self, enabled: bool):
-        """Set whether to pause the game when overlay is shown"""
-        logger.info(f"Setting pause game on overlay to: {enabled}")
         self._pause_game_on_overlay = enabled
         return await self.set_setting("pause_game_on_overlay", enabled)
 
-    # Get the current target language
     async def get_target_language(self):
-        logger.info(f"Getting target language")
         return self._target_language
 
-    # Set a new target language
     async def set_target_language(self, language):
-        logger.info(f"Setting target language to: {language}")
         return await self.set_setting("target_language", language)
 
-    # Get the current input mode
     async def get_input_mode(self):
-        logger.info(f"Getting input mode")
         return self._input_mode
 
-    # Set a new input mode
     async def set_input_mode(self, mode):
-        logger.info(f"Setting input mode to: {mode}")
         return await self.set_setting("input_mode", mode)
 
-    # Hidraw button monitor methods
     async def start_hidraw_monitor(self):
-        """Start the hidraw button monitor for low-level button detection."""
-        logger.info("Starting hidraw button monitor")
         try:
             if self._hidraw_monitor is None:
                 self._hidraw_monitor = HidrawButtonMonitor()
 
             if self._hidraw_monitor.running:
-                logger.info("Hidraw monitor already running")
                 return {"success": True, "message": "Already running"}
 
             if self._hidraw_monitor.start():
-                logger.info("Hidraw monitor started successfully")
                 return {"success": True, "message": "Monitor started"}
             else:
-                logger.error("Failed to start hidraw monitor")
                 return {"success": False, "error": "Failed to initialize device"}
         except Exception as e:
             logger.error(f"Error starting hidraw monitor: {e}")
-            logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}
 
     async def stop_hidraw_monitor(self):
-        """Stop the hidraw button monitor."""
-        logger.info("Stopping hidraw button monitor")
         try:
             if self._hidraw_monitor:
                 self._hidraw_monitor.stop()
@@ -1473,135 +1279,57 @@ class Plugin:
             return {"success": False, "error": str(e)}
 
     async def _main(self):
-        logger.info("=== Plugin initialization ===")
+        logger.info("Plugin initialization started")
         try:
-            # 1) Initiate SettingsManager with correct plugin-specific name
             self._settings = SettingsManager(
                 name="decky-translator-settings",
                 settings_directory=settingsDir
             )
-
-            # 2) Read existing settings BEFORE setting defaults
             self._settings.read()
 
-            # 3) Load values from settings
-            # Get saved target language or use default
-            saved_lang = self._settings.get_setting("target_language")
-            if saved_lang:
-                logger.info(f"Using saved target language: {saved_lang}")
-                self._target_language = saved_lang
-            else:
-                logger.info(f"No saved target language, using default: {self._target_language}")
-                # Only save default if no setting exists
-                self._settings.set_setting("target_language", self._target_language)
+            def load_setting(key, default):
+                saved = self._settings.get_setting(key)
+                if saved is not None:
+                    return saved
+                self._settings.set_setting(key, default)
+                return default
 
-            # Get saved input language or use default
-            saved_input_lang = self._settings.get_setting("input_language")
-            if saved_input_lang:
-                logger.info(f"Using saved input language: {saved_input_lang}")
-                self._input_language = saved_input_lang
-            else:
-                logger.info(f"No saved input language, using default: {self._input_language}")
-                # Only save default if no setting exists
-                self._settings.set_setting("input_language", self._input_language)
+            # Load basic settings
+            self._target_language = load_setting("target_language", self._target_language)
+            self._input_language = load_setting("input_language", self._input_language)
+            self._input_mode = load_setting("input_mode", self._input_mode)
+            self._hold_time_translate = load_setting("hold_time_translate", self._hold_time_translate)
+            self._hold_time_dismiss = load_setting("hold_time_dismiss", self._hold_time_dismiss)
+            self._confidence_threshold = load_setting("confidence_threshold", self._confidence_threshold)
+            self._pause_game_on_overlay = load_setting("pause_game_on_overlay", self._pause_game_on_overlay)
+            self._quick_toggle_enabled = load_setting("quick_toggle_enabled", self._quick_toggle_enabled)
 
-            # Get saved input mode or use default
-            saved_input_mode = self._settings.get_setting("input_mode")
-            if saved_input_mode is not None:
-                logger.info(f"Using saved input mode: {saved_input_mode}")
-                self._input_mode = saved_input_mode
-            else:
-                logger.info(f"No saved input mode, using default: {self._input_mode}")
-                # Only save default if no setting exists
-                self._settings.set_setting("input_mode", self._input_mode)
+            os.makedirs(self._screenshotPath, exist_ok=True)
 
-            # Get saved hold time translate or use default
-            hold_time_translate = self._settings.get_setting("hold_time_translate")
-            if hold_time_translate:
-                logger.info(f"Using saved hold time translate: {hold_time_translate}")
-                self._hold_time_translate = hold_time_translate
-            else:
-                logger.info(f"No saved hold time translate, using default: {self._hold_time_translate}")
-                # Only save default if no setting exists
-                self._settings.set_setting("hold_time_translate", self._hold_time_translate)
-
-            # Get saved hold time dismiss or use default
-            hold_time_dismiss = self._settings.get_setting("hold_time_dismiss")
-            if hold_time_dismiss:
-                logger.info(f"Using saved hold time dismiss: {hold_time_dismiss}")
-                self._hold_time_dismiss = hold_time_dismiss
-            else:
-                logger.info(f"No saved hold time dismiss, using default: {self._hold_time_dismiss}")
-                # Only save default if no setting exists
-                self._settings.set_setting("hold_time_dismiss", self._hold_time_dismiss)
-
-            # Get enabled state
-            saved_enabled = self._settings.get_setting("enabled", True)
-            logger.info(f"Plugin enabled state: {saved_enabled}")
-
-            # Make sure the directory exists
-            try:
-                os.makedirs(self._screenshotPath, exist_ok=True)
-                logger.debug(f"Output directory ensured: {self._screenshotPath}")
-            except Exception as dir_err:
-                logger.error(f"Error creating output directory: {str(dir_err)}")
-                logger.error(traceback.format_exc())
-
-            # Load Google API key (single key for both Vision and Translate)
-            # Also check legacy keys for backwards compatibility
             google_api_key = self._settings.get_setting("google_api_key", "")
-            if not google_api_key:
-                # Fallback to legacy keys if new key not set
-                google_api_key = self._settings.get_setting("google_vision_api_key", "")
-            logger.info(f"Google API key length: {len(google_api_key)}")
-
-            # Set API key if it exists in settings
             if google_api_key:
                 self._google_vision_api_key = google_api_key
                 self._google_translate_api_key = google_api_key
-                # Save to new key format for future
-                self._settings.set_setting("google_api_key", google_api_key)
-            else:
-                logger.info("No Google API key configured - will use free providers by default")
 
-            # Load ocr_provider setting (new way)
             saved_ocr_provider = self._settings.get_setting("ocr_provider")
             if saved_ocr_provider is not None:
-                logger.info(f"Using saved ocr_provider: {saved_ocr_provider}")
                 self._ocr_provider = saved_ocr_provider
-                # Derive use_free_providers for backwards compatibility
                 self._use_free_providers = (saved_ocr_provider != "googlecloud")
             else:
-                # Try to migrate from old use_free_providers setting
-                saved_use_free = self._settings.get_setting("use_free_providers")
-                if saved_use_free is not None:
-                    logger.info(f"Migrating from use_free_providers: {saved_use_free}")
-                    self._use_free_providers = saved_use_free
-                    # Map old setting to new: True -> "rapidocr", False -> "googlecloud"
-                    self._ocr_provider = "rapidocr" if saved_use_free else "googlecloud"
-                else:
-                    logger.info(f"No saved ocr_provider, using default: {self._ocr_provider}")
-                # Save the new ocr_provider setting
                 self._settings.set_setting("ocr_provider", self._ocr_provider)
 
-            # Load translation_provider setting
+            # Load translation provider
             saved_translation_provider = self._settings.get_setting("translation_provider")
             if saved_translation_provider is not None:
-                logger.info(f"Using saved translation_provider: {saved_translation_provider}")
                 self._translation_provider = saved_translation_provider
             else:
-                # Backwards compatibility: derive from ocr_provider
-                # If ocr_provider is googlecloud, use googlecloud translation; otherwise use free
                 if self._ocr_provider == "googlecloud":
                     self._translation_provider = "googlecloud"
                 else:
                     self._translation_provider = "freegoogle"
-                logger.info(f"No saved translation_provider, derived from ocr_provider: {self._translation_provider}")
-                # Save the translation_provider setting
                 self._settings.set_setting("translation_provider", self._translation_provider)
 
             # Initialize provider manager
-            logger.info("Initializing provider manager...")
             self._provider_manager = ProviderManager()
             self._provider_manager.configure(
                 use_free_providers=self._use_free_providers,
@@ -1609,106 +1337,47 @@ class Plugin:
                 ocr_provider=self._ocr_provider,
                 translation_provider=self._translation_provider
             )
+
+            # Load and apply RapidOCR-specific settings
+            self._rapidocr_confidence = load_setting("rapidocr_confidence", self._rapidocr_confidence)
+            self._rapidocr_box_thresh = load_setting("rapidocr_box_thresh", self._rapidocr_box_thresh)
+            self._rapidocr_unclip_ratio = load_setting("rapidocr_unclip_ratio", self._rapidocr_unclip_ratio)
+            self._provider_manager.set_rapidocr_confidence(self._rapidocr_confidence)
+            self._provider_manager.set_rapidocr_box_thresh(self._rapidocr_box_thresh)
+            self._provider_manager.set_rapidocr_unclip_ratio(self._rapidocr_unclip_ratio)
+
+            # Apply debug_mode log level
+            if self._settings.get_setting("debug_mode", False):
+                logger.setLevel(logging.DEBUG)
+                logger.debug("Debug logging enabled")
+
             provider_status = self._provider_manager.get_provider_status()
-            logger.info(f"Provider manager initialized: {provider_status}")
-
-            # Set confidence threshold
-            saved_confidence = self._settings.get_setting("confidence_threshold")
-            if saved_confidence is not None:
-                logger.info(f"Using saved confidence threshold: {saved_confidence}")
-                self._confidence_threshold = saved_confidence
-            else:
-                logger.info(f"No saved confidence threshold, using default: {self._confidence_threshold}")
-                # Only save default if no setting exists
-                self._settings.set_setting("confidence_threshold", self._confidence_threshold)
-
-            # Set RapidOCR-specific confidence threshold
-            saved_rapidocr_conf = self._settings.get_setting("rapidocr_confidence")
-            if saved_rapidocr_conf is not None:
-                logger.info(f"Using saved RapidOCR confidence: {saved_rapidocr_conf}")
-                self._rapidocr_confidence = saved_rapidocr_conf
-            else:
-                logger.info(f"No saved RapidOCR confidence, using default: {self._rapidocr_confidence}")
-                # Only save default if no setting exists
-                self._settings.set_setting("rapidocr_confidence", self._rapidocr_confidence)
-            # Apply RapidOCR confidence to provider manager
-            if self._provider_manager:
-                self._provider_manager.set_rapidocr_confidence(self._rapidocr_confidence)
-
-            # Set RapidOCR box threshold
-            saved_rapidocr_box = self._settings.get_setting("rapidocr_box_thresh")
-            if saved_rapidocr_box is not None:
-                logger.info(f"Using saved RapidOCR box_thresh: {saved_rapidocr_box}")
-                self._rapidocr_box_thresh = saved_rapidocr_box
-            else:
-                logger.info(f"No saved RapidOCR box_thresh, using default: {self._rapidocr_box_thresh}")
-                self._settings.set_setting("rapidocr_box_thresh", self._rapidocr_box_thresh)
-            if self._provider_manager:
-                self._provider_manager.set_rapidocr_box_thresh(self._rapidocr_box_thresh)
-
-            # Set RapidOCR unclip ratio
-            saved_rapidocr_unclip = self._settings.get_setting("rapidocr_unclip_ratio")
-            if saved_rapidocr_unclip is not None:
-                logger.info(f"Using saved RapidOCR unclip_ratio: {saved_rapidocr_unclip}")
-                self._rapidocr_unclip_ratio = saved_rapidocr_unclip
-            else:
-                logger.info(f"No saved RapidOCR unclip_ratio, using default: {self._rapidocr_unclip_ratio}")
-                self._settings.set_setting("rapidocr_unclip_ratio", self._rapidocr_unclip_ratio)
-            if self._provider_manager:
-                self._provider_manager.set_rapidocr_unclip_ratio(self._rapidocr_unclip_ratio)
-
-            # Set pause game on overlay
-            saved_pause_game = self._settings.get_setting("pause_game_on_overlay")
-            if saved_pause_game is not None:
-                logger.info(f"Using saved pause game on overlay: {saved_pause_game}")
-                self._pause_game_on_overlay = saved_pause_game
-            else:
-                logger.info(f"No saved pause game on overlay, using default: {self._pause_game_on_overlay}")
-                # Only save default if no setting exists
-                self._settings.set_setting("pause_game_on_overlay", self._pause_game_on_overlay)
-
-            # Set quick toggle enabled
-            saved_quick_toggle = self._settings.get_setting("quick_toggle_enabled")
-            if saved_quick_toggle is not None:
-                logger.info(f"Using saved quick toggle enabled: {saved_quick_toggle}")
-                self._quick_toggle_enabled = saved_quick_toggle
-            else:
-                logger.info(f"No saved quick toggle enabled, using default: {self._quick_toggle_enabled}")
-                # Only save default if no setting exists
-                self._settings.set_setting("quick_toggle_enabled", self._quick_toggle_enabled)
-
-            logger.info(f"Config initialized successfully, using path: {self._screenshotPath}")
+            logger.info(f"Initialized - OCR: {provider_status.get('ocr_provider', '?')}, "
+                        f"Translation: {provider_status.get('translation_provider', '?')}, "
+                        f"Target lang: {self._target_language}")
 
             # Start hidraw button monitor
-            logger.info("Initializing hidraw button monitor...")
             self._hidraw_monitor = HidrawButtonMonitor()
             if self._hidraw_monitor.start():
-                logger.info("Hidraw button monitor started successfully")
+                logger.info("Hidraw button monitor started")
             else:
-                logger.warning("Failed to start hidraw button monitor - button detection may not work")
+                logger.warning("Failed to start hidraw button monitor")
 
         except Exception as e:
-            logger.error(f"Error during initialization: {str(e)}")
+            logger.error(f"Error during initialization: {e}")
             logger.error(traceback.format_exc())
         return
 
     async def _unload(self):
-        logger.info("=== Unloading plugin ===")
+        logger.info("Unloading plugin")
         try:
-            # Stop hidraw button monitor
             if self._hidraw_monitor:
-                logger.info("Stopping hidraw button monitor...")
                 self._hidraw_monitor.stop()
                 self._hidraw_monitor = None
-                logger.info("Hidraw button monitor stopped")
 
-            # Close log files
             std_out_file.close()
             std_err_file.close()
-            logger.info("Standard output log files closed")
-
-            # Additional cleanup can go here
         except Exception as e:
-            logger.error(f"Error during plugin unload: {str(e)}")
+            logger.error(f"Error during plugin unload: {e}")
             logger.error(traceback.format_exc())
         return
