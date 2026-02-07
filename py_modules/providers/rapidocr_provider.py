@@ -121,7 +121,7 @@ class RapidOCRProvider(OCRProvider):
         root_py_modules = os.path.join(self._plugin_dir, "py_modules")
         self._py_modules_dir = bin_py_modules if os.path.exists(bin_py_modules) else root_py_modules
 
-        logger.info(
+        logger.debug(
             f"RapidOCRProvider initialized "
             f"(plugin_dir={self._plugin_dir}, min_confidence={min_confidence})"
         )
@@ -134,12 +134,12 @@ class RapidOCRProvider(OCRProvider):
         if not os.path.exists(python_archive):
             return False
 
-        logger.info(f"Extracting bundled Python 3.11 from {python_archive}...")
+        logger.debug(f"Extracting bundled Python 3.11 from {python_archive}...")
         try:
             import tarfile
             with tarfile.open(python_archive, 'r:gz') as tar:
                 tar.extractall(path=python311_dir)
-            logger.info("Python 3.11 extracted successfully")
+            logger.debug("Python 3.11 extracted successfully")
             return True
         except Exception as e:
             logger.error(f"Failed to extract Python 3.11: {e}")
@@ -157,7 +157,7 @@ class RapidOCRProvider(OCRProvider):
                 self._extract_bundled_python()
 
         if os.path.exists(bundled_python) and os.access(bundled_python, os.X_OK):
-            logger.info(f"Found bundled Python 3.11 at: {bundled_python}")
+            logger.debug(f"Found bundled Python 3.11 at: {bundled_python}")
             return bundled_python
 
         # Fall back to system Python 3.11 locations
@@ -169,7 +169,7 @@ class RapidOCRProvider(OCRProvider):
 
         for path in candidates:
             if os.path.exists(path) and os.access(path, os.X_OK):
-                logger.info(f"Found system Python 3.11 at: {path}")
+                logger.debug(f"Found system Python 3.11 at: {path}")
                 return path
 
         return None
@@ -196,7 +196,7 @@ class RapidOCRProvider(OCRProvider):
         ])
 
         if models_exist:
-            logger.info(f"RapidOCR models found at {self._models_dir}")
+            logger.debug(f"RapidOCR models found at {self._models_dir}")
         else:
             self._init_error = "RapidOCR models not found"
             logger.warning(self._init_error)
@@ -215,8 +215,8 @@ class RapidOCRProvider(OCRProvider):
             logger.warning(self._init_error)
             return False
 
-        logger.info(f"RapidOCR: Using Python interpreter: {self._python_path}")
-        logger.info("RapidOCR subprocess mode ready")
+        logger.debug(f"RapidOCR: Using Python interpreter: {self._python_path}")
+        logger.debug("RapidOCR subprocess mode ready")
         return True
 
     @property
@@ -261,7 +261,7 @@ class RapidOCRProvider(OCRProvider):
                         Higher values = fewer results but more accurate.
         """
         self._min_confidence = max(0.0, min(1.0, confidence))
-        logger.info(f"RapidOCRProvider min_confidence set to {self._min_confidence}")
+        logger.debug(f"RapidOCRProvider min_confidence set to {self._min_confidence}")
 
     def set_box_thresh(self, box_thresh: float) -> None:
         """
@@ -273,7 +273,7 @@ class RapidOCRProvider(OCRProvider):
                         Higher values = fewer but more confident boxes.
         """
         self._box_thresh = max(0.0, min(1.0, box_thresh))
-        logger.info(f"RapidOCRProvider box_thresh set to {self._box_thresh}")
+        logger.debug(f"RapidOCRProvider box_thresh set to {self._box_thresh}")
 
     def set_unclip_ratio(self, unclip_ratio: float) -> None:
         """
@@ -284,7 +284,7 @@ class RapidOCRProvider(OCRProvider):
                           Higher values = larger text regions.
         """
         self._unclip_ratio = max(1.0, min(3.0, unclip_ratio))
-        logger.info(f"RapidOCRProvider unclip_ratio set to {self._unclip_ratio}")
+        logger.debug(f"RapidOCRProvider unclip_ratio set to {self._unclip_ratio}")
 
     def get_init_error(self) -> Optional[str]:
         """Return any initialization error message."""
@@ -368,7 +368,7 @@ class RapidOCRProvider(OCRProvider):
         temp_image_path = None
         try:
             start_time = time.time()
-            logger.info("RapidOCR: Starting subprocess OCR...")
+            logger.debug("RapidOCR: Starting subprocess OCR...")
 
             # Save image to temp file
             temp_image_path = os.path.join(
@@ -378,7 +378,7 @@ class RapidOCRProvider(OCRProvider):
 
             with open(temp_image_path, 'wb') as f:
                 f.write(image_data)
-            logger.info(f"RapidOCR: Saved temp image to {temp_image_path}")
+            logger.debug(f"RapidOCR: Saved temp image to {temp_image_path}")
 
             # Build environment with py_modules as ONLY Python path
             # This ensures we use our bundled packages, not the standalone Python's
@@ -411,7 +411,7 @@ class RapidOCRProvider(OCRProvider):
                 str(self._box_thresh),
                 str(self._unclip_ratio)
             ]
-            logger.info(f"RapidOCR: Running subprocess: {' '.join(cmd)}")
+            logger.debug(f"RapidOCR: Running subprocess: {' '.join(cmd)}")
 
             result = subprocess.run(
                 cmd,
@@ -422,7 +422,7 @@ class RapidOCRProvider(OCRProvider):
             )
 
             elapsed = time.time() - start_time
-            logger.info(f"RapidOCR: Subprocess completed in {elapsed:.2f}s")
+            logger.debug(f"RapidOCR: Subprocess completed in {elapsed:.2f}s")
 
             if result.returncode != 0:
                 logger.error(f"RapidOCR: Subprocess error: {result.stderr}")
@@ -455,7 +455,7 @@ class RapidOCRProvider(OCRProvider):
                     is_dialog=region.get("is_dialog", False)
                 ))
 
-            logger.info(f"RapidOCR: Found {len(text_regions)} text regions in {elapsed:.2f}s")
+            logger.debug(f"RapidOCR: Found {len(text_regions)} text regions in {elapsed:.2f}s")
             return text_regions
 
         except subprocess.TimeoutExpired:

@@ -49,7 +49,7 @@ class FreeTranslateProvider(TranslationProvider):
 
     def __init__(self):
         """Initialize the free translation provider."""
-        logger.info("FreeTranslateProvider initialized")
+        logger.debug("FreeTranslateProvider initialized")
 
     @property
     def name(self) -> str:
@@ -193,7 +193,7 @@ class FreeTranslateProvider(TranslationProvider):
         src = self._map_language(source_lang)
         tgt = self._map_language(target_lang)
 
-        logger.info(f"Batch translating {len(texts)} texts in parallel: {src} -> {tgt}")
+        logger.debug(f"Batch translating {len(texts)} texts in parallel: {src} -> {tgt}")
 
         # Run parallel translation in thread pool
         def do_parallel_translate():
@@ -256,5 +256,5 @@ class FreeTranslateProvider(TranslationProvider):
 
         results = await asyncio.to_thread(do_parallel_translate)
 
-        logger.info(f"Batch translation complete: {len(results)} results")
+        logger.debug(f"Batch translation complete: {len(results)} results")
         return results

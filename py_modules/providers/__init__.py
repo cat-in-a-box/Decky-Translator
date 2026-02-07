@@ -57,7 +57,7 @@ class ProviderManager:
         self._rapidocr_box_thresh = 0.5  # Default RapidOCR box detection threshold (0.0-1.0)
         self._rapidocr_unclip_ratio = 1.6  # Default RapidOCR box expansion ratio (1.0-3.0)
 
-        logger.info("ProviderManager initialized")
+        logger.debug("ProviderManager initialized")
 
     def configure(
         self,
@@ -106,7 +106,7 @@ class ProviderManager:
         if ProviderType.GOOGLE in self._translation_providers:
             self._translation_providers[ProviderType.GOOGLE].set_api_key(google_api_key)
 
-        logger.info(
+        logger.debug(
             f"Provider config updated: ocr_provider={self._ocr_provider_preference}, "
             f"translation_provider={self._translation_provider_preference}, "
             f"google_api_key_set={bool(google_api_key)}"
@@ -124,7 +124,7 @@ class ProviderManager:
         rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
         if rapidocr:
             rapidocr.set_min_confidence(confidence)
-        logger.info(f"RapidOCR confidence set to {confidence}")
+        logger.debug(f"RapidOCR confidence set to {confidence}")
 
     def set_rapidocr_box_thresh(self, box_thresh: float) -> None:
         """
@@ -137,7 +137,7 @@ class ProviderManager:
         rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
         if rapidocr:
             rapidocr.set_box_thresh(box_thresh)
-        logger.info(f"RapidOCR box_thresh set to {box_thresh}")
+        logger.debug(f"RapidOCR box_thresh set to {box_thresh}")
 
     def set_rapidocr_unclip_ratio(self, unclip_ratio: float) -> None:
         """
@@ -150,7 +150,7 @@ class ProviderManager:
         rapidocr = self._ocr_providers.get(ProviderType.RAPIDOCR)
         if rapidocr:
             rapidocr.set_unclip_ratio(unclip_ratio)
-        logger.info(f"RapidOCR unclip_ratio set to {unclip_ratio}")
+        logger.debug(f"RapidOCR unclip_ratio set to {unclip_ratio}")
 
     def get_ocr_provider(
         self,
@@ -236,7 +236,7 @@ class ProviderManager:
         provider = self.get_ocr_provider()
         if provider and provider.is_available(language):
             provider_name = provider.name
-            logger.info(f"Using {provider_name} for OCR")
+            logger.debug(f"Using {provider_name} for OCR")
             return await provider.recognize(image_data, language)
 
         logger.warning("No OCR provider available")
@@ -265,7 +265,7 @@ class ProviderManager:
         provider = self.get_translation_provider()
         if provider and provider.is_available(source_lang, target_lang):
             provider_name = provider.name
-            logger.info(f"Using {provider_name} for translation")
+            logger.debug(f"Using {provider_name} for translation")
             return await provider.translate_batch(texts, source_lang, target_lang)
 
         logger.warning("No translation provider available")
