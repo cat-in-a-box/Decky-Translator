@@ -1,4 +1,6 @@
-# Decky Translator
+<p align="center">
+  <img src="assets/readme-logo.png" alt="Decky Translator" />
+</p>
 
 ![GitHub Release](https://img.shields.io/github/v/release/cat-in-a-box/Decky-Translator)
 ![License](https://img.shields.io/github/license/cat-in-a-box/Decky-Translator?color=green)
