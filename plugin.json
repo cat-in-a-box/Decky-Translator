@@ -6,6 +6,6 @@
   "publish": {
     "tags": ["Translation"],
     "description": "Translate anything on your screen to your language",
-    "image": ""
+    "image": "https://raw.githubusercontent.com/cat-in-a-box/Decky-Translator/main/assets/store-image.png"
   }
 }
