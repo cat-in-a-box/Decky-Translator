@@ -8,18 +8,15 @@
 
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/alexanderdev)
 
-A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen. 
-Might be helpful for playing games while learning a new language or some other purposes (you tell me!).
+A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen.
+
+It captures your screen, recognizes text using OCR, translates it and then shows the result with screen overlay.
+
+Might be helpful for learning a new language by playing games or some other purposes (you tell me!).
 
 ![Screenshot](assets/screenshot_1.jpg)
 
-## Features
-
-- **On-Screen Text Recognition**: Capture your current screen and extract text using OCR technology
-- **Text Translation**: Translate detected text to your preferred language
-- **18 Supported Languages**: Including auto-detection for source language
-- **Customizable Controls**: Multiple button/combo options with adjustable hold times
-- **Game Pause Option**: Optionally pause the game while the translation overlay is visible
+![Translation Demo](assets/translation.gif)
 
 ## Requirements
 
