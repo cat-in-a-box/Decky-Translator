@@ -111,6 +111,23 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                     />
                 </PanelSectionRow>
 
+                <PanelSectionRow>
+                    <SliderField
+                        value={settings.fontScale}
+                        max={3}
+                        min={0.5}
+                        step={0.1}
+                        label="Overlay Font Scale"
+                        description="Increase if translated text is too small. Can be useful for external monitors"
+                        showValue={true}
+                        valueSuffix="x"
+                        onChange={(value) => {
+                            const rounded = Math.round(value * 10) / 10;
+                            updateSetting('fontScale', rounded, 'Font scale');
+                        }}
+                    />
+                </PanelSectionRow>
+
                 {/* Quick toggle option - only show for combo modes */}
                 {(settings.inputMode === InputMode.L4_R4_COMBO ||
                     settings.inputMode === InputMode.L5_R5_COMBO ||
