@@ -45,7 +45,8 @@ const languageOptions = [
     { label: "🇮🇳 Hindi", data: "hi" },
     { label: "🇵🇱 Polish", data: "pl" },
     { label: "🇹🇷 Turkish", data: "tr" },
-    { label: "🇺🇦 Ukrainian", data: "uk" }
+    { label: "🇺🇦 Ukrainian", data: "uk" },
+    { label: "🇷🇴 Romanian", data: "ro" }
 ];
 
 const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto");
