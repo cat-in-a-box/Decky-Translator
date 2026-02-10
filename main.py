@@ -538,7 +538,8 @@ class EvdevGamepadMonitor:
     Filters out Valve's built-in controller (handled by HidrawButtonMonitor).
     """
 
-    SCAN_INTERVAL = 5.0  # seconds between device scans
+    SCAN_INTERVAL = 5.0      # seconds between device scans
+    CACHE_CLEAR_INTERVAL = 60  # seconds before re-checking rejected devices
 
     BUTTON_MAP = {
         304: 'A',       # BTN_A / BTN_SOUTH
@@ -563,6 +564,8 @@ class EvdevGamepadMonitor:
         self.thread = None
         self.devices = {}  # fd -> InputDevice
         self.device_paths = set()  # tracked device paths
+        self._rejected_paths = set()  # paths we already checked and dismissed
+        self._last_cache_clear = 0
         self.current_buttons = set()
         self.lock = threading.Lock()
         self.last_scan_time = 0
@@ -583,28 +586,37 @@ class EvdevGamepadMonitor:
         if not EVDEV_AVAILABLE:
             return
 
+        now = time.time()
+        if now - self._last_cache_clear >= self.CACHE_CLEAR_INTERVAL:
+            self._rejected_paths.clear()
+            self._last_cache_clear = now
+
         try:
             for path in evdev.list_devices():
-                if path in self.device_paths:
+                if path in self.device_paths or path in self._rejected_paths:
                     continue
 
                 try:
                     dev = evdev.InputDevice(path)
                 except Exception:
+                    self._rejected_paths.add(path)
                     continue
 
                 # Skip virtual devices (empty phys)
                 if not dev.phys:
                     dev.close()
+                    self._rejected_paths.add(path)
                     continue
 
                 # Skip Valve controllers
                 if dev.info.vendor == self.VALVE_VENDOR:
                     dev.close()
+                    self._rejected_paths.add(path)
                     continue
 
                 if not self._is_gamepad(dev):
                     dev.close()
+                    self._rejected_paths.add(path)
                     continue
 
                 with self.lock:
@@ -638,6 +650,7 @@ class EvdevGamepadMonitor:
                     pass
             self.devices.clear()
             self.device_paths.clear()
+            self._rejected_paths.clear()
             self.current_buttons.clear()
 
         logger.info("EvdevGamepadMonitor stopped")
@@ -653,9 +666,14 @@ class EvdevGamepadMonitor:
 
             with self.lock:
                 if not self.devices:
-                    time.sleep(0.5)
-                    continue
-                fds = list(self.devices.keys())
+                    has_devices = False
+                else:
+                    has_devices = True
+                    fds = list(self.devices.keys())
+
+            if not has_devices:
+                time.sleep(0.5)
+                continue
 
             try:
                 readable, _, _ = select.select(fds, [], [], 0.1)
@@ -694,6 +712,7 @@ class EvdevGamepadMonitor:
             dev = self.devices.pop(fd, None)
             if dev:
                 self.device_paths.discard(dev.path)
+                self._rejected_paths.discard(dev.path)
                 try:
                     dev.close()
                 except Exception:
@@ -711,6 +730,7 @@ class EvdevGamepadMonitor:
                 dev = self.devices.pop(fd, None)
                 if dev:
                     self.device_paths.discard(dev.path)
+                    self._rejected_paths.discard(dev.path)
                     logger.info(f"EvdevGamepadMonitor: removed stale device '{dev.name}'")
                     try:
                         dev.close()
@@ -926,6 +946,8 @@ class Plugin:
                 self._pause_game_on_overlay = value
             elif key == "quick_toggle_enabled":
                 self._quick_toggle_enabled = value
+            elif key == "font_scale":
+                pass  # frontend-only, just persist to settings file
             elif key == "debug_mode":
                 logger.setLevel(logging.DEBUG if value else logging.INFO)
             elif key == "use_free_providers":
@@ -990,7 +1012,8 @@ class Plugin:
                 "rapidocr_unclip_ratio": self._settings.get_setting("rapidocr_unclip_ratio", 1.6),
                 "pause_game_on_overlay": self._settings.get_setting("pause_game_on_overlay", False),
                 "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
-                "debug_mode": self._settings.get_setting("debug_mode", False)
+                "debug_mode": self._settings.get_setting("debug_mode", False),
+                "font_scale": self._settings.get_setting("font_scale", 1.0)
             }
             return settings
         except Exception as e:
