@@ -26,6 +26,7 @@ export interface Settings {
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
     fontScale: number; // Overlay font scale multiplier for external monitors
+    hideIdenticalTranslations: boolean;
 }
 
 // Define action types
@@ -54,7 +55,8 @@ const initialSettings: Settings = {
     translationProvider: "freegoogle", // Default to free Google Translate
     googleApiKey: "", // Empty by default, only needed for Google Cloud
     debugMode: false, // Debug mode off by default
-    fontScale: 1.0
+    fontScale: 1.0,
+    hideIdenticalTranslations: false
 };
 
 // Create the reducer
@@ -118,7 +120,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     translationProvider: serverSettings.translation_provider || "freegoogle", // Translation provider setting
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
                     debugMode: serverSettings.debug_mode || false, // Debug mode
-                    fontScale: serverSettings.font_scale ?? 1.0
+                    fontScale: serverSettings.font_scale ?? 1.0,
+                    hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false
                 };
 
                 // Update settings in context
@@ -142,6 +145,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setHasGoogleApiKey(!!serverSettings.google_api_key);
 
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
+                logic.setHideIdenticalTranslations(serverSettings.hide_identical_translations ?? false);
 
                 logger.info('SettingsContext', 'All settings loaded successfully');
                 logger.logObject('SettingsContext', 'Settings', mappedSettings);
@@ -181,7 +185,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 translationProvider: 'translation_provider',
                 googleApiKey: 'google_api_key',
                 debugMode: 'debug_mode',
-                fontScale: 'font_scale'
+                fontScale: 'font_scale',
+                hideIdenticalTranslations: 'hide_identical_translations'
             };
 
             // Skip settings that don't need to be saved to backend
@@ -223,6 +228,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'fontScale':
                     logic.setFontScale(value);
+                    break;
+                case 'hideIdenticalTranslations':
+                    logic.setHideIdenticalTranslations(value);
                     break;
                 case 'ocrProvider':
                     logic.setOcrProvider(value);
