@@ -53,7 +53,7 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
 
     return (
         <div style={{ marginLeft: "-8px", marginRight: "-8px" }}>
-            <PanelSection title="Activation">
+            <PanelSection title="Control">
                 <PanelSectionRow>
                     <DropdownItem
                         label="Quick Translation Shortcut"
@@ -99,7 +99,7 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                 </PanelSectionRow>
             </PanelSection>
 
-            <PanelSection title="Behavior">
+            <PanelSection title="Display & Behavior">
                 <PanelSectionRow>
                     <ToggleField
                         checked={settings.pauseGameOnOverlay}
