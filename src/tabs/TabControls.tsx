@@ -128,6 +128,17 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                     />
                 </PanelSectionRow>
 
+                <PanelSectionRow>
+                    <ToggleField
+                        checked={settings.hideIdenticalTranslations}
+                        label="Hide Identical Translations"
+                        description="Don't display if translation is the same as original word/sentence"
+                        onChange={(value) => {
+                            updateSetting('hideIdenticalTranslations', value, 'Hide identical translations');
+                        }}
+                    />
+                </PanelSectionRow>
+
                 {/* Quick toggle option - only show for combo modes */}
                 {(settings.inputMode === InputMode.L4_R4_COMBO ||
                     settings.inputMode === InputMode.L5_R5_COMBO ||

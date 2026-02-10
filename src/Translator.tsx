@@ -24,7 +24,8 @@ export class GameTranslatorLogic {
     private progressListeners: Array<(progressInfo: ProgressInfo) => void> = [];
     private enabled: boolean = true; // Add enabled state
     private confidenceThreshold: number = 0.6; // Default confidence threshold
-    private pauseGameOnOverlay: boolean = false; // Track pause-on-overlay setting
+    private pauseGameOnOverlay: boolean = false;
+    private hideIdenticalTranslations: boolean = false;
 
     // Provider settings for upfront validation
     private ocrProvider: string = "rapidocr";
@@ -186,7 +187,10 @@ export class GameTranslatorLogic {
         return this.confidenceThreshold;
     }
 
-    // Method to set pause game on overlay
+    setHideIdenticalTranslations = (enabled: boolean): void => {
+        this.hideIdenticalTranslations = enabled;
+    }
+
     setPauseGameOnOverlay = (enabled: boolean): void => {
         logger.debug('Translator', `Setting pauseGameOnOverlay to: ${enabled}`);
         this.pauseGameOnOverlay = enabled;
@@ -359,11 +363,19 @@ export class GameTranslatorLogic {
                         this.imageState.updateProcessingStep("Translating text");
 
                         // Translate text
-                        const translatedRegions = await this.textTranslator.translateText(textRegions);
+                        let translatedRegions = await this.textTranslator.translateText(textRegions);
                         logger.info('Translator', `Translation complete: ${translatedRegions.length} regions`);
 
-                        // Update the overlay with translated text
-                        // Make sure to use the SAME base64 data that we showed earlier
+                        if (this.hideIdenticalTranslations) {
+                            const before = translatedRegions.length;
+                            translatedRegions = translatedRegions.filter(r =>
+                                r.translatedText.trim().toLowerCase() !== r.text.trim().toLowerCase()
+                            );
+                            if (translatedRegions.length < before) {
+                                logger.info('Translator', `Filtered ${before - translatedRegions.length} identical translations`);
+                            }
+                        }
+
                         this.imageState.showTranslatedImage(result.base64, translatedRegions);
                     } else {
                         // No text found, show message
