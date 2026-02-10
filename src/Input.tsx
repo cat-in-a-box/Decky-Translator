@@ -41,7 +41,10 @@ export enum InputMode {
     R5_BUTTON = 3,    // R5 back button
     L4_R4_COMBO = 4,  // L4 + R4 combination
     L5_R5_COMBO = 5,  // L5 + R5 combination
-    TOUCHPAD_COMBO = 6 // Left touchpad touch + Right touchpad touch combination
+    TOUCHPAD_COMBO = 6, // Left touchpad touch + Right touchpad touch combination
+    L3_BUTTON = 7,    // L3 stick click
+    R3_BUTTON = 8,    // R3 stick click
+    L3_R3_COMBO = 9   // L3 + R3 combination
 }
 
 export enum ActionType {
@@ -246,6 +249,14 @@ export class Input {
             buttons.push(Button.R5);
         }
 
+        // Check for L3/R3 buttons (stick clicks, works on external gamepads)
+        if (this.currentlyPressedButtons.has(Button.L3)) {
+            buttons.push(Button.L3);
+        }
+        if (this.currentlyPressedButtons.has(Button.R3)) {
+            buttons.push(Button.R3);
+        }
+
         // Check for touchpad buttons (for TOUCHPAD_COMBO mode)
         if (this.currentlyPressedButtons.has(Button.LEFT_TOUCHPAD_CLICK)) {
             buttons.push(Button.LEFT_TOUCHPAD_CLICK);
@@ -261,6 +272,8 @@ export class Input {
                 if (b === Button.R4) return 'R4';
                 if (b === Button.L5) return 'L5';
                 if (b === Button.R5) return 'R5';
+                if (b === Button.L3) return 'L3';
+                if (b === Button.R3) return 'R3';
                 if (b === Button.LEFT_TOUCHPAD_CLICK) return 'LPAD';
                 if (b === Button.RIGHT_TOUCHPAD_CLICK) return 'RPAD';
                 return b.toString();
@@ -499,6 +512,11 @@ export class Input {
                     rightOnlyPressed = buttons.includes(Button.R5) && !buttons.includes(Button.L5);
                     rightButtonName = 'R5';
                     break;
+                case InputMode.L3_R3_COMBO:
+                    // R3 pressed but L3 not pressed
+                    rightOnlyPressed = buttons.includes(Button.R3) && !buttons.includes(Button.L3);
+                    rightButtonName = 'R3';
+                    break;
                 case InputMode.TOUCHPAD_COMBO:
                     // Right touchpad pressed but left touchpad not pressed
                     rightOnlyPressed = buttons.includes(Button.RIGHT_TOUCHPAD_CLICK) && !buttons.includes(Button.LEFT_TOUCHPAD_CLICK);
@@ -557,6 +575,23 @@ export class Input {
                 const r5Pressed = buttons.includes(Button.R5);
                 buttonPressed = l5Pressed && r5Pressed;
                 buttonName = 'L5+R5';
+                break;
+
+            case InputMode.L3_BUTTON:
+                buttonPressed = buttons.includes(Button.L3);
+                buttonName = 'L3';
+                break;
+
+            case InputMode.R3_BUTTON:
+                buttonPressed = buttons.includes(Button.R3);
+                buttonName = 'R3';
+                break;
+
+            case InputMode.L3_R3_COMBO:
+                const l3Pressed = buttons.includes(Button.L3);
+                const r3Pressed = buttons.includes(Button.R3);
+                buttonPressed = l3Pressed && r3Pressed;
+                buttonName = 'L3+R3';
                 break;
 
             case InputMode.TOUCHPAD_COMBO:

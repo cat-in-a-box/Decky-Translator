@@ -516,6 +516,223 @@ class HidrawButtonMonitor:
             }
 
 
+for _p in [PY_MODULES_DIR, ROOT_PY_MODULES_DIR]:
+    if _p in sys.path:
+        sys.path.remove(_p)
+    sys.path.insert(0, _p)
+
+try:
+    import evdev
+    EVDEV_AVAILABLE = True
+except ImportError as e:
+    EVDEV_AVAILABLE = False
+    logger.warning(f"evdev import failed: {e}")
+except Exception as e:
+    EVDEV_AVAILABLE = False
+    logger.warning(f"evdev import error ({type(e).__name__}): {e}")
+
+
+class EvdevGamepadMonitor:
+    """
+    Monitors external gamepads (Xbox, PlayStation, etc.) via Linux evdev.
+    Filters out Valve's built-in controller (handled by HidrawButtonMonitor).
+    """
+
+    SCAN_INTERVAL = 5.0  # seconds between device scans
+
+    BUTTON_MAP = {
+        304: 'A',       # BTN_A / BTN_SOUTH
+        305: 'B',       # BTN_B / BTN_EAST
+        307: 'X',       # BTN_X / BTN_NORTH (note: 306 is BTN_C)
+        308: 'Y',       # BTN_Y / BTN_WEST
+        310: 'L1',      # BTN_TL
+        311: 'R1',      # BTN_TR
+        312: 'L2',      # BTN_TL2
+        313: 'R2',      # BTN_TR2
+        314: 'SELECT',  # BTN_SELECT
+        315: 'START',   # BTN_START
+        316: 'STEAM',   # BTN_MODE
+        317: 'L3',      # BTN_THUMBL
+        318: 'R3',      # BTN_THUMBR
+    }
+
+    VALVE_VENDOR = 0x28de
+
+    def __init__(self):
+        self.running = False
+        self.thread = None
+        self.devices = {}  # fd -> InputDevice
+        self.device_paths = set()  # tracked device paths
+        self.current_buttons = set()
+        self.lock = threading.Lock()
+        self.last_scan_time = 0
+        logger.debug("EvdevGamepadMonitor initialized")
+
+    def _is_gamepad(self, dev):
+        """Check if device has gamepad capabilities (EV_KEY + EV_ABS)."""
+        try:
+            caps = dev.capabilities(verbose=False)
+            has_keys = 1 in caps  # EV_KEY
+            has_abs = 3 in caps   # EV_ABS
+            return has_keys and has_abs
+        except Exception:
+            return False
+
+    def _scan_devices(self):
+        """Find new external gamepads, skip Valve and virtual devices."""
+        if not EVDEV_AVAILABLE:
+            return
+
+        try:
+            for path in evdev.list_devices():
+                if path in self.device_paths:
+                    continue
+
+                try:
+                    dev = evdev.InputDevice(path)
+                except Exception:
+                    continue
+
+                # Skip virtual devices (empty phys)
+                if not dev.phys:
+                    dev.close()
+                    continue
+
+                # Skip Valve controllers
+                if dev.info.vendor == self.VALVE_VENDOR:
+                    dev.close()
+                    continue
+
+                if not self._is_gamepad(dev):
+                    dev.close()
+                    continue
+
+                with self.lock:
+                    self.devices[dev.fd] = dev
+                    self.device_paths.add(path)
+                logger.info(f"EvdevGamepadMonitor: found gamepad '{dev.name}' at {path}")
+
+        except Exception as e:
+            logger.debug(f"EvdevGamepadMonitor: scan error: {e}")
+
+    def start(self):
+        if self.running:
+            return True
+        self.running = True
+        self.thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self.thread.start()
+        logger.info("EvdevGamepadMonitor started")
+        return True
+
+    def stop(self):
+        self.running = False
+        if self.thread is not None:
+            self.thread.join(timeout=2.0)
+            self.thread = None
+
+        with self.lock:
+            for dev in self.devices.values():
+                try:
+                    dev.close()
+                except Exception:
+                    pass
+            self.devices.clear()
+            self.device_paths.clear()
+            self.current_buttons.clear()
+
+        logger.info("EvdevGamepadMonitor stopped")
+
+    def _monitor_loop(self):
+        logger.info("EvdevGamepadMonitor loop started")
+
+        while self.running:
+            now = time.time()
+            if now - self.last_scan_time >= self.SCAN_INTERVAL:
+                self._scan_devices()
+                self.last_scan_time = now
+
+            with self.lock:
+                if not self.devices:
+                    time.sleep(0.5)
+                    continue
+                fds = list(self.devices.keys())
+
+            try:
+                readable, _, _ = select.select(fds, [], [], 0.1)
+            except (ValueError, OSError):
+                # Bad fd, a device probably disconnected
+                self._remove_stale_devices()
+                continue
+
+            for fd in readable:
+                with self.lock:
+                    dev = self.devices.get(fd)
+                if dev is None:
+                    continue
+
+                try:
+                    for event in dev.read():
+                        if event.type == 1:  # EV_KEY
+                            name = self.BUTTON_MAP.get(event.code)
+                            if name is not None:
+                                with self.lock:
+                                    if event.value == 1:  # pressed
+                                        self.current_buttons.add(name)
+                                    elif event.value == 0:  # released
+                                        self.current_buttons.discard(name)
+                except OSError:
+                    logger.info(f"EvdevGamepadMonitor: device disconnected (fd={fd})")
+                    self._remove_device(fd)
+                except Exception as e:
+                    logger.debug(f"EvdevGamepadMonitor: read error fd={fd}: {e}")
+                    self._remove_device(fd)
+
+        logger.info("EvdevGamepadMonitor loop ended")
+
+    def _remove_device(self, fd):
+        with self.lock:
+            dev = self.devices.pop(fd, None)
+            if dev:
+                self.device_paths.discard(dev.path)
+                try:
+                    dev.close()
+                except Exception:
+                    pass
+
+    def _remove_stale_devices(self):
+        with self.lock:
+            stale = []
+            for fd, dev in self.devices.items():
+                try:
+                    os.fstat(fd)
+                except OSError:
+                    stale.append(fd)
+            for fd in stale:
+                dev = self.devices.pop(fd, None)
+                if dev:
+                    self.device_paths.discard(dev.path)
+                    logger.info(f"EvdevGamepadMonitor: removed stale device '{dev.name}'")
+                    try:
+                        dev.close()
+                    except Exception:
+                        pass
+
+    def get_button_state(self):
+        with self.lock:
+            return list(self.current_buttons)
+
+    def get_status(self):
+        with self.lock:
+            device_names = [dev.name for dev in self.devices.values()]
+            return {
+                "running": self.running,
+                "available": EVDEV_AVAILABLE,
+                "device_count": len(self.devices),
+                "devices": device_names,
+                "current_buttons": list(self.current_buttons),
+            }
+
+
 class SettingsManager:
     def __init__(self, name, settings_directory):
         self.settings_path = os.path.join(settings_directory, f"{name}.json")
@@ -634,6 +851,7 @@ class Plugin:
 
     # Hidraw button monitor
     _hidraw_monitor: HidrawButtonMonitor = None
+    _evdev_monitor: EvdevGamepadMonitor = None
 
     # Provider system
     _provider_manager: ProviderManager = None
@@ -1222,9 +1440,20 @@ class Plugin:
                 self._hidraw_monitor = HidrawButtonMonitor()
 
             if self._hidraw_monitor.running:
-                return {"success": True, "message": "Already running"}
+                hidraw_ok = True
+            elif self._hidraw_monitor.start():
+                hidraw_ok = True
+            else:
+                hidraw_ok = False
 
-            if self._hidraw_monitor.start():
+            # Start evdev monitor for external gamepads
+            if EVDEV_AVAILABLE:
+                if self._evdev_monitor is None:
+                    self._evdev_monitor = EvdevGamepadMonitor()
+                if not self._evdev_monitor.running:
+                    self._evdev_monitor.start()
+
+            if hidraw_ok:
                 return {"success": True, "message": "Monitor started"}
             else:
                 return {"success": False, "error": "Failed to initialize device"}
@@ -1236,8 +1465,9 @@ class Plugin:
         try:
             if self._hidraw_monitor:
                 self._hidraw_monitor.stop()
-                return {"success": True, "message": "Monitor stopped"}
-            return {"success": True, "message": "Monitor was not running"}
+            if self._evdev_monitor:
+                self._evdev_monitor.stop()
+            return {"success": True, "message": "Monitor stopped"}
         except Exception as e:
             logger.error(f"Error stopping hidraw monitor: {e}")
             return {"success": False, "error": str(e)}
@@ -1254,26 +1484,45 @@ class Plugin:
             return {"success": False, "events": [], "error": str(e)}
 
     async def get_hidraw_button_state(self):
-        """Get the current complete button state from the hidraw monitor.
+        """Get the current complete button state from both monitors.
 
-        This returns all currently pressed buttons, not individual events.
-        This is more reliable when multiple frontends are polling.
+        Merges button state from hidraw (built-in controller) and evdev
+        (external gamepads) via set union.
         """
         try:
+            buttons = set()
+            any_running = False
+
             if self._hidraw_monitor and self._hidraw_monitor.running:
-                buttons = self._hidraw_monitor.get_button_state()
-                return {"success": True, "buttons": buttons}
+                any_running = True
+                buttons.update(self._hidraw_monitor.get_button_state())
+
+            if self._evdev_monitor and self._evdev_monitor.running:
+                any_running = True
+                buttons.update(self._evdev_monitor.get_button_state())
+
+            if any_running:
+                return {"success": True, "buttons": list(buttons)}
             return {"success": False, "buttons": [], "error": "Monitor not running"}
         except Exception as e:
             logger.error(f"Error getting hidraw button state: {e}")
             return {"success": False, "buttons": [], "error": str(e)}
 
     async def get_hidraw_status(self):
-        """Get hidraw monitor status for diagnostics."""
+        """Get hidraw and evdev monitor status for diagnostics."""
         try:
+            status = {}
             if self._hidraw_monitor:
-                return {"success": True, "status": self._hidraw_monitor.get_status()}
-            return {"success": True, "status": {"running": False, "initialized": False}}
+                status["hidraw"] = self._hidraw_monitor.get_status()
+            else:
+                status["hidraw"] = {"running": False, "initialized": False}
+
+            if self._evdev_monitor:
+                status["evdev"] = self._evdev_monitor.get_status()
+            else:
+                status["evdev"] = {"running": False, "available": EVDEV_AVAILABLE}
+
+            return {"success": True, "status": status}
         except Exception as e:
             logger.error(f"Error getting hidraw status: {e}")
             return {"success": False, "error": str(e)}
@@ -1363,6 +1612,16 @@ class Plugin:
             else:
                 logger.warning("Failed to start hidraw button monitor")
 
+            # Start evdev monitor for external gamepads
+            if EVDEV_AVAILABLE:
+                self._evdev_monitor = EvdevGamepadMonitor()
+                if self._evdev_monitor.start():
+                    logger.info("Evdev gamepad monitor started")
+                else:
+                    logger.warning("Failed to start evdev gamepad monitor")
+            else:
+                logger.info("evdev not available, external gamepad support disabled")
+
         except Exception as e:
             logger.error(f"Error during initialization: {e}")
             logger.error(traceback.format_exc())
@@ -1371,6 +1630,10 @@ class Plugin:
     async def _unload(self):
         logger.info("Unloading plugin")
         try:
+            if self._evdev_monitor:
+                self._evdev_monitor.stop()
+                self._evdev_monitor = None
+
             if self._hidraw_monitor:
                 self._hidraw_monitor.stop()
                 self._hidraw_monitor = None
