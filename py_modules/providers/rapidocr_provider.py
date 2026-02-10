@@ -60,6 +60,7 @@ class RapidOCRProvider(OCRProvider):
         'pl': 'ch',         # Polish
         'tr': 'ch',         # Turkish (Latin script)
         'ro': 'ch',         # Romanian (Latin script)
+        'vi': 'ch',         # Vietnamese (Latin script)
         # Cyrillic-script languages - may have limited support
         'ru': 'ch',         # Russian
         'uk': 'ch',         # Ukrainian
@@ -74,7 +75,7 @@ class RapidOCRProvider(OCRProvider):
     # Limited support: Cyrillic (Russian, Ukrainian), Arabic, Hindi
     SUPPORTED_LANGUAGES = [
         'auto', 'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
-        'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro',
+        'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi',
         'ru', 'uk', 'ar', 'hi'
     ]
 
