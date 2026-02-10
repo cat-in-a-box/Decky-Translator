@@ -42,13 +42,14 @@ export class ImageState {
     private processingStep = ""; // Added to track current processing step
     private loadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null; // Timer for delayed indicator
     private translationsVisible = true; // New property to track translation visibility
-    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean) => void> = [];
+    private fontScale = 1.0;
+    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number) => void> = [];
 
-    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean) => void): void {
+    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number) => void): void {
         this.onStateChangedListeners.push(callback);
     }
 
-    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean) => void): void {
+    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number) => void): void {
         const index = this.onStateChangedListeners.indexOf(callback);
         if (index !== -1) {
             this.onStateChangedListeners.splice(index, 1);
@@ -84,6 +85,15 @@ export class ImageState {
     // Getter for translation visibility state
     areTranslationsVisible(): boolean {
         return this.translationsVisible;
+    }
+
+    setFontScale(scale: number): void {
+        this.fontScale = scale;
+        this.notifyListeners();
+    }
+
+    getFontScale(): number {
+        return this.fontScale;
     }
 
     // Update the current processing step
@@ -175,7 +185,7 @@ export class ImageState {
 
     private notifyListeners(): void {
         for (const callback of this.onStateChangedListeners) {
-            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible);
+            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale);
         }
     }
 
@@ -272,8 +282,9 @@ export const TranslatedTextOverlay: VFC<{
     regions: TranslatedRegion[],
     loading: boolean,
     processingStep: string,
-    translationsVisible: boolean
-}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible }) => {
+    translationsVisible: boolean,
+    fontScale: number
+}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale }) => {
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
@@ -426,9 +437,6 @@ export const TranslatedTextOverlay: VFC<{
                                     width: `${Math.round((region.rect.right - region.rect.left) * getScalingFactor().widthFactor + 8)}px`,
                                     minHeight: `${Math.round((region.rect.bottom - region.rect.top) * getScalingFactor().heightFactor + 4)}px`,
 
-                                    // Fixed height to preserve original dimensions
-                                    maxHeight: `${Math.round((region.rect.bottom - region.rect.top) * getScalingFactor().heightFactor - 4)}px`,
-
                                     // Improved background and borders
                                     backgroundColor: "rgba(0, 0, 0, 0.8)",
                                     border: region.isDialog ? "0px solid rgba(63, 255, 63, 0.5)" : "0px solid rgba(255, 255, 255, 0.15)",
@@ -446,8 +454,8 @@ export const TranslatedTextOverlay: VFC<{
                                     // Important: DO NOT hide overflow
                                     overflow: "visible",
 
-                                    // Adaptive font size based on calculations
-                                    fontSize: `${Math.round(fontSize * getScalingFactor().generalFactor)}px`,
+                                    // Adaptive font size, with user-configurable scale
+                                    fontSize: `${Math.round(fontSize * getScalingFactor().generalFactor * fontScale)}px`,
                                     lineHeight: needsMultiline ? "1.1" : "1.2", // Reduce line spacing
                                     fontWeight: "400",
                                     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -555,6 +563,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [loading, setLoading] = useState<boolean>(false);
     const [processingStep, setProcessingStep] = useState<string>("");
     const [translationsVisible, setTranslationsVisible] = useState<boolean>(true);
+    const [fontScale, setFontScale] = useState<number>(1.0);
 
     useEffect(() => {
         logger.debug('ImageOverlay', 'useEffect mounting, registering state listener');
@@ -565,7 +574,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             textRegions: TranslatedRegion[],
             isLoading: boolean,
             currProcessingStep: string,
-            areTranslationsVisible: boolean
+            areTranslationsVisible: boolean,
+            currentFontScale: number
         ) => {
             logger.debug('ImageOverlay', `State changed - visible=${isVisible}, imgData.length=${imgData?.length || 0}, regions=${textRegions?.length || 0}`);
             setVisible(isVisible);
@@ -574,6 +584,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             setLoading(isLoading);
             setProcessingStep(currProcessingStep);
             setTranslationsVisible(areTranslationsVisible);
+            setFontScale(currentFontScale);
         };
 
         state.onStateChanged(handleStateChanged);
@@ -599,6 +610,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             loading={loading}
             processingStep={processingStep}
             translationsVisible={translationsVisible}
+            fontScale={fontScale}
         />
     );
 };

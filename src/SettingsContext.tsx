@@ -25,6 +25,7 @@ export interface Settings {
     translationProvider: 'freegoogle' | 'googlecloud'; // Translation provider: freegoogle (Free Google Translate), googlecloud (Google Cloud Translation)
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
+    fontScale: number; // Overlay font scale multiplier for external monitors
 }
 
 // Define action types
@@ -52,7 +53,8 @@ const initialSettings: Settings = {
     ocrProvider: "rapidocr", // Default to rapidocr (RapidOCR) provider
     translationProvider: "freegoogle", // Default to free Google Translate
     googleApiKey: "", // Empty by default, only needed for Google Cloud
-    debugMode: false // Debug mode off by default
+    debugMode: false, // Debug mode off by default
+    fontScale: 1.0
 };
 
 // Create the reducer
@@ -115,7 +117,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     ocrProvider: serverSettings.ocr_provider || "rapidocr", // OCR provider setting
                     translationProvider: serverSettings.translation_provider || "freegoogle", // Translation provider setting
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
-                    debugMode: serverSettings.debug_mode || false // Debug mode
+                    debugMode: serverSettings.debug_mode || false, // Debug mode
+                    fontScale: serverSettings.font_scale ?? 1.0
                 };
 
                 // Update settings in context
@@ -137,6 +140,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setOcrProvider(serverSettings.ocr_provider || "rapidocr");
                 logic.setTranslationProvider(serverSettings.translation_provider || "freegoogle");
                 logic.setHasGoogleApiKey(!!serverSettings.google_api_key);
+
+                logic.setFontScale(serverSettings.font_scale ?? 1.0);
 
                 logger.info('SettingsContext', 'All settings loaded successfully');
                 logger.logObject('SettingsContext', 'Settings', mappedSettings);
@@ -175,7 +180,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 ocrProvider: 'ocr_provider',
                 translationProvider: 'translation_provider',
                 googleApiKey: 'google_api_key',
-                debugMode: 'debug_mode'
+                debugMode: 'debug_mode',
+                fontScale: 'font_scale'
             };
 
             // Skip settings that don't need to be saved to backend
@@ -214,6 +220,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'debugMode':
                     logger.setEnabled(value);
+                    break;
+                case 'fontScale':
+                    logic.setFontScale(value);
                     break;
                 case 'ocrProvider':
                     logic.setOcrProvider(value);
