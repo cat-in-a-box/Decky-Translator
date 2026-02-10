@@ -815,11 +815,11 @@ export class TextRecognizer {
                 // Numbers with formatting characters
                 /^[\d\s,\.:\/\-]+$/.test(text) ||
 
-                // Percentages
-                /^\d+\s*%$/.test(text) ||
+                // Percentages (including negative like "-33%")
+                /^[+-]?\s*\d+\s*%$/.test(text) ||
 
-                // Time formats (like "12:34" or "12:34:56")
-                /^\d{1,2}:\d{1,2}(:\d{1,2})?$/.test(text) ||
+                // Time formats (like "12:34", "6:41 PM", "12:34:56")
+                /^\d{1,2}:\d{1,2}(:\d{1,2})?\s*(AM|PM|am|pm|a\.m\.|p\.m\.)?$/.test(text) ||
 
                 // Game scores or statistics (like "3-2" or "W1 D2 L3")
                 /^([WDL]\d+\s*)+$|^\d+[\-:]\d+$/.test(text)
