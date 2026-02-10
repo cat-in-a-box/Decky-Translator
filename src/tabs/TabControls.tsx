@@ -19,8 +19,11 @@ const inputModeOptions = [
     { label: "R4", data: InputMode.R4_BUTTON },
     { label: "L5", data: InputMode.L5_BUTTON },
     { label: "R5", data: InputMode.R5_BUTTON },
+    { label: "L3", data: InputMode.L3_BUTTON },
+    { label: "R3", data: InputMode.R3_BUTTON },
     { label: "L4 + R4", data: InputMode.L4_R4_COMBO },
     { label: "L5 + R5", data: InputMode.L5_R5_COMBO },
+    { label: "L3 + R3", data: InputMode.L3_R3_COMBO },
     { label: "Both Touchpads", data: InputMode.TOUCHPAD_COMBO }
 ];
 
@@ -31,8 +34,11 @@ const getInputModeButtons = (mode: string): string => {
         case 'R4_BUTTON': return 'R4';
         case 'L5_BUTTON': return 'L5';
         case 'R5_BUTTON': return 'R5';
+        case 'L3_BUTTON': return 'L3';
+        case 'R3_BUTTON': return 'R3';
         case 'L4_R4_COMBO': return 'L4 + R4';
         case 'L5_R5_COMBO': return 'L5 + R5';
+        case 'L3_R3_COMBO': return 'L3 + R3';
         case 'TOUCHPAD_COMBO': return 'Left Pad + Right Pad';
         default: return mode;
     }
@@ -108,6 +114,7 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                 {/* Quick toggle option - only show for combo modes */}
                 {(settings.inputMode === InputMode.L4_R4_COMBO ||
                     settings.inputMode === InputMode.L5_R5_COMBO ||
+                    settings.inputMode === InputMode.L3_R3_COMBO ||
                     settings.inputMode === InputMode.TOUCHPAD_COMBO) && (
                     <PanelSectionRow>
                         <ToggleField
