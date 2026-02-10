@@ -24,7 +24,7 @@ const inputModeOptions = [
     { label: "L4 + R4", data: InputMode.L4_R4_COMBO },
     { label: "L5 + R5", data: InputMode.L5_R5_COMBO },
     { label: "L3 + R3", data: InputMode.L3_R3_COMBO },
-    { label: "Both Touchpads", data: InputMode.TOUCHPAD_COMBO }
+    { label: "Both Touchpads Touch", data: InputMode.TOUCHPAD_COMBO }
 ];
 
 // Helper to get button labels for current input mode
