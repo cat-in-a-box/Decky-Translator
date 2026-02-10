@@ -150,7 +150,8 @@ export const TabTranslation: VFC = () => {
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>RapidOCR</span>
                                     </div>
                                     <div>- On-Device Text Recognition</div>
-                                    <div>- Provides Good Results</div>
+                                    <div>- Good accuracy, but is slower than web-based options</div>
+                                    <div>- Customizable parameters</div>
                                     <div>- Screenshots do not leave your device</div>
                                 </>
                             )}
@@ -161,8 +162,8 @@ export const TabTranslation: VFC = () => {
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>OCR.space</span>
                                     </div>
                                     <div>- Free EU-based cloud OCR API</div>
-                                    <div>- Max Usage limits: 500/day and 10/10min</div>
-                                    <div>- Provides Even Better Results</div>
+                                    <div>- Max usage limits: 500/day and 10/10min</div>
+                                    <div>- Provides great speed and results</div>
                                 </>
                             )}
                             {settings.ocrProvider === 'googlecloud' && (
