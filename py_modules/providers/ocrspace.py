@@ -3,15 +3,14 @@
 
 import asyncio
 import base64
-import io
 import logging
 import json
 import os
+import subprocess
 from datetime import datetime, date
 from typing import List, Optional
 
 import requests
-from PIL import Image
 
 from .base import OCRProvider, ProviderType, TextRegion, NetworkError, RateLimitError
 
@@ -212,12 +211,8 @@ class OCRSpaceProvider(OCRProvider):
     def _compress_image(self, image_data: bytes) -> bytes:
         """
         Compress image to fit within OCR.space size limit (1MB).
-
-        Args:
-            image_data: Raw image bytes
-
-        Returns:
-            Compressed image bytes (JPEG format)
+        Uses system Python 3.13 subprocess for PIL access, since the
+        Decky main process (Python 3.11) can't load cp313 C extensions.
         """
         if len(image_data) <= MAX_FILE_SIZE:
             return image_data
@@ -225,54 +220,87 @@ class OCRSpaceProvider(OCRProvider):
         logger.debug(f"Image size {len(image_data)} bytes exceeds limit, compressing...")
 
         try:
-            img = Image.open(io.BytesIO(image_data))
+            python_path = self._find_system_python()
+            if not python_path:
+                logger.error("No system Python found for image compression")
+                return image_data
 
-            # Convert to RGB if necessary (for JPEG)
-            if img.mode in ('RGBA', 'P'):
-                img = img.convert('RGB')
+            script = """
+import sys, io
+from PIL import Image
 
-            # Start with high quality and reduce until under limit
-            quality = 85
-            scale = 1.0
+data = sys.stdin.buffer.read()
+img = Image.open(io.BytesIO(data))
+if img.mode in ('RGBA', 'P'):
+    img = img.convert('RGB')
 
-            while True:
-                output = io.BytesIO()
+max_size = int(sys.argv[1])
+quality = 85
+scale = 1.0
 
-                # Resize if needed
-                if scale < 1.0:
-                    new_size = (int(img.width * scale), int(img.height * scale))
-                    resized = img.resize(new_size, Image.Resampling.LANCZOS)
-                    resized.save(output, format='JPEG', quality=quality, optimize=True)
-                else:
-                    img.save(output, format='JPEG', quality=quality, optimize=True)
+while True:
+    out = io.BytesIO()
+    if scale < 1.0:
+        new_size = (int(img.width * scale), int(img.height * scale))
+        img.resize(new_size, Image.Resampling.LANCZOS).save(out, format='JPEG', quality=quality, optimize=True)
+    else:
+        img.save(out, format='JPEG', quality=quality, optimize=True)
+    result = out.getvalue()
+    if len(result) <= max_size:
+        sys.stdout.buffer.write(result)
+        break
+    if quality > 50:
+        quality -= 10
+    elif scale > 0.5:
+        scale -= 0.1
+        quality = 85
+    else:
+        out = io.BytesIO()
+        new_size = (int(img.width * 0.5), int(img.height * 0.5))
+        img.resize(new_size, Image.Resampling.LANCZOS).save(out, format='JPEG', quality=40, optimize=True)
+        sys.stdout.buffer.write(out.getvalue())
+        break
+"""
+            env = os.environ.copy()
+            # Use plugin's py_modules for Pillow
+            plugin_dir = os.environ.get("DECKY_PLUGIN_DIR", "")
+            if plugin_dir:
+                bin_pm = os.path.join(plugin_dir, "bin", "py_modules")
+                root_pm = os.path.join(plugin_dir, "py_modules")
+                paths = [p for p in [bin_pm, root_pm] if os.path.exists(p)]
+                if paths:
+                    env['PYTHONPATH'] = os.pathsep.join(paths)
+            env['PYTHONNOUSERSITE'] = '1'
 
-                compressed = output.getvalue()
+            result = subprocess.run(
+                [python_path, '-S', '-c', script, str(MAX_FILE_SIZE)],
+                input=image_data,
+                capture_output=True,
+                timeout=30,
+                env=env,
+            )
 
-                if len(compressed) <= MAX_FILE_SIZE:
-                    logger.debug(f"Compressed to {len(compressed)} bytes (quality={quality}, scale={scale:.2f})")
-                    return compressed
+            if result.returncode != 0:
+                logger.error(f"Image compression subprocess failed: {result.stderr.decode()[:500]}")
+                return image_data
 
-                # Reduce quality first, then scale
-                if quality > 50:
-                    quality -= 10
-                elif scale > 0.5:
-                    scale -= 0.1
-                    quality = 85  # Reset quality when scaling
-                else:
-                    # Last resort: aggressive compression
-                    quality = 40
-                    scale = 0.5
-                    output = io.BytesIO()
-                    new_size = (int(img.width * scale), int(img.height * scale))
-                    resized = img.resize(new_size, Image.Resampling.LANCZOS)
-                    resized.save(output, format='JPEG', quality=quality, optimize=True)
-                    compressed = output.getvalue()
-                    logger.debug(f"Aggressively compressed to {len(compressed)} bytes")
-                    return compressed
+            compressed = result.stdout
+            if not compressed:
+                logger.error("Image compression subprocess returned empty output")
+                return image_data
+            logger.debug(f"Compressed to {len(compressed)} bytes via subprocess")
+            return compressed
 
         except Exception as e:
             logger.error(f"Image compression failed: {e}")
             return image_data
+
+    @staticmethod
+    def _find_system_python() -> str:
+        for path in ['/usr/bin/python3', '/usr/bin/python3.13', '/usr/local/bin/python3']:
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                return path
+        return ""
 
     async def recognize(self, image_data: bytes, language: str = "auto") -> List[TextRegion]:
         """
