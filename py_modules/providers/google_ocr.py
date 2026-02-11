@@ -4,11 +4,10 @@
 import asyncio
 import base64
 import logging
-import io
+import struct
 from typing import List
 
 import requests
-from PIL import Image
 
 from .base import OCRProvider, ProviderType, TextRegion, NetworkError, ApiKeyError
 
@@ -68,9 +67,11 @@ class GoogleVisionProvider(OCRProvider):
             # Encode image to base64
             image_base64 = base64.b64encode(image_data).decode('utf-8')
 
-            # Get image dimensions
-            image = Image.open(io.BytesIO(image_data))
-            img_width, img_height = image.size
+            # Get image dimensions from PNG header (bytes 16-23)
+            if image_data[1:4] == b'PNG':
+                img_width, img_height = struct.unpack('>II', image_data[16:24])
+            else:
+                img_width, img_height = 0, 0
             logger.debug(f"Image dimensions: {img_width}x{img_height}")
 
             # Prepare request

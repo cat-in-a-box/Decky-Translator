@@ -102,7 +102,7 @@ class RapidOCRProvider(OCRProvider):
         self._unclip_ratio = 1.6  # Box expansion ratio
         self._available = None  # Lazy availability check
         self._init_error = None  # Store any initialization error
-        self._python_path = None  # Path to Python 3.11 interpreter
+        self._python_path = None  # Path to system Python 3 interpreter
 
         # Path to subprocess script
         # Check bin/py_modules first (Decky Store install via remote_binary)
@@ -118,60 +118,30 @@ class RapidOCRProvider(OCRProvider):
         else:
             self._subprocess_script = root_subprocess_script
 
-        # Determine py_modules path for subprocess PYTHONPATH
+        # Determine py_modules path(s) for subprocess PYTHONPATH
+        # bin/py_modules first (cp313 pip packages from remote_binary)
+        # root py_modules second (providers source code, always present)
         bin_py_modules = os.path.join(self._plugin_dir, "bin", "py_modules")
         root_py_modules = os.path.join(self._plugin_dir, "py_modules")
-        self._py_modules_dir = bin_py_modules if os.path.exists(bin_py_modules) else root_py_modules
+        py_paths = [p for p in [bin_py_modules, root_py_modules] if os.path.exists(p)]
+        self._py_modules_dir = os.pathsep.join(py_paths) if py_paths else root_py_modules
 
         logger.debug(
             f"RapidOCRProvider initialized "
             f"(plugin_dir={self._plugin_dir}, min_confidence={min_confidence})"
         )
 
-    def _extract_bundled_python(self) -> bool:
-        """Extract bundled Python 3.11 archive if present."""
-        python311_dir = os.path.join(self._plugin_dir, 'bin', 'python311')
-        python_archive = os.path.join(python311_dir, 'python-3.11.tar.gz')
-
-        if not os.path.exists(python_archive):
-            return False
-
-        logger.debug(f"Extracting bundled Python 3.11 from {python_archive}...")
-        try:
-            import tarfile
-            with tarfile.open(python_archive, 'r:gz') as tar:
-                tar.extractall(path=python311_dir)
-            logger.debug("Python 3.11 extracted successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to extract Python 3.11: {e}")
-            return False
-
     def _find_python_interpreter(self) -> Optional[str]:
-        """Find a suitable Python 3.11 interpreter for subprocess execution."""
-        # First check for bundled Python (extracted from python-3.11.tar.gz)
-        bundled_python = os.path.join(self._plugin_dir, 'bin', 'python311', 'python', 'bin', 'python3.11')
-
-        # Auto-extract if archive exists but Python not yet extracted
-        if not os.path.exists(bundled_python):
-            python_archive = os.path.join(self._plugin_dir, 'bin', 'python311', 'python-3.11.tar.gz')
-            if os.path.exists(python_archive):
-                self._extract_bundled_python()
-
-        if os.path.exists(bundled_python) and os.access(bundled_python, os.X_OK):
-            logger.debug(f"Found bundled Python 3.11 at: {bundled_python}")
-            return bundled_python
-
-        # Fall back to system Python 3.11 locations
+        """Find a suitable Python 3 interpreter for subprocess execution."""
         candidates = [
-            '/usr/bin/python3.11',
-            '/usr/local/bin/python3.11',
-            '/home/deck/.local/bin/python3.11',
+            '/usr/bin/python3',
+            '/usr/bin/python3.13',
+            '/usr/local/bin/python3',
         ]
 
         for path in candidates:
             if os.path.exists(path) and os.access(path, os.X_OK):
-                logger.debug(f"Found system Python 3.11 at: {path}")
+                logger.debug(f"Found system Python at: {path}")
                 return path
 
         return None
@@ -204,16 +174,13 @@ class RapidOCRProvider(OCRProvider):
             logger.warning(self._init_error)
             return False
 
-        # Find Python 3.11 interpreter
+        # Find system Python 3 interpreter
         # Note: sys.executable points to PluginLoader, not a Python interpreter!
         # We must NOT use sys.executable as it would spawn another Decky instance
         self._python_path = self._find_python_interpreter()
 
         if not self._python_path:
-            self._init_error = (
-                "Python 3.11 not found and auto-extraction failed. "
-                "Check logs for details or install manually: sudo pacman -S python311"
-            )
+            self._init_error = "Python 3 not found on the system"
             logger.warning(self._init_error)
             return False
 
@@ -325,9 +292,9 @@ class RapidOCRProvider(OCRProvider):
             for py_modules in py_modules_paths:
                 if not os.path.exists(py_modules):
                     continue
-                # Look for rapidocr_onnxruntime-*.dist-info/METADATA
+                # Look for rapidocr-*.dist-info/METADATA
                 for item in os.listdir(py_modules):
-                    if item.startswith('rapidocr_onnxruntime') and item.endswith('.dist-info'):
+                    if item.startswith('rapidocr-') and item.endswith('.dist-info'):
                         metadata_file = os.path.join(py_modules, item, 'METADATA')
                         if os.path.exists(metadata_file):
                             with open(metadata_file, 'r') as f:
@@ -398,7 +365,7 @@ class RapidOCRProvider(OCRProvider):
             env['MKL_NUM_THREADS'] = '1'
             env['OPENBLAS_NUM_THREADS'] = '1'
 
-            # Run subprocess using Python 3.11 (NOT sys.executable which is PluginLoader!)
+            # Run subprocess using system Python 3 (NOT sys.executable which is PluginLoader!)
             if not self._python_path:
                 logger.error("RapidOCR: No Python interpreter available")
                 return []

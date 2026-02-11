@@ -25,7 +25,6 @@ BIN_DIR = os.path.join(PLUGIN_DIR, "bin")
 DEPENDENCIES_ARCHIVE = os.path.join(BIN_DIR, "plugin-dependencies.tar.gz")
 EXTRACTION_MARKER = os.path.join(BIN_DIR, ".dependencies-extracted")
 BIN_PY_MODULES_DIR = os.path.join(BIN_DIR, "py_modules")
-BIN_PYTHON_DIR = os.path.join(BIN_DIR, "python311")
 BIN_RAPIDOCR_DIR = os.path.join(BIN_DIR, "rapidocr")
 
 def _should_extract_dependencies():
@@ -44,7 +43,7 @@ def _should_extract_dependencies():
         return True  # Dependencies were updated, need to re-extract
 
     # Check if all expected directories exist (partial extraction detection)
-    if not all(os.path.exists(d) for d in [BIN_PY_MODULES_DIR, BIN_PYTHON_DIR, BIN_RAPIDOCR_DIR]):
+    if not all(os.path.exists(d) for d in [BIN_PY_MODULES_DIR, BIN_RAPIDOCR_DIR]):
         return True  # Some directories missing, need to re-extract
 
     return False  # Already extracted and up-to-date
@@ -64,24 +63,21 @@ if _should_extract_dependencies():
         if os.path.exists(EXTRACTION_MARKER):
             os.remove(EXTRACTION_MARKER)
 
-# Add py_modules to path for provider imports
-# Check bin/py_modules first (Decky Store install via remote_binary)
-# Then fall back to root py_modules (dev/manual install)
+# Add py_modules to path
+# Root py_modules always needed (contains providers/ source code)
+# bin/py_modules needed for store installs (pip packages from remote_binary)
 ROOT_PY_MODULES_DIR = os.path.join(PLUGIN_DIR, "py_modules")
 
-if os.path.exists(BIN_PY_MODULES_DIR):
-    PY_MODULES_DIR = BIN_PY_MODULES_DIR
-else:
-    PY_MODULES_DIR = ROOT_PY_MODULES_DIR
+if ROOT_PY_MODULES_DIR not in sys.path:
+    sys.path.insert(0, ROOT_PY_MODULES_DIR)
 
-if PY_MODULES_DIR not in sys.path:
-    sys.path.insert(0, PY_MODULES_DIR)
+if os.path.exists(BIN_PY_MODULES_DIR) and BIN_PY_MODULES_DIR not in sys.path:
+    sys.path.insert(0, BIN_PY_MODULES_DIR)
 
 # Now import third-party libraries (after sys.path is configured)
 import decky_plugin
 import urllib3
 import requests
-from PIL import Image
 
 # Import provider system
 from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError, RateLimitError
@@ -516,10 +512,11 @@ class HidrawButtonMonitor:
             }
 
 
-for _p in [PY_MODULES_DIR, ROOT_PY_MODULES_DIR]:
-    if _p in sys.path:
-        sys.path.remove(_p)
-    sys.path.insert(0, _p)
+for _p in [ROOT_PY_MODULES_DIR, BIN_PY_MODULES_DIR]:
+    if os.path.exists(_p):
+        if _p in sys.path:
+            sys.path.remove(_p)
+        sys.path.insert(0, _p)
 
 try:
     import evdev

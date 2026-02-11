@@ -34,7 +34,7 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
         debug_info.append(f"Python: {sys.version}")
         debug_info.append(f"PYTHONPATH: {sys.path[:3]}...")
 
-        from rapidocr_onnxruntime import RapidOCR
+        from rapidocr import RapidOCR, EngineType
         debug_info.append("RapidOCR imported OK")
 
         import numpy as np
@@ -50,6 +50,7 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
         det_model = os.path.join(models_dir, "ch_PP-OCRv4_det_infer.onnx")
         rec_model = os.path.join(models_dir, "ch_PP-OCRv4_rec_infer.onnx")
         cls_model = os.path.join(models_dir, "ch_ppocr_mobile_v2.0_cls_infer.onnx")
+        rec_keys = os.path.join(models_dir, "ppocr_keys_v1.txt")
 
         models_exist = all([
             os.path.exists(det_model),
@@ -59,25 +60,23 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
 
         # Initialize RapidOCR with single-threaded ONNX
         debug_info.append(f"Settings: text_score={min_confidence}, box_thresh={box_thresh}, unclip_ratio={unclip_ratio}")
+        params = {
+            "Global.text_score": min_confidence,
+            "Det.box_thresh": box_thresh,
+            "Det.unclip_ratio": unclip_ratio,
+            "Det.engine_type": EngineType.ONNXRUNTIME,
+            "Cls.engine_type": EngineType.ONNXRUNTIME,
+            "Rec.engine_type": EngineType.ONNXRUNTIME,
+            "EngineConfig.onnxruntime.intra_op_num_threads": 1,
+            "EngineConfig.onnxruntime.inter_op_num_threads": 1,
+        }
         if models_exist:
-            engine = RapidOCR(
-                det_model_path=det_model,
-                rec_model_path=rec_model,
-                cls_model_path=cls_model,
-                text_score=min_confidence,
-                box_thresh=box_thresh,
-                unclip_ratio=unclip_ratio,
-                intra_op_num_threads=1,
-                inter_op_num_threads=1
-            )
-        else:
-            engine = RapidOCR(
-                text_score=min_confidence,
-                box_thresh=box_thresh,
-                unclip_ratio=unclip_ratio,
-                intra_op_num_threads=1,
-                inter_op_num_threads=1
-            )
+            params["Det.model_path"] = det_model
+            params["Cls.model_path"] = cls_model
+            params["Rec.model_path"] = rec_model
+            if os.path.exists(rec_keys):
+                params["Rec.rec_keys_path"] = rec_keys
+        engine = RapidOCR(params=params)
 
         # Load image
         img = Image.open(image_path)
@@ -103,28 +102,21 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
         result = engine(img_np)
 
         debug_info.append(f"OCR result type: {type(result)}")
-        debug_info.append(f"OCR result[0]: {result[0] if result else 'None'}")
-        debug_info.append(f"OCR result[1]: {result[1] if result and len(result) > 1 else 'None'}")
+        debug_info.append(f"OCR result txts: {result.txts if result else 'None'}")
+        debug_info.append(f"OCR result scores: {result.scores if result else 'None'}")
 
-        # Parse results
+        # Parse results -- rapidocr 3.x returns a dataclass with .boxes, .txts, .scores
         regions = []
-        if result and result[0]:
-            for item in result[0]:
-                if len(item) < 3:
-                    continue
-
-                box = item[0]
-                text = item[1]
-                confidence = item[2]
-
+        if result and result.txts:
+            for box, text, confidence in zip(result.boxes, result.txts, result.scores):
                 if not text or not text.strip():
                     continue
 
                 if confidence < min_confidence:
                     continue
 
-                # Convert polygon to rectangle
-                if box and len(box) >= 4:
+                # Convert polygon to rectangle (box is np.ndarray shape (4, 2))
+                if box is not None and len(box) >= 4:
                     xs = [pt[0] for pt in box]
                     ys = [pt[1] for pt in box]
                     rect = {

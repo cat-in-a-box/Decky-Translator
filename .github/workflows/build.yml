@@ -48,25 +48,46 @@ jobs:
           curl -L -o cli/decky "https://github.com/SteamDeckHomebrew/cli/releases/download/0.0.8/decky-linux-x86_64"
           chmod +x cli/decky
 
-      - name: Setup Python 3.11
+      - name: Setup Python 3.13
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.13'
 
       - name: Create dependencies directory
         run: mkdir -p dependencies_build
 
-      - name: Install Python packages (Python 3.11)
+      - name: Install Python packages (Python 3.13)
         run: |
           pip install -r requirements.txt -t dependencies_build/py_modules --no-cache-dir
 
-      - name: Download Python 3.11 portable runtime
+      - name: Install cp311 packages for Decky Loader runtime
         run: |
-          mkdir -p dependencies_build/python311
-          curl -L -o dependencies_build/python311/python-3.11.tar.gz \
-            "https://github.com/astral-sh/python-build-standalone/releases/download/20251010/cpython-3.11.14+20251010-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
-          echo "e84da4b01a4017222ed3d172f4ba261c930cca40b7db5d6ad97149a41b98a14c  dependencies_build/python311/python-3.11.tar.gz" | sha256sum -c
-          cd dependencies_build/python311 && tar -xzf python-3.11.tar.gz && rm python-3.11.tar.gz
+          pip install evdev-binary -t dependencies_build/py_modules --no-cache-dir --python-version 3.11 --only-binary=:all: --platform manylinux_2_28_x86_64 --no-deps
+
+      - name: Strip unnecessary packages and test files
+        run: |
+          cd dependencies_build/py_modules
+          # Remove packages not needed at runtime (onnxruntime optional deps)
+          rm -rf sympy sympy-*.dist-info sympy-*.data isympy.py
+          rm -rf mpmath mpmath-*.dist-info
+          rm -rf flatbuffers flatbuffers-*.dist-info
+          rm -rf google protobuf-*.dist-info
+          # tqdm is needed by rapidocr 3.x -- do NOT remove
+          # Remove full opencv-python (rapidocr pulls it in, but we only need headless)
+          rm -rf opencv_python.libs opencv_python-*.dist-info
+          # Reinstall headless to overwrite cv2/ module (full version's cv2 references wrong .libs)
+          pip install opencv-python-headless -t . --no-cache-dir --upgrade --force-reinstall --no-deps
+          # Remove rapidocr bundled models (we use our own)
+          rm -rf rapidocr/models
+          # Strip test directories, __pycache__, and .pyc files
+          find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "test" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "testing" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete 2>/dev/null || true
+          find . -name "*.pyi" -delete 2>/dev/null || true
+          rm -rf numpy/_pyinstaller onnxruntime/datasets
+          echo "py_modules size after cleanup: $(du -sh . | cut -f1)"
 
       - name: Download RapidOCR models
         run: |
@@ -80,7 +101,7 @@ jobs:
       - name: Create dependencies archive
         run: |
           cd dependencies_build
-          tar -czvf ../plugin-dependencies.tar.gz py_modules python311 rapidocr
+          tar -czvf ../plugin-dependencies.tar.gz py_modules rapidocr
 
       - name: Calculate dependencies SHA256
         id: dependencies_hash
