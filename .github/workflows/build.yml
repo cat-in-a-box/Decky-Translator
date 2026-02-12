@@ -93,10 +93,29 @@ jobs:
         run: |
           mkdir -p dependencies_build/rapidocr/models
           cd dependencies_build/rapidocr/models
-          curl -L -O "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_det_infer.onnx"
-          curl -L -O "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx"
-          curl -L -o ch_ppocr_mobile_v2.0_cls_infer.onnx "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_ppocr_mobile_v2.0_cls_train.onnx"
-          curl -L -O "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ppocr_keys_v1.txt"
+
+          # Detection model (PP-OCRv5 mobile, shared for all languages)
+          curl -L -o ch_PP-OCRv5_mobile_det.onnx \
+            "https://github.com/MeKo-Christian/paddleocr-onnx/releases/download/v1.0.0/PP-OCRv5_mobile_det.onnx"
+
+          # Chinese rec model (PP-OCRv5 mobile -- also handles Japanese and English)
+          curl -L -o ch_rec.onnx \
+            "https://github.com/MeKo-Christian/paddleocr-onnx/releases/download/v1.0.0/PP-OCRv5_mobile_rec.onnx"
+          curl -L -o ch_dict.txt \
+            "https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages/chinese/dict.txt"
+
+          # Per-language recognition models from monkt/paddleocr-onnx (PP-OCRv5, arabic/hindi are v3)
+          MONKT="https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages"
+          for lang in english latin eslav korean greek thai arabic hindi; do
+            curl -L -o ${lang}_rec.onnx "$MONKT/${lang}/rec.onnx"
+            curl -L -o ${lang}_dict.txt "$MONKT/${lang}/dict.txt"
+          done
+
+          # Text direction classifier (PP-OCRv2, works with v5)
+          curl -L -o ch_ppocr_mobile_v2.0_cls_infer.onnx \
+            "https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_ppocr_mobile_v2.0_cls_train.onnx"
+
+          ls -lh
 
       - name: Create dependencies archive
         run: |

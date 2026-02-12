@@ -35,48 +35,40 @@ class RapidOCRProvider(OCRProvider):
 
     This provider runs ONNX-based OCR locally on the Steam Deck,
     providing unlimited OCR without internet connectivity or rate limits.
-    Optimized for Chinese/English but supports Japanese and Korean with
-    additional models.
+    Uses PP-OCRv5 models with per-language-family recognition.
     """
 
-    # Language code mapping: plugin codes -> RapidOCR language identifiers
-    # RapidOCR default models handle Chinese + English well
-    # The Chinese model also recognizes Latin-script text (German, French, etc.)
-    # Japanese and Korean require separate model files
+    # Language code mapping: plugin codes -> model family identifiers
+    # PP-OCRv5 has per-language-family recognition models
     LANGUAGE_MAP = {
-        'auto': 'ch',       # Chinese model handles English and Latin scripts
-        'en': 'ch',         # Use Chinese model (handles English well)
-        'zh-CN': 'ch',      # Simplified Chinese
-        'zh-TW': 'ch',      # Traditional Chinese (handled by simplified model)
-        'ja': 'japan',      # Japanese (requires japan model)
-        'ko': 'korean',     # Korean (requires korean model)
-        # Latin-script languages - use Chinese model which handles them
-        'de': 'ch',         # German
-        'fr': 'ch',         # French
-        'es': 'ch',         # Spanish
-        'it': 'ch',         # Italian
-        'pt': 'ch',         # Portuguese
-        'nl': 'ch',         # Dutch
-        'pl': 'ch',         # Polish
-        'tr': 'ch',         # Turkish (Latin script)
-        'ro': 'ch',         # Romanian (Latin script)
-        'vi': 'ch',         # Vietnamese (Latin script)
-        # Cyrillic-script languages - may have limited support
-        'ru': 'ch',         # Russian
-        'uk': 'ch',         # Ukrainian
-        # Other scripts - limited support, may not work well
-        'ar': 'ch',         # Arabic (limited support)
-        'hi': 'ch',         # Hindi (limited support)
+        'auto': 'ch',
+        'en': 'ch',         # ch model handles English well in mixed-script text
+        'zh-CN': 'ch',
+        'zh-TW': 'ch',
+        'ja': 'ch',         # v5 ch model handles Japanese natively
+        'ko': 'korean',
+        'de': 'latin',
+        'fr': 'latin',
+        'es': 'latin',
+        'it': 'latin',
+        'pt': 'latin',
+        'nl': 'latin',
+        'pl': 'latin',
+        'tr': 'latin',
+        'ro': 'latin',
+        'vi': 'latin',
+        'ru': 'eslav',
+        'uk': 'eslav',
+        'ar': 'arabic',
+        'hi': 'hindi',
+        'el': 'greek',
+        'th': 'thai',
     }
 
-    # Languages supported with default bundled models
-    # Best support: Chinese, Japanese, Korean, English
-    # Good support: Latin-script languages (German, French, Spanish, etc.)
-    # Limited support: Cyrillic (Russian, Ukrainian), Arabic, Hindi
     SUPPORTED_LANGUAGES = [
         'auto', 'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
         'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi',
-        'ru', 'uk', 'ar', 'hi'
+        'ru', 'uk', 'ar', 'hi', 'el', 'th'
     ]
 
     def __init__(
@@ -156,14 +148,12 @@ class RapidOCRProvider(OCRProvider):
             logger.warning(self._init_error)
             return False
 
-        # Check for bundled models
-        det_model = os.path.join(self._models_dir, "ch_PP-OCRv4_det_infer.onnx")
-        rec_model = os.path.join(self._models_dir, "ch_PP-OCRv4_rec_infer.onnx")
+        # Check for bundled models (det + cls are shared across all languages)
+        det_model = os.path.join(self._models_dir, "ch_PP-OCRv5_mobile_det.onnx")
         cls_model = os.path.join(self._models_dir, "ch_ppocr_mobile_v2.0_cls_infer.onnx")
 
         models_exist = all([
             os.path.exists(det_model),
-            os.path.exists(rec_model),
             os.path.exists(cls_model)
         ])
 
@@ -310,7 +300,7 @@ class RapidOCRProvider(OCRProvider):
 
         # Check for bundled models
         if os.path.exists(self._models_dir):
-            det_model = os.path.join(self._models_dir, "ch_PP-OCRv4_det_infer.onnx")
+            det_model = os.path.join(self._models_dir, "ch_PP-OCRv5_mobile_det.onnx")
             info["bundled_models"] = os.path.exists(det_model)
 
         return info
@@ -370,6 +360,8 @@ class RapidOCRProvider(OCRProvider):
                 logger.error("RapidOCR: No Python interpreter available")
                 return []
 
+            lang_family = self.LANGUAGE_MAP.get(language, 'ch')
+
             cmd = [
                 self._python_path,
                 '-S',  # Ignore site-packages from standalone Python
@@ -378,7 +370,8 @@ class RapidOCRProvider(OCRProvider):
                 self._models_dir,
                 str(self._min_confidence),
                 str(self._box_thresh),
-                str(self._unclip_ratio)
+                str(self._unclip_ratio),
+                lang_family,
             ]
             logger.debug(f"RapidOCR: Running subprocess: {' '.join(cmd)}")
 
