@@ -7,7 +7,7 @@ with the Decky Loader's async environment. ONNX Runtime threading
 can deadlock when run inside certain async contexts.
 
 Usage:
-    python rapidocr_subprocess.py <image_path> <models_dir> <min_confidence>
+    python rapidocr_subprocess.py <image_path> <models_dir> <min_confidence> [box_thresh] [unclip_ratio] [lang_family]
 
 Output:
     JSON array of detected text regions on stdout
@@ -17,6 +17,19 @@ import json
 import os
 import sys
 
+# Maps language family -> (rec model filename, dict filename)
+LANG_MODEL_MAP = {
+    'ch':      ('ch_rec.onnx',      'ch_dict.txt'),
+    'english': ('english_rec.onnx', 'english_dict.txt'),
+    'latin':   ('latin_rec.onnx',   'latin_dict.txt'),
+    'eslav':   ('eslav_rec.onnx',   'eslav_dict.txt'),
+    'korean':  ('korean_rec.onnx',  'korean_dict.txt'),
+    'greek':   ('greek_rec.onnx',   'greek_dict.txt'),
+    'thai':    ('thai_rec.onnx',    'thai_dict.txt'),
+    'arabic':  ('arabic_rec.onnx',  'arabic_dict.txt'),
+    'hindi':   ('hindi_rec.onnx',   'hindi_dict.txt'),
+}
+
 # Set threading environment BEFORE any imports
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -25,7 +38,7 @@ os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
 os.environ['NUMEXPR_NUM_THREADS'] = '1'
 
 
-def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh: float = 0.5, unclip_ratio: float = 1.6):
+def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh: float = 0.5, unclip_ratio: float = 1.6, lang_family: str = 'ch'):
     """Run OCR on the image and return results as JSON."""
     import sys
     debug_info = []
@@ -46,11 +59,15 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
         return {"error": f"Import failed: {e}", "regions": [], "debug": debug_info}
 
     try:
-        # Check for bundled models
-        det_model = os.path.join(models_dir, "ch_PP-OCRv4_det_infer.onnx")
-        rec_model = os.path.join(models_dir, "ch_PP-OCRv4_rec_infer.onnx")
+        # Detection model is always the same (PP-OCRv5 mobile)
+        det_model = os.path.join(models_dir, "ch_PP-OCRv5_mobile_det.onnx")
         cls_model = os.path.join(models_dir, "ch_ppocr_mobile_v2.0_cls_infer.onnx")
-        rec_keys = os.path.join(models_dir, "ppocr_keys_v1.txt")
+
+        # Recognition model + dict depends on language family
+        lang_family = lang_family or 'ch'
+        rec_file, dict_file = LANG_MODEL_MAP.get(lang_family, ('ch_rec.onnx', 'ch_dict.txt'))
+        rec_model = os.path.join(models_dir, rec_file)
+        rec_keys = os.path.join(models_dir, dict_file)
 
         models_exist = all([
             os.path.exists(det_model),
@@ -59,7 +76,7 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
         ])
 
         # Initialize RapidOCR with single-threaded ONNX
-        debug_info.append(f"Settings: text_score={min_confidence}, box_thresh={box_thresh}, unclip_ratio={unclip_ratio}")
+        debug_info.append(f"Settings: text_score={min_confidence}, box_thresh={box_thresh}, unclip_ratio={unclip_ratio}, lang_family={lang_family}")
         params = {
             "Global.text_score": min_confidence,
             "Det.box_thresh": box_thresh,
@@ -147,7 +164,7 @@ def run_ocr(image_path: str, models_dir: str, min_confidence: float, box_thresh:
 
 def main():
     if len(sys.argv) < 4:
-        print(json.dumps({"error": "Usage: rapidocr_subprocess.py <image_path> <models_dir> <min_confidence> [box_thresh] [unclip_ratio]", "regions": []}))
+        print(json.dumps({"error": "Usage: rapidocr_subprocess.py <image_path> <models_dir> <min_confidence> [box_thresh] [unclip_ratio] [lang_family]", "regions": []}))
         sys.exit(1)
 
     image_path = sys.argv[1]
@@ -155,8 +172,9 @@ def main():
     min_confidence = float(sys.argv[3])
     box_thresh = float(sys.argv[4]) if len(sys.argv) > 4 else 0.5
     unclip_ratio = float(sys.argv[5]) if len(sys.argv) > 5 else 1.6
+    lang_family = sys.argv[6] if len(sys.argv) > 6 else 'ch'
 
-    result = run_ocr(image_path, models_dir, min_confidence, box_thresh, unclip_ratio)
+    result = run_ocr(image_path, models_dir, min_confidence, box_thresh, unclip_ratio, lang_family)
     print(json.dumps(result))
 
 
