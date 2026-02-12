@@ -37,8 +37,8 @@ type SettingsAction =
 
 // Define the initial state
 const initialSettings: Settings = {
-    inputLanguage: "auto",
-    targetLanguage: "en",
+    inputLanguage: "",
+    targetLanguage: "",
     inputMode: InputMode.L5_BUTTON,  // Default to L5 back button
     enabled: true,
     initialized: false,

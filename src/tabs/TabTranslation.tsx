@@ -53,6 +53,7 @@ const languageOptions = [
     { label: "🇻🇳 Vietnamese", data: "vi" }
 ];
 
+const selectLanguageOption = { label: "Select language...", data: "" };
 const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto");
 
 // Languages RapidOCR able to work with
@@ -108,15 +109,16 @@ const ApiKeyModal: VFC<{
 export const TabTranslation: VFC = () => {
     const { settings, updateSetting } = useSettings();
 
+    const placeholderOption = settings.inputLanguage === '' ? [selectLanguageOption] : [];
     const inputLanguageOptions = settings.ocrProvider === 'rapidocr'
-        ? languageOptions.filter(lang => rapidocrLanguages.has(lang.data))
-        : languageOptions;
+        ? [...placeholderOption, ...languageOptions.filter(lang => rapidocrLanguages.has(lang.data))]
+        : [...placeholderOption, ...languageOptions];
 
     // Reset input language if it's not supported by the current OCR provider
     useEffect(() => {
         if (settings.initialized && settings.ocrProvider === 'rapidocr'
-            && !rapidocrLanguages.has(settings.inputLanguage)) {
-            updateSetting('inputLanguage', 'en', 'Input language');
+            && settings.inputLanguage !== '' && !rapidocrLanguages.has(settings.inputLanguage)) {
+            updateSetting('inputLanguage', '', 'Input language');
         }
     }, [settings.initialized, settings.ocrProvider]);
 
@@ -139,7 +141,7 @@ export const TabTranslation: VFC = () => {
                     <DropdownItem
                         label="Output Language"
                         description="Target language for translation"
-                        rgOptions={outputLanguageOptions}
+                        rgOptions={[...(settings.targetLanguage === '' ? [selectLanguageOption] : []), ...outputLanguageOptions]}
                         selectedOption={settings.targetLanguage}
                         onChange={(option) => updateSetting('targetLanguage', option.data, 'Output language')}
                     />
@@ -159,8 +161,8 @@ export const TabTranslation: VFC = () => {
                         selectedOption={settings.ocrProvider}
                         onChange={(option) => {
                             updateSetting('ocrProvider', option.data, 'OCR provider');
-                            if (option.data === 'rapidocr' && !rapidocrLanguages.has(settings.inputLanguage)) {
-                                updateSetting('inputLanguage', 'en', 'Input language');
+                            if (option.data === 'rapidocr' && settings.inputLanguage !== '' && !rapidocrLanguages.has(settings.inputLanguage)) {
+                                updateSetting('inputLanguage', '', 'Input language');
                             }
                         }}
                     />
