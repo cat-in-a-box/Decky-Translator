@@ -437,6 +437,12 @@ export class TextRecognizer {
             return false;
         }
 
+        // CJK sentence-ending punctuation is a strong paragraph break signal
+        // (CJK has no capitalization, so the period alone is enough)
+        if (/[。！？]\s*$/.test(regionA.text)) {
+            return false;
+        }
+
         return true;
     }
 
@@ -445,12 +451,20 @@ export class TextRecognizer {
      */
     private getMergeSpacing(regionA: TextRegion, regionB: TextRegion, gap: number): string {
         // No space if the second region starts with punctuation that doesn't need space
-        if (/^[.,!?:;)\]"']/.test(regionB.text)) {
+        if (/^[.,!?:;)\]"'。、）」』】〉》)]/.test(regionB.text)) {
             return "";
         }
 
         // No space if the first region ends with opening punctuation
-        if (/[([\s"']\s*$/.test(regionA.text)) {
+        if (/[(\[\s"'（「『【〈《(]\s*$/.test(regionA.text)) {
+            return "";
+        }
+
+        // CJK scripts don't use spaces between words -- check both regions
+        const cjkPattern = /[\u3000-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]/;
+        const aEndsCJK = cjkPattern.test(regionA.text.slice(-1));
+        const bStartsCJK = cjkPattern.test(regionB.text.charAt(0));
+        if (aEndsCJK || bStartsCJK) {
             return "";
         }
 
@@ -829,14 +843,18 @@ export class TextRecognizer {
             }
 
             // Skip text containing only punctuation and special characters
-            if (/^[^\w\s]+$/.test(text) || /^[_\-\+\*\/\=\.,;:!?@#$%^&*()[\]{}|<>~`"']+$/.test(text)) {
+            // Use \p{L} (Unicode letter) to avoid filtering CJK/Japanese/Korean text
+            if (/^[^\p{L}\p{N}\s]+$/u.test(text) || /^[_\-\+\*\/\=\.,;:!?@#$%^&*()[\]{}|<>~`"']+$/.test(text)) {
                 logger.debug('TextRecognizer', `Filtering: Punctuation/special characters-only "${text}"`);
                 return false;
             }
 
             // Skip very short text that's likely UI elements (2-3 characters)
             // But only if they're not likely words (e.g., "OK", "GO", "NO")
-            if (text.length <= 3 && !/^(OK|GO|NO|YES|ON|OFF|NEW|ADD|ALL|BUY|THE|AND|FOR|TO|IN|IS|IT|BE|BY)$/i.test(text)) {
+            // Non-Latin scripts (CJK, Korean, Arabic, Cyrillic, etc.) carry much more
+            // meaning per character, so skip this filter when non-ASCII letters are present
+            const hasNonLatinLetter = /[^\x00-\x7F]/.test(text) && /\p{L}/u.test(text);
+            if (text.length <= 3 && !hasNonLatinLetter && !/^(OK|GO|NO|YES|ON|OFF|NEW|ADD|ALL|BUY|THE|AND|FOR|TO|IN|IS|IT|BE|BY)$/i.test(text)) {
                 logger.debug('TextRecognizer', `Filtering: Very short non-word "${text}"`);
                 return false;
             }
