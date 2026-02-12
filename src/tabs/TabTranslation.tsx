@@ -45,6 +45,7 @@ const languageOptions = [
     { label: "🇳🇱 Dutch", data: "nl" },
     { label: "🇮🇳 Hindi", data: "hi" },
     { label: "🇵🇱 Polish", data: "pl" },
+    { label: "🇹🇭 Thai", data: "th" },
     { label: "🇹🇷 Turkish", data: "tr" },
     { label: "🇺🇦 Ukrainian", data: "uk" },
     { label: "🇷🇴 Romanian", data: "ro" },
