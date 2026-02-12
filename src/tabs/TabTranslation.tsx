@@ -33,6 +33,7 @@ const languageOptions = [
     { label: "🇪🇸 Spanish", data: "es" },
     { label: "🇫🇷 French", data: "fr" },
     { label: "🇩🇪 German", data: "de" },
+    { label: "🇬🇷 Greek", data: "el" },
     { label: "🇮🇹 Italian", data: "it" },
     { label: "🇵🇹 Portuguese", data: "pt" },
     { label: "🇷🇺 Russian", data: "ru" },

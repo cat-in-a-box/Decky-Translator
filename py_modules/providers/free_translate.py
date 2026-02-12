@@ -32,6 +32,7 @@ class FreeTranslateProvider(TranslationProvider):
         'pt': 'pt',
         'ru': 'ru',
         'ar': 'ar',
+        'el': 'el',
         'nl': 'nl',
         'pl': 'pl',
         'tr': 'tr',
