@@ -314,6 +314,32 @@ export class GameTranslatorLogic {
             return;
         }
 
+        // Check if languages are configured
+        const inputLang = this.getInputLanguage();
+        const targetLang = this.getTargetLanguage();
+        if (!inputLang && targetLang) {
+            logger.warn('Translator', 'Cannot start translation: languages not configured');
+            this.notify("Input language is not set", 3000, "Please select it in the plugin settings");
+            return;
+        }
+        if (!targetLang && inputLang) {
+            logger.warn('Translator', 'Cannot start translation: languages not configured');
+            this.notify("Output language is not set", 3000, "Please select it in the plugin settings");
+            return;
+        }
+        if (!inputLang && !targetLang) {
+            logger.warn('Translator', 'Cannot start translation: languages not configured');
+            this.notify("Output and Input languages are not set", 3000, "Please select them in the plugin settings");
+            return;
+        }
+
+        // Check if input and output languages are the same (auto-detect is fine)
+        if (inputLang !== 'auto' && inputLang === targetLang) {
+            logger.warn('Translator', `Cannot start translation: input and output language are both ${inputLang}`);
+            this.notify("Input and output languages can not be the same", 3000, "Select change them in plugin settings");
+            return;
+        }
+
         // Check if API key is required but missing BEFORE starting the process
         const apiKeyCheck = this.requiresApiKeyButMissing();
         if (apiKeyCheck.missing) {
