@@ -97,6 +97,23 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         }}
                     />
                 </PanelSectionRow>
+
+                {/* Quick toggle option - only show for combo modes */}
+                {(settings.inputMode === InputMode.L4_R4_COMBO ||
+                    settings.inputMode === InputMode.L5_R5_COMBO ||
+                    settings.inputMode === InputMode.L3_R3_COMBO ||
+                    settings.inputMode === InputMode.TOUCHPAD_COMBO) && (
+                    <PanelSectionRow>
+                        <ToggleField
+                            checked={settings.quickToggleEnabled}
+                            label="Quick toggle with Right Button"
+                            description="If double buttons combination is selected, press right button to toggle overlay visibility"
+                            onChange={(value) => {
+                                updateSetting('quickToggleEnabled', value, 'Quick toggle');
+                            }}
+                        />
+                    </PanelSectionRow>
+                )}
             </PanelSection>
 
             <PanelSection title="Display & Behavior">
@@ -138,23 +155,6 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         }}
                     />
                 </PanelSectionRow>
-
-                {/* Quick toggle option - only show for combo modes */}
-                {(settings.inputMode === InputMode.L4_R4_COMBO ||
-                    settings.inputMode === InputMode.L5_R5_COMBO ||
-                    settings.inputMode === InputMode.L3_R3_COMBO ||
-                    settings.inputMode === InputMode.TOUCHPAD_COMBO) && (
-                    <PanelSectionRow>
-                        <ToggleField
-                            checked={settings.quickToggleEnabled}
-                            label="Quick toggle with Right Button"
-                            description="If double buttons combination is selected, press right button to toggle overlay visibility"
-                            onChange={(value) => {
-                                updateSetting('quickToggleEnabled', value, 'Quick toggle');
-                            }}
-                        />
-                    </PanelSectionRow>
-                )}
             </PanelSection>
 
             <PanelSection title="Miscellaneous">
