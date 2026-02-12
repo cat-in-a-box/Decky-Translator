@@ -42,6 +42,7 @@ const languageOptions = [
     { label: "🇨🇳 Chinese (Simplified)", data: "zh-CN" },
     { label: "🇹🇼 Chinese (Traditional)", data: "zh-TW" },
     { label: "🇸🇦 Arabic", data: "ar" },
+    { label: "🇫🇮 Finnish", data: "fi" },
     { label: "🇳🇱 Dutch", data: "nl" },
     { label: "🇮🇳 Hindi", data: "hi" },
     { label: "🇵🇱 Polish", data: "pl" },

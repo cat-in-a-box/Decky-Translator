@@ -46,6 +46,7 @@ class OCRSpaceProvider(OCRProvider):
         'ru': 'rus',
         'ar': 'ara',
         'el': 'gre',
+        'fi': 'fin',
         'nl': 'dut',
         'pl': 'pol',
         'tr': 'tur',

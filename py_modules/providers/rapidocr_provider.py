@@ -57,6 +57,7 @@ class RapidOCRProvider(OCRProvider):
         'tr': 'latin',
         'ro': 'latin',
         'vi': 'latin',
+        'fi': 'latin',
         'ru': 'eslav',
         'uk': 'eslav',
         'ar': 'arabic',
@@ -67,7 +68,7 @@ class RapidOCRProvider(OCRProvider):
 
     SUPPORTED_LANGUAGES = [
         'auto', 'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
-        'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi',
+        'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi', 'fi',
         'ru', 'uk', 'ar', 'hi', 'el', 'th'
     ]
 
