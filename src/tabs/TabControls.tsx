@@ -116,18 +116,7 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                 )}
             </PanelSection>
 
-            <PanelSection title="Display & Behavior">
-                <PanelSectionRow>
-                    <ToggleField
-                        checked={settings.pauseGameOnOverlay}
-                        label="Pause Game While Translating"
-                        description="Pauses the active game while overlay is visible. Allows you to read the text more thoughtfully. Resumed when dismissed"
-                        onChange={(value) => {
-                            updateSetting('pauseGameOnOverlay', value, 'Pause game while translating');
-                        }}
-                    />
-                </PanelSectionRow>
-
+            <PanelSection title="Display">
                 <PanelSectionRow>
                     <SliderField
                         value={settings.fontScale}
@@ -152,6 +141,19 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         description="Don't display if translation is the same as original word/sentence"
                         onChange={(value) => {
                             updateSetting('hideIdenticalTranslations', value, 'Hide identical translations');
+                        }}
+                    />
+                </PanelSectionRow>
+            </PanelSection>
+
+            <PanelSection title="Behavior">
+                <PanelSectionRow>
+                    <ToggleField
+                        checked={settings.pauseGameOnOverlay}
+                        label="Pause Game While Translating"
+                        description="Pauses the active game and allows you to read the text more thoughtfully. The game is resumed when overlay is dismissed"
+                        onChange={(value) => {
+                            updateSetting('pauseGameOnOverlay', value, 'Pause game while translating');
                         }}
                     />
                 </PanelSectionRow>
