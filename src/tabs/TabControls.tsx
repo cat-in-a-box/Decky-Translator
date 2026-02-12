@@ -121,10 +121,10 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                     <SliderField
                         value={settings.fontScale}
                         max={3}
-                        min={0.5}
+                        min={1}
                         step={0.1}
-                        label="Overlay Font Scale"
-                        description="Increase if translated text is too small. Can be useful for external monitors"
+                        label="Font Scaling"
+                        description="Increase if translated text is too small. Can be useful for large external monitors"
                         showValue={true}
                         valueSuffix="x"
                         onChange={(value) => {
