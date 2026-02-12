@@ -14,7 +14,7 @@ import {
     Focusable
 } from "@decky/ui";
 
-import { VFC, useState } from "react";
+import { VFC, useState, useEffect } from "react";
 import { useSettings } from "../SettingsContext";
 import { BsTrash } from "react-icons/bs";
 
@@ -54,7 +54,13 @@ const languageOptions = [
 ];
 
 const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto");
-const inputLanguageOptions = languageOptions;
+
+// Languages RapidOCR able to work with
+const rapidocrLanguages = new Set([
+    'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
+    'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi', 'fi',
+    'ru', 'uk', 'el', 'th'
+]);
 
 // API Key Modal Component
 const ApiKeyModal: VFC<{
@@ -102,13 +108,27 @@ const ApiKeyModal: VFC<{
 export const TabTranslation: VFC = () => {
     const { settings, updateSetting } = useSettings();
 
+    const inputLanguageOptions = settings.ocrProvider === 'rapidocr'
+        ? languageOptions.filter(lang => rapidocrLanguages.has(lang.data))
+        : languageOptions;
+
+    // Reset input language if it's not supported by the current OCR provider
+    useEffect(() => {
+        if (settings.initialized && settings.ocrProvider === 'rapidocr'
+            && !rapidocrLanguages.has(settings.inputLanguage)) {
+            updateSetting('inputLanguage', 'en', 'Input language');
+        }
+    }, [settings.initialized, settings.ocrProvider]);
+
     return (
         <div style={{ marginLeft: "-8px", marginRight: "-8px", paddingBottom: "40px" }}>
             <PanelSection title="Languages">
                 <PanelSectionRow>
                     <DropdownItem
                         label="Input Language"
-                        description="Source language (Select auto-detect if unsure)"
+                        description={settings.ocrProvider === 'rapidocr'
+                            ? "Source language for text recognition"
+                            : "Source language (Select auto-detect if unsure)"}
                         rgOptions={inputLanguageOptions}
                         selectedOption={settings.inputLanguage}
                         onChange={(option) => updateSetting('inputLanguage', option.data, 'Input language')}
@@ -137,7 +157,12 @@ export const TabTranslation: VFC = () => {
                             { label: <span>Google Cloud Vision</span>, data: "googlecloud" }
                         ]}
                         selectedOption={settings.ocrProvider}
-                        onChange={(option) => updateSetting('ocrProvider', option.data, 'OCR provider')}
+                        onChange={(option) => {
+                            updateSetting('ocrProvider', option.data, 'OCR provider');
+                            if (option.data === 'rapidocr' && !rapidocrLanguages.has(settings.inputLanguage)) {
+                                updateSetting('inputLanguage', 'en', 'Input language');
+                            }
+                        }}
                     />
                 </PanelSectionRow>
                 <PanelSectionRow>
