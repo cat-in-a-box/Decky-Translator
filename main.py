@@ -945,6 +945,8 @@ class Plugin:
                 self._quick_toggle_enabled = value
             elif key == "font_scale":
                 pass  # frontend-only, just persist to settings file
+            elif key == "grouping_power":
+                pass  # frontend-only, just persist to settings file
             elif key == "hide_identical_translations":
                 pass  # frontend-only, just persist to settings file
             elif key == "debug_mode":
@@ -1013,6 +1015,7 @@ class Plugin:
                 "quick_toggle_enabled": self._settings.get_setting("quick_toggle_enabled", False),
                 "debug_mode": self._settings.get_setting("debug_mode", False),
                 "font_scale": self._settings.get_setting("font_scale", 1.0),
+                "grouping_power": self._settings.get_setting("grouping_power", 0.25),
                 "hide_identical_translations": self._settings.get_setting("hide_identical_translations", False)
             }
             return settings

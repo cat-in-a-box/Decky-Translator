@@ -187,6 +187,10 @@ export class GameTranslatorLogic {
         return this.confidenceThreshold;
     }
 
+    setGroupingPower = (power: number): void => {
+        this.textRecognizer.setGroupingPower(power);
+    }
+
     setHideIdenticalTranslations = (enabled: boolean): void => {
         this.hideIdenticalTranslations = enabled;
     }

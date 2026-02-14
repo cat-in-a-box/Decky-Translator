@@ -135,6 +135,27 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                 </PanelSectionRow>
 
                 <PanelSectionRow>
+                    <SliderField
+                        value={settings.groupingPower}
+                        min={0.25}
+                        max={1.0}
+                        step={0.25}
+                        notchCount={4}
+                        notchTicksVisible={true}
+                        label="Text Blocks Grouping"
+                        description={
+                            settings.groupingPower <= 0.25 ? "Normal - Keeps text blocks separated" :
+                            settings.groupingPower <= 0.5 ? "Increased - Merges text blocks" :
+                            settings.groupingPower <= 0.75 ? "Large - Merges distant text blocks" :
+                            "Huge - Merges very distant text blocks"
+                        }
+                        onChange={(value) => {
+                            updateSetting('groupingPower', value, 'Text grouping');
+                        }}
+                    />
+                </PanelSectionRow>
+
+                <PanelSectionRow>
                     <ToggleField
                         checked={settings.hideIdenticalTranslations}
                         label="Hide Identical Translations"
