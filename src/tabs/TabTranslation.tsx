@@ -24,7 +24,8 @@ import ocrspaceLogo from "../../assets/ocrspace-logo.png";
 import googlecloudLogo from "../../assets/googlecloud-logo.png";
 // @ts-ignore
 import googletranslateLogo from "../../assets/googletranslate-logo.png";
-// RapidOCR uses lightning icon (⚡) instead of logo image
+// @ts-ignore
+import rapidocrLogo from "../../assets/rapidocr-logo.png";
 
 // Language options with flag emojis
 const languageOptions = [
@@ -176,7 +177,7 @@ export const TabTranslation: VFC = () => {
                             {settings.ocrProvider === 'rapidocr' && (
                                 <>
                                     <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                                        <span style={{ fontSize: "18px" }}>⚡</span>
+                                        <img src={rapidocrLogo} alt="" style={{ height: "18px" }} />
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>RapidOCR</span>
                                     </div>
                                     <div>- On-Device Text Recognition</div>
