@@ -1315,6 +1315,50 @@ class Plugin:
         logger.debug(f"No AppId found for pid={pid}")
         return 0
 
+    def _sample_bg_colors(self, image_bytes, text_regions):
+        """Sample average background color for each OCR region from the screenshot."""
+        try:
+            from PIL import Image
+            import io
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+            img_width, img_height = img.size
+            pixels = img.load()
+
+            for region in text_regions:
+                r = region.rect
+                left = max(0, r.get("left", 0))
+                top = max(0, r.get("top", 0))
+                right = min(img_width, r.get("right", 0))
+                bottom = min(img_height, r.get("bottom", 0))
+
+                if right <= left or bottom <= top:
+                    continue
+
+                # Sample a grid of pixels (up to ~25 points) for speed
+                w = right - left
+                h = bottom - top
+                step_x = max(1, w // 5)
+                step_y = max(1, h // 5)
+
+                total_r, total_g, total_b = 0, 0, 0
+                count = 0
+                for sy in range(top, bottom, step_y):
+                    for sx in range(left, right, step_x):
+                        pr, pg, pb = pixels[sx, sy]
+                        total_r += pr
+                        total_g += pg
+                        total_b += pb
+                        count += 1
+
+                if count > 0:
+                    region.bg_color = [
+                        total_r // count,
+                        total_g // count,
+                        total_b // count
+                    ]
+        except Exception as e:
+            logger.debug(f"Background color sampling failed (non-fatal): {e}")
+
     async def recognize_text(self, image_data: str):
         try:
             if not image_data:
@@ -1336,6 +1380,9 @@ class Plugin:
                 language=self._input_language
             )
             logger.info(f"OCR completed in {time.time() - start_time:.2f}s, found {len(text_regions)} regions")
+
+            # Sample background color for each region from the screenshot
+            self._sample_bg_colors(image_bytes, text_regions)
 
             return [region.to_dict() for region in text_regions]
 
