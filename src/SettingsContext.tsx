@@ -28,6 +28,7 @@ export interface Settings {
     fontScale: number; // Overlay font scale multiplier for external monitors
     groupingPower: number; // Text grouping aggressiveness (0.25 normal - 1.0 huge)
     hideIdenticalTranslations: boolean;
+    customRecognitionSettings: boolean;
 }
 
 // Define action types
@@ -58,7 +59,8 @@ const initialSettings: Settings = {
     debugMode: false, // Debug mode off by default
     fontScale: 1.0,
     groupingPower: 0.25,
-    hideIdenticalTranslations: false
+    hideIdenticalTranslations: false,
+    customRecognitionSettings: false
 };
 
 // Create the reducer
@@ -124,7 +126,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     debugMode: serverSettings.debug_mode || false, // Debug mode
                     fontScale: serverSettings.font_scale ?? 1.0,
                     groupingPower: serverSettings.grouping_power ?? 0.25,
-                    hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false
+                    hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false,
+                    customRecognitionSettings: serverSettings.custom_recognition_settings ?? false
                 };
 
                 // Update settings in context
@@ -191,7 +194,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 debugMode: 'debug_mode',
                 fontScale: 'font_scale',
                 groupingPower: 'grouping_power',
-                hideIdenticalTranslations: 'hide_identical_translations'
+                hideIdenticalTranslations: 'hide_identical_translations',
+                customRecognitionSettings: 'custom_recognition_settings'
             };
 
             // Skip settings that don't need to be saved to backend

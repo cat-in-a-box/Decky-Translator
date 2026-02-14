@@ -949,6 +949,8 @@ class Plugin:
                 pass  # frontend-only, just persist to settings file
             elif key == "hide_identical_translations":
                 pass  # frontend-only, just persist to settings file
+            elif key == "custom_recognition_settings":
+                pass  # frontend-only, just persist to settings file
             elif key == "debug_mode":
                 logger.setLevel(logging.DEBUG if value else logging.INFO)
             elif key == "use_free_providers":
@@ -1016,7 +1018,8 @@ class Plugin:
                 "debug_mode": self._settings.get_setting("debug_mode", False),
                 "font_scale": self._settings.get_setting("font_scale", 1.0),
                 "grouping_power": self._settings.get_setting("grouping_power", 0.25),
-                "hide_identical_translations": self._settings.get_setting("hide_identical_translations", False)
+                "hide_identical_translations": self._settings.get_setting("hide_identical_translations", False),
+                "custom_recognition_settings": self._settings.get_setting("custom_recognition_settings", False)
             }
             return settings
         except Exception as e:
@@ -1622,7 +1625,8 @@ class Plugin:
             self._input_mode = load_setting("input_mode", self._input_mode)
             self._hold_time_translate = load_setting("hold_time_translate", self._hold_time_translate)
             self._hold_time_dismiss = load_setting("hold_time_dismiss", self._hold_time_dismiss)
-            self._confidence_threshold = load_setting("confidence_threshold", self._confidence_threshold)
+            if self._settings.get_setting("custom_recognition_settings", False):
+                self._confidence_threshold = load_setting("confidence_threshold", self._confidence_threshold)
             self._pause_game_on_overlay = load_setting("pause_game_on_overlay", self._pause_game_on_overlay)
             self._quick_toggle_enabled = load_setting("quick_toggle_enabled", self._quick_toggle_enabled)
 
@@ -1661,9 +1665,10 @@ class Plugin:
             )
 
             # Load and apply RapidOCR-specific settings
-            self._rapidocr_confidence = load_setting("rapidocr_confidence", self._rapidocr_confidence)
-            self._rapidocr_box_thresh = load_setting("rapidocr_box_thresh", self._rapidocr_box_thresh)
-            self._rapidocr_unclip_ratio = load_setting("rapidocr_unclip_ratio", self._rapidocr_unclip_ratio)
+            if self._settings.get_setting("custom_recognition_settings", False):
+                self._rapidocr_confidence = load_setting("rapidocr_confidence", self._rapidocr_confidence)
+                self._rapidocr_box_thresh = load_setting("rapidocr_box_thresh", self._rapidocr_box_thresh)
+                self._rapidocr_unclip_ratio = load_setting("rapidocr_unclip_ratio", self._rapidocr_unclip_ratio)
             self._provider_manager.set_rapidocr_confidence(self._rapidocr_confidence)
             self._provider_manager.set_rapidocr_box_thresh(self._rapidocr_box_thresh)
             self._provider_manager.set_rapidocr_unclip_ratio(self._rapidocr_unclip_ratio)
