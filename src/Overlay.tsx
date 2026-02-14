@@ -202,77 +202,36 @@ export class ImageState {
     }
 }
 
-// Function to calculate font scaling factor
-function calculateFontScaleFactor(originalText: string, translatedText: string, maxRatio: number = 0.45): number {
-    if (!originalText || !translatedText) return 1;
+// Area-based font sizing: picks a font size so the text fills the region
+function calculateFontSize(region: TranslatedRegion, scalingFactor: number, fontScale: number): number {
+    const regionWidth = (region.rect.right - region.rect.left) * scalingFactor;
+    const regionHeight = (region.rect.bottom - region.rect.top) * scalingFactor;
+    const text = region.translatedText || region.text;
+    const charCount = text.length;
 
-    // Compare length of original and translated text
-    const originalLength = originalText.length;
-    const translatedLength = translatedText.length;
+    if (charCount === 0) return 12;
 
-    // If translation is not longer than original, no scaling needed
-    if (translatedLength <= originalLength) return 1;
+    const fillFactor = 0.7;
+    const charArea = (regionWidth * regionHeight) / charCount * fillFactor;
+    let fontSize = Math.sqrt(charArea);
 
-    // Calculate scaling factor
-    const ratio = originalLength / translatedLength;
+    const availableWidth = regionWidth - 8;
+    const availableHeight = regionHeight - 4;
 
-    // Limit minimum font size to maxRatio of original
-    // More aggressive scaling to prevent clipping
-    return Math.max(ratio, maxRatio);
-}
+    if (availableWidth <= 0 || availableHeight <= 0) return 8;
 
-// Improved function to calculate font size with clipping prevention
-function calculateFontSize(region: TranslatedRegion): { size: number, scaleFactor: number, needsMultiline: boolean } {
-    const regionHeight = region.rect.bottom - region.rect.top;
-    const regionWidth = region.rect.right - region.rect.left;
-    // const blockArea = regionWidth * regionHeight;
+    const charsPerLine = Math.max(1, Math.floor(availableWidth / (fontSize * 0.6)));
+    const explicitLines = text.split('\n');
+    const lines = explicitLines.reduce((total, line) =>
+        total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+    const neededHeight = lines * fontSize * 1.15;
 
-    // Calculate base font size by block height
-    let baseFontSize = 16;
-
-    if (regionHeight < 20) {
-        baseFontSize = 12;
-    } else if (regionHeight < 30) {
-        baseFontSize = 13;
-    } else if (regionHeight > 50) {
-        baseFontSize = 16;
+    if (neededHeight > availableHeight) {
+        fontSize *= availableHeight / neededHeight;
     }
 
-    // Text for translation
-    const originalText = region.text;
-    const translatedText = region.translatedText || region.text;
-
-    // More aggressive scaling factor for long texts
-    const basicScaleFactor = calculateFontScaleFactor(originalText, translatedText);
-
-    // Estimate area that text will occupy (approximately)
-    const estimatedCharsPerLine = Math.floor(regionWidth / (baseFontSize * 0.6)); // Approximate number of characters per line
-    const estimatedLines = Math.ceil(translatedText.length / Math.max(1, estimatedCharsPerLine));
-    const estimatedTextHeight = estimatedLines * baseFontSize * 1.2; // Consider line spacing
-
-    // If text doesn't fit in height, additionally reduce font
-    let heightScaleFactor = 1;
-    if (estimatedTextHeight > regionHeight) {
-        heightScaleFactor = regionHeight / estimatedTextHeight;
-    }
-
-    // Consider both width and height when calculating scale
-    const scaleFactor = Math.min(basicScaleFactor, heightScaleFactor) * 0.95; // Small margin of 5%
-
-    // Determine if multiline display is needed
-    const needsMultiline = translatedText.length > estimatedCharsPerLine * 1.2 ||
-        basicScaleFactor < 0.85 ||
-        estimatedLines > 1;
-
-    // Apply scaling to font size
-    const scaledFontSize = baseFontSize * scaleFactor;
-
-    // Minimum readable size, but no less than 9px for readability
-    return {
-        size: Math.max(scaledFontSize, 9),
-        scaleFactor: scaleFactor,
-        needsMultiline: needsMultiline
-    };
+    fontSize *= fontScale;
+    return Math.max(8, Math.min(fontSize, 48));
 }
 
 // Overlay component to display translated text
@@ -416,62 +375,82 @@ export const TranslatedTextOverlay: VFC<{
                     />
 
                     {/* Overlay translated text boxes with adaptive font sizing */}
-                    {translationsVisible && regions.map((region, index) => {
-                        // Calculate if multiline display is needed
-                        const fontInfo = calculateFontSize(region);
-                        const fontSize = fontInfo.size;
-                        // const scaleFactor = fontInfo.scaleFactor;
-                        const needsMultiline = fontInfo.needsMultiline;
+                    {translationsVisible && (() => {
+                        const { widthFactor, heightFactor, generalFactor } = getScalingFactor();
+                        const pad = 4;
+                        const gap = 2;
+                        const imgWidth = imageDimensions.width || window.innerWidth;
 
-                        return (
-                            <div
-                                key={index}
-                                style={{
-                                    position: "absolute",
-                                    display: 'flex',
-                                    textAlign: 'center',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    left: `${Math.round(region.rect.left * getScalingFactor().widthFactor - 6)}px`,
-                                    top: `${Math.round(region.rect.top * getScalingFactor().heightFactor - 2)}px`,
-                                    width: `${Math.round((region.rect.right - region.rect.left) * getScalingFactor().widthFactor + 8)}px`,
-                                    minHeight: `${Math.round((region.rect.bottom - region.rect.top) * getScalingFactor().heightFactor + 4)}px`,
+                        // Pre-compute scaled rects for collision detection
+                        const scaled = regions.map(region => ({
+                            left: Math.round(region.rect.left * widthFactor - pad),
+                            top: Math.round(region.rect.top * heightFactor - pad),
+                            width: Math.round((region.rect.right - region.rect.left) * widthFactor + pad * 2),
+                            height: Math.round((region.rect.bottom - region.rect.top) * heightFactor + pad * 2),
+                        }));
 
-                                    // Improved background and borders
-                                    backgroundColor: "rgba(0, 0, 0, 0.8)",
-                                    border: region.isDialog ? "0px solid rgba(63, 255, 63, 0.5)" : "0px solid rgba(255, 255, 255, 0.15)",
+                        // For each label, find how far right it can grow before hitting a neighbor
+                        const maxWidths = scaled.map((rect, i) => {
+                            let maxRight = imgWidth;
+                            const rectBottom = rect.top + rect.height;
 
-                                    // Text styling
-                                    color: "#FFFFFF",
-                                    // textShadow: region.isDialog
-                                    //     ? "0 0 8px rgba(63, 255, 63, 0.5), 0 0 3px rgba(0, 0, 0, 0.8)"
-                                    //     : "0 0 3px rgba(0, 0, 0, 0.8)",
+                            for (let j = 0; j < scaled.length; j++) {
+                                if (i === j) continue;
+                                const other = scaled[j];
 
-                                    // Improved padding
-                                    padding: `${Math.round(2 * getScalingFactor().generalFactor)}px ${Math.round(4 * getScalingFactor().generalFactor)}px`,
-                                    borderRadius: `${Math.round(6 * getScalingFactor().generalFactor)}px`,
+                                // Only care about vertically overlapping neighbors to the right
+                                if (other.left > rect.left &&
+                                    rect.top < other.top + other.height &&
+                                    rectBottom > other.top) {
+                                    maxRight = Math.min(maxRight, other.left - gap);
+                                }
+                            }
 
-                                    // Important: DO NOT hide overflow
-                                    overflow: "visible",
+                            return Math.max(rect.width, maxRight - rect.left);
+                        });
 
-                                    // Adaptive font size, with user-configurable scale
-                                    fontSize: `${Math.round(fontSize * getScalingFactor().generalFactor * fontScale)}px`,
-                                    lineHeight: needsMultiline ? "1.1" : "1.2", // Reduce line spacing
-                                    fontWeight: "400",
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                        return regions.map((region, index) => {
+                            const fontSize = calculateFontSize(region, generalFactor, fontScale);
+                            const displayText = region.translatedText || region.text;
 
-                                    // Always enable word wrap to prevent clipping
-                                    wordWrap: "break-word",
-                                    whiteSpace: needsMultiline ? "normal" : "normal", // Always normal to avoid clipping
+                            return (
+                                <div
+                                    key={index}
+                                    style={{
+                                        position: "absolute",
+                                        display: 'flex',
+                                        textAlign: 'justify',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        left: `${scaled[index].left}px`,
+                                        top: `${scaled[index].top}px`,
+                                        minWidth: `${scaled[index].width}px`,
+                                        maxWidth: `${maxWidths[index]}px`,
+                                        minHeight: `${scaled[index].height}px`,
+                                        boxSizing: 'border-box',
 
-                                    // Animation for smooth appearance
-                                    animation: "fadeInTranslation 0.2s ease-out forwards"
-                                }}
-                            >
-                                {region.translatedText || region.text}
-                            </div>
-                        );
-                    })}
+                                        backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                        color: "#FFFFFF",
+
+                                        padding: '2px 4px',
+                                        borderRadius: `${Math.round(6 * generalFactor)}px`,
+
+                                        fontSize: `${Math.round(fontSize)}px`,
+                                        lineHeight: '1.15',
+                                        fontWeight: "400",
+                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+
+                                        wordWrap: "break-word",
+                                        whiteSpace: "pre-wrap",
+
+                                        animation: "fadeInTranslation 0.2s ease-out forwards"
+                                    }}
+                                >
+                                    {displayText}
+                                </div>
+                            );
+                        });
+                    })()}
 
                     {/* Indicator when translations are hidden - eye closed icon */}
                     {!translationsVisible && !loading && (
