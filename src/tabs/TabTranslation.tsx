@@ -1,11 +1,11 @@
 // src/tabs/TabTranslation.tsx - Language and provider settings
 
 import {
-    ButtonItem,
     PanelSection,
     PanelSectionRow,
     DropdownItem,
     SliderField,
+    ToggleField,
     showModal,
     ModalRoot,
     DialogButton,
@@ -215,6 +215,90 @@ export const TabTranslation: VFC = () => {
                     </Field>
                 </PanelSectionRow>
 
+                {settings.ocrProvider !== 'ocrspace' && (
+                    <PanelSectionRow>
+                        <ToggleField
+                            label="Custom Recognition Settings"
+                            description="Fine-tune text recognition parameters"
+                            checked={settings.customRecognitionSettings}
+                            onChange={(value) => {
+                                updateSetting('customRecognitionSettings', value, 'Custom recognition settings');
+                                if (!value) {
+                                    updateSetting('rapidocrConfidence', 0.5, 'RapidOCR confidence');
+                                    updateSetting('rapidocrBoxThresh', 0.5, 'RapidOCR box threshold');
+                                    updateSetting('rapidocrUnclipRatio', 1.6, 'RapidOCR unclip ratio');
+                                    updateSetting('confidenceThreshold', 0.6, 'Text recognition confidence');
+                                }
+                            }}
+                        />
+                    </PanelSectionRow>
+                )}
+
+                {settings.customRecognitionSettings && settings.ocrProvider === 'rapidocr' && (
+                    <>
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.rapidocrConfidence ?? 0.5}
+                                max={1.0}
+                                min={0.0}
+                                step={0.05}
+                                label="Recognition Confidence"
+                                description="Filter out low-confidence results (higher = less noise, may miss text)"
+                                showValue={true}
+                                onChange={(value) => {
+                                    updateSetting('rapidocrConfidence', value, 'RapidOCR confidence');
+                                }}
+                            />
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.rapidocrBoxThresh ?? 0.5}
+                                max={1.0}
+                                min={0.1}
+                                step={0.05}
+                                label="Detection Sensitivity"
+                                description="Lower = detect more text boxes (better for small text)"
+                                showValue={true}
+                                onChange={(value) => {
+                                    updateSetting('rapidocrBoxThresh', value, 'RapidOCR box threshold');
+                                }}
+                            />
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <SliderField
+                                value={settings.rapidocrUnclipRatio ?? 1.6}
+                                max={3.0}
+                                min={1.0}
+                                step={0.1}
+                                label="Box Expansion"
+                                description="Higher = larger text regions (helps capture full words)"
+                                showValue={true}
+                                onChange={(value) => {
+                                    updateSetting('rapidocrUnclipRatio', value, 'RapidOCR unclip ratio');
+                                }}
+                            />
+                        </PanelSectionRow>
+                    </>
+                )}
+
+                {settings.customRecognitionSettings && settings.ocrProvider === 'googlecloud' && (
+                    <PanelSectionRow>
+                        <SliderField
+                            value={settings.confidenceThreshold}
+                            max={1.0}
+                            min={0.0}
+                            step={0.05}
+                            label="Text Recognition Confidence"
+                            description="Minimum confidence level for detected text (higher = fewer false positives)"
+                            showValue={true}
+                            valueSuffix=""
+                            onChange={(value) => {
+                                updateSetting('confidenceThreshold', value, 'Text recognition confidence');
+                            }}
+                        />
+                    </PanelSectionRow>
+                )}
+
                 {/* Translation Provider Selection */}
                 <PanelSectionRow>
                     <DropdownItem
@@ -297,85 +381,6 @@ export const TabTranslation: VFC = () => {
                                 )}
                             </Focusable>
                         </Field>
-                    </PanelSectionRow>
-                )}
-
-                {/* RapidOCR settings */}
-                {settings.ocrProvider === 'rapidocr' && (
-                    <>
-                        <PanelSectionRow>
-                            <SliderField
-                                value={settings.rapidocrConfidence ?? 0.5}
-                                max={1.0}
-                                min={0.0}
-                                step={0.05}
-                                label="Recognition Confidence"
-                                description="Filter out low-confidence results (higher = less noise, may miss text)"
-                                showValue={true}
-                                onChange={(value) => {
-                                    updateSetting('rapidocrConfidence', value, 'RapidOCR confidence');
-                                }}
-                            />
-                        </PanelSectionRow>
-                        <PanelSectionRow>
-                            <SliderField
-                                value={settings.rapidocrBoxThresh ?? 0.5}
-                                max={1.0}
-                                min={0.1}
-                                step={0.05}
-                                label="Detection Sensitivity"
-                                description="Lower = detect more text boxes (better for small text)"
-                                showValue={true}
-                                onChange={(value) => {
-                                    updateSetting('rapidocrBoxThresh', value, 'RapidOCR box threshold');
-                                }}
-                            />
-                        </PanelSectionRow>
-                        <PanelSectionRow>
-                            <SliderField
-                                value={settings.rapidocrUnclipRatio ?? 1.6}
-                                max={3.0}
-                                min={1.0}
-                                step={0.1}
-                                label="Box Expansion"
-                                description="Higher = larger text regions (helps capture full words)"
-                                showValue={true}
-                                onChange={(value) => {
-                                    updateSetting('rapidocrUnclipRatio', value, 'RapidOCR unclip ratio');
-                                }}
-                            />
-                        </PanelSectionRow>
-                        <PanelSectionRow>
-                            <ButtonItem
-                                layout="below"
-                                onClick={() => {
-                                    updateSetting('rapidocrConfidence', 0.5, 'RapidOCR confidence');
-                                    updateSetting('rapidocrBoxThresh', 0.5, 'RapidOCR box threshold');
-                                    updateSetting('rapidocrUnclipRatio', 1.6, 'RapidOCR unclip ratio');
-                                }}
-                            >
-                                Reset RapidOCR Settings to Defaults
-                            </ButtonItem>
-                        </PanelSectionRow>
-                    </>
-                )}
-
-                {/* Confidence threshold slider - only show for Google Cloud Vision */}
-                {settings.ocrProvider === 'googlecloud' && (
-                    <PanelSectionRow>
-                        <SliderField
-                            value={settings.confidenceThreshold}
-                            max={1.0}
-                            min={0.0}
-                            step={0.05}
-                            label="Text Recognition Confidence"
-                            description="Minimum confidence level for detected text (higher = fewer false positives)"
-                            showValue={true}
-                            valueSuffix=""
-                            onChange={(value) => {
-                                updateSetting('confidenceThreshold', value, 'Text recognition confidence');
-                            }}
-                        />
                     </PanelSectionRow>
                 )}
 
