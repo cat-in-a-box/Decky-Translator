@@ -26,6 +26,7 @@ export interface Settings {
     googleApiKey: string; // Google Cloud Vision API key for text recognition
     debugMode: boolean; // Debug mode for verbose console logging
     fontScale: number; // Overlay font scale multiplier for external monitors
+    groupingPower: number; // Text grouping aggressiveness (0.25 normal - 1.0 huge)
     hideIdenticalTranslations: boolean;
 }
 
@@ -56,6 +57,7 @@ const initialSettings: Settings = {
     googleApiKey: "", // Empty by default, only needed for Google Cloud
     debugMode: false, // Debug mode off by default
     fontScale: 1.0,
+    groupingPower: 0.25,
     hideIdenticalTranslations: false
 };
 
@@ -121,6 +123,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     googleApiKey: serverSettings.google_api_key || "", // Google API key
                     debugMode: serverSettings.debug_mode || false, // Debug mode
                     fontScale: serverSettings.font_scale ?? 1.0,
+                    groupingPower: serverSettings.grouping_power ?? 0.25,
                     hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false
                 };
 
@@ -145,6 +148,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setHasGoogleApiKey(!!serverSettings.google_api_key);
 
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
+                logic.setGroupingPower(serverSettings.grouping_power ?? 0.25);
                 logic.setHideIdenticalTranslations(serverSettings.hide_identical_translations ?? false);
 
                 logger.info('SettingsContext', 'All settings loaded successfully');
@@ -186,6 +190,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 googleApiKey: 'google_api_key',
                 debugMode: 'debug_mode',
                 fontScale: 'font_scale',
+                groupingPower: 'grouping_power',
                 hideIdenticalTranslations: 'hide_identical_translations'
             };
 
@@ -228,6 +233,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'fontScale':
                     logic.setFontScale(value);
+                    break;
+                case 'groupingPower':
+                    logic.setGroupingPower(value);
                     break;
                 case 'hideIdenticalTranslations':
                     logic.setHideIdenticalTranslations(value);
