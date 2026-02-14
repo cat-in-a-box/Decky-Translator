@@ -2,8 +2,8 @@
 # Abstract base classes for OCR and Translation providers
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import List, Dict, Tuple
+from dataclasses import dataclass, field
+from typing import List, Dict, Tuple, Optional
 from enum import Enum
 
 
@@ -37,15 +37,19 @@ class TextRegion:
     rect: Dict[str, int]  # left, top, right, bottom
     confidence: float = 0.0
     is_dialog: bool = False
+    bg_color: Optional[List[int]] = None  # [R, G, B] average background color
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
-        return {
+        d = {
             "text": self.text,
             "rect": self.rect,
             "confidence": self.confidence,
             "isDialog": self.is_dialog
         }
+        if self.bg_color is not None:
+            d["bgColor"] = self.bg_color
+        return d
 
 
 class OCRProvider(ABC):
