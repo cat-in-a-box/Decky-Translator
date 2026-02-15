@@ -26,8 +26,6 @@ LANG_MODEL_MAP = {
     'korean':  ('korean_rec.onnx',  'korean_dict.txt'),
     'greek':   ('greek_rec.onnx',   'greek_dict.txt'),
     'thai':    ('thai_rec.onnx',    'thai_dict.txt'),
-    'arabic':  ('arabic_rec.onnx',  'arabic_dict.txt'),
-    'hindi':   ('hindi_rec.onnx',   'hindi_dict.txt'),
 }
 
 # Set threading environment BEFORE any imports

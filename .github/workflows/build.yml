@@ -104,9 +104,9 @@ jobs:
           curl -L -o ch_dict.txt \
             "https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages/chinese/dict.txt"
 
-          # Per-language recognition models from monkt/paddleocr-onnx (PP-OCRv5, arabic/hindi are v3)
+          # Per-language recognition models from monkt/paddleocr-onnx (PP-OCRv5)
           MONKT="https://huggingface.co/monkt/paddleocr-onnx/resolve/main/languages"
-          for lang in english latin eslav korean greek thai arabic hindi; do
+          for lang in english latin eslav korean greek thai; do
             curl -L -o ${lang}_rec.onnx "$MONKT/${lang}/rec.onnx"
             curl -L -o ${lang}_dict.txt "$MONKT/${lang}/dict.txt"
           done

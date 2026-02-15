@@ -61,8 +61,6 @@ class RapidOCRProvider(OCRProvider):
         'ru': 'eslav',
         'uk': 'eslav',
         'bg': 'eslav',
-        'ar': 'arabic',
-        'hi': 'hindi',
         'el': 'greek',
         'th': 'thai',
     }
@@ -70,7 +68,7 @@ class RapidOCRProvider(OCRProvider):
     SUPPORTED_LANGUAGES = [
         'auto', 'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
         'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi', 'fi',
-        'ru', 'uk', 'bg', 'ar', 'hi', 'el', 'th'
+        'ru', 'uk', 'bg', 'el', 'th'
     ]
 
     def __init__(
