@@ -165,6 +165,17 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         }}
                     />
                 </PanelSectionRow>
+
+                <PanelSectionRow>
+                    <ToggleField
+                        checked={settings.allowLabelGrowth}
+                        label="Allow Labels to Expand"
+                        description="Let translated labels grow wider if the text doesn't fit the original box"
+                        onChange={(value) => {
+                            updateSetting('allowLabelGrowth', value, 'Allow label growth');
+                        }}
+                    />
+                </PanelSectionRow>
             </PanelSection>
 
             <PanelSection title="Behavior">

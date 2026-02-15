@@ -43,13 +43,14 @@ export class ImageState {
     private loadingIndicatorTimer: ReturnType<typeof setTimeout> | null = null; // Timer for delayed indicator
     private translationsVisible = true; // New property to track translation visibility
     private fontScale = 1.0;
-    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number) => void> = [];
+    private allowLabelGrowth = false;
+    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void> = [];
 
-    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number) => void): void {
+    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void): void {
         this.onStateChangedListeners.push(callback);
     }
 
-    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number) => void): void {
+    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void): void {
         const index = this.onStateChangedListeners.indexOf(callback);
         if (index !== -1) {
             this.onStateChangedListeners.splice(index, 1);
@@ -94,6 +95,15 @@ export class ImageState {
 
     getFontScale(): number {
         return this.fontScale;
+    }
+
+    setAllowLabelGrowth(allow: boolean): void {
+        this.allowLabelGrowth = allow;
+        this.notifyListeners();
+    }
+
+    getAllowLabelGrowth(): boolean {
+        return this.allowLabelGrowth;
     }
 
     // Update the current processing step
@@ -185,7 +195,7 @@ export class ImageState {
 
     private notifyListeners(): void {
         for (const callback of this.onStateChangedListeners) {
-            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale);
+            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale, this.allowLabelGrowth);
         }
     }
 
@@ -242,8 +252,9 @@ export const TranslatedTextOverlay: VFC<{
     loading: boolean,
     processingStep: string,
     translationsVisible: boolean,
-    fontScale: number
-}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale }) => {
+    fontScale: number,
+    allowLabelGrowth: boolean
+}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth }) => {
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
@@ -427,7 +438,7 @@ export const TranslatedTextOverlay: VFC<{
                                         left: `${scaled[index].left}px`,
                                         top: `${scaled[index].top}px`,
                                         minWidth: `${scaled[index].width}px`,
-                                        maxWidth: `${maxWidths[index]}px`,
+                                        maxWidth: `${allowLabelGrowth ? maxWidths[index] : scaled[index].width}px`,
                                         minHeight: `${scaled[index].height}px`,
                                         boxSizing: 'border-box',
 
@@ -545,6 +556,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [processingStep, setProcessingStep] = useState<string>("");
     const [translationsVisible, setTranslationsVisible] = useState<boolean>(true);
     const [fontScale, setFontScale] = useState<number>(1.0);
+    const [allowLabelGrowth, setAllowLabelGrowth] = useState<boolean>(false);
 
     useEffect(() => {
         logger.debug('ImageOverlay', 'useEffect mounting, registering state listener');
@@ -556,7 +568,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             isLoading: boolean,
             currProcessingStep: string,
             areTranslationsVisible: boolean,
-            currentFontScale: number
+            currentFontScale: number,
+            currentAllowLabelGrowth: boolean
         ) => {
             logger.debug('ImageOverlay', `State changed - visible=${isVisible}, imgData.length=${imgData?.length || 0}, regions=${textRegions?.length || 0}`);
             setVisible(isVisible);
@@ -566,6 +579,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             setProcessingStep(currProcessingStep);
             setTranslationsVisible(areTranslationsVisible);
             setFontScale(currentFontScale);
+            setAllowLabelGrowth(currentAllowLabelGrowth);
         };
 
         state.onStateChanged(handleStateChanged);
@@ -592,6 +606,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             processingStep={processingStep}
             translationsVisible={translationsVisible}
             fontScale={fontScale}
+            allowLabelGrowth={allowLabelGrowth}
         />
     );
 };

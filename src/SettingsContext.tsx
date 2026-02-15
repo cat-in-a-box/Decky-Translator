@@ -28,6 +28,7 @@ export interface Settings {
     fontScale: number; // Overlay font scale multiplier for external monitors
     groupingPower: number; // Text grouping aggressiveness (0.25 normal - 1.0 huge)
     hideIdenticalTranslations: boolean;
+    allowLabelGrowth: boolean;
     customRecognitionSettings: boolean;
 }
 
@@ -60,6 +61,7 @@ const initialSettings: Settings = {
     fontScale: 1.0,
     groupingPower: 0.25,
     hideIdenticalTranslations: false,
+    allowLabelGrowth: false,
     customRecognitionSettings: false
 };
 
@@ -127,6 +129,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     fontScale: serverSettings.font_scale ?? 1.0,
                     groupingPower: serverSettings.grouping_power ?? 0.25,
                     hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false,
+                    allowLabelGrowth: serverSettings.allow_label_growth ?? false,
                     customRecognitionSettings: serverSettings.custom_recognition_settings ?? false
                 };
 
@@ -153,6 +156,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
                 logic.setGroupingPower(serverSettings.grouping_power ?? 0.25);
                 logic.setHideIdenticalTranslations(serverSettings.hide_identical_translations ?? false);
+                logic.setAllowLabelGrowth(serverSettings.allow_label_growth ?? false);
 
                 logger.info('SettingsContext', 'All settings loaded successfully');
                 logger.logObject('SettingsContext', 'Settings', mappedSettings);
@@ -195,6 +199,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 fontScale: 'font_scale',
                 groupingPower: 'grouping_power',
                 hideIdenticalTranslations: 'hide_identical_translations',
+                allowLabelGrowth: 'allow_label_growth',
                 customRecognitionSettings: 'custom_recognition_settings'
             };
 
@@ -243,6 +248,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'hideIdenticalTranslations':
                     logic.setHideIdenticalTranslations(value);
+                    break;
+                case 'allowLabelGrowth':
+                    logic.setAllowLabelGrowth(value);
                     break;
                 case 'ocrProvider':
                     logic.setOcrProvider(value);
