@@ -150,11 +150,11 @@ export const TabTranslation: VFC = () => {
                 </PanelSectionRow>
             </PanelSection>
 
-            <PanelSection title="Providers">
+            <PanelSection title="Recognition">
                 {/* OCR Provider Selection */}
                 <PanelSectionRow>
                     <Field
-                        label="Text Recognition (OCR)"
+                        label="Text Recognition Method"
                         childrenContainerWidth="fixed"
                         focusable={false}
                     >
@@ -215,7 +215,7 @@ export const TabTranslation: VFC = () => {
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>RapidOCR</span>
                                     </div>
                                     <div>- On-Device Text Recognition</div>
-                                    <div>- Good accuracy, but is slower than web-based options</div>
+                                    <div>- Average accuracy and slower than web-based options</div>
                                     <div>- Customizable parameters</div>
                                     <div>- Screenshots do not leave your device</div>
                                 </>
@@ -228,7 +228,7 @@ export const TabTranslation: VFC = () => {
                                     </div>
                                     <div>- Free EU-based cloud OCR API</div>
                                     <div>- Max usage limits: 500/day and 10/10min</div>
-                                    <div>- Provides great speed and results</div>
+                                    <div>- Provides good speed and results</div>
                                 </>
                             )}
                             {settings.ocrProvider === 'googlecloud' && (
@@ -252,8 +252,8 @@ export const TabTranslation: VFC = () => {
                 {settings.ocrProvider !== 'ocrspace' && (
                     <PanelSectionRow>
                         <ToggleField
-                            label="Custom Recognition Settings"
-                            description="Fine-tune text recognition parameters"
+                            label="Customize Recognition"
+                            description="Fine-tune text recognition parameters. Can make things better or worse"
                             checked={settings.customRecognitionSettings}
                             onChange={(value) => {
                                 updateSetting('customRecognitionSettings', value, 'Custom recognition settings');
@@ -277,7 +277,7 @@ export const TabTranslation: VFC = () => {
                                 min={0.0}
                                 step={0.05}
                                 label="Recognition Confidence"
-                                description="Filter out low-confidence results (higher = less noise, may miss text)"
+                                description="Higher = less noise but may miss text. Lower = more text but more errors"
                                 showValue={true}
                                 onChange={(value) => {
                                     updateSetting('rapidocrConfidence', value, 'RapidOCR confidence');
@@ -291,7 +291,7 @@ export const TabTranslation: VFC = () => {
                                 min={0.1}
                                 step={0.05}
                                 label="Detection Sensitivity"
-                                description="Lower = detect more text boxes (better for small text)"
+                                description="Lower = finds more text regions, better for small text. Higher = fewer regions, but more confident detections"
                                 showValue={true}
                                 onChange={(value) => {
                                     updateSetting('rapidocrBoxThresh', value, 'RapidOCR box threshold');
@@ -305,7 +305,7 @@ export const TabTranslation: VFC = () => {
                                 min={1.0}
                                 step={0.1}
                                 label="Box Expansion"
-                                description="Higher = larger text regions (helps capture full words)"
+                                description="Higher = larger text boxes, helps capture full words. Lower = tighter boxes around text"
                                 showValue={true}
                                 onChange={(value) => {
                                     updateSetting('rapidocrUnclipRatio', value, 'RapidOCR unclip ratio');
@@ -333,10 +333,12 @@ export const TabTranslation: VFC = () => {
                     </PanelSectionRow>
                 )}
 
-                {/* Translation Provider Selection */}
+            </PanelSection>
+
+            <PanelSection title="Translation">
                 <PanelSectionRow>
                     <Field
-                        label="Translation"
+                        label="Text Translation Method"
                         childrenContainerWidth="fixed"
                         focusable={false}
                     >
@@ -401,6 +403,7 @@ export const TabTranslation: VFC = () => {
                                         <span style={{ fontWeight: "bold", color: "#dcdedf" }}>Google Cloud Translation</span>
                                     </div>
                                     <div>- High quality translations</div>
+                                    <div>- Very quick</div>
                                     <div>- Requires API key</div>
                                     {!settings.googleApiKey && (
                                         <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your API Key</div>
