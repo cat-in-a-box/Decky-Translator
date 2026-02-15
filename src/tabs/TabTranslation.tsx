@@ -90,7 +90,6 @@ const ApiKeyModal: VFC<{
                 />
                 <Focusable
                     style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}
-                    flow-children="horizontal"
                 >
                     <DialogButton onClick={closeModal}>
                         Cancel
@@ -159,7 +158,7 @@ export const TabTranslation: VFC = () => {
                         childrenContainerWidth="fixed"
                         focusable={false}
                     >
-                        <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }} flow-children="horizontal">
+                        <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <Dropdown
                                 rgOptions={[
                                     { label: <span>RapidOCR</span>, data: "rapidocr" },
@@ -343,7 +342,7 @@ export const TabTranslation: VFC = () => {
                         childrenContainerWidth="fixed"
                         focusable={false}
                     >
-                        <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }} flow-children="horizontal">
+                        <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <Dropdown
                                 rgOptions={[
                                     { label: <span>Google Translate</span>, data: "freegoogle" },
