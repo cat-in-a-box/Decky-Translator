@@ -452,7 +452,6 @@ export class Input {
         const elapsed = now - this.touchStartTime;
         const required = this.overlayVisible ? this.dismissHoldTime : this.translateHoldTime;
         const progress = Math.min(elapsed / required, 1);
-        logger.debug('Input', `updateProgressAnimation: elapsed=${elapsed}, required=${required}, progress=${progress}`);
         this.notifyProgressListeners({ active: true, progress, forDismiss: this.overlayVisible });
         if (progress < 1) {
             this.animationFrameId = requestAnimationFrame(() => this.updateProgressAnimation());
@@ -464,7 +463,6 @@ export class Input {
     }
 
     private stopProgressAnimation(): void {
-        logger.debug('Input', 'stopProgressAnimation: resetting');
         this.touchStartTime = null;
         if (this.timeoutId) clearTimeout(this.timeoutId);
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);

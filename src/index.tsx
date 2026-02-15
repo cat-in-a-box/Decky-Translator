@@ -195,8 +195,6 @@ const HoldActivationIndicator: VFC<{ logic: GameTranslatorLogic }> = ({logic}) =
         let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 
         const handleProgress = (info: ProgressInfo) => {
-            logger.debug('HoldActivationIndicator', `Progress update - active=${info.active}, progress=${info.progress.toFixed(2)}`);
-
             // Clear any pending hide timeout
             if (hideTimeout) {
                 clearTimeout(hideTimeout);
