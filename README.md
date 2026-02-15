@@ -51,22 +51,22 @@ Button or Combinations can be configured in the Controls tab
 
 ## How does it do that? 
 
-Decky Translator allows you to choose different Text Recognition and Translation services to suit your needs.
+Decky Translator allows you to choose different Text Recognition and Translation methods - feel free to experiment.
 
 ### Text Recognition (OCR)
 
-| Provider                                                   | Description                                                                                                   | Requirements        |
-|------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|---------------------|
-| [**RapidOCR**](https://github.com/RapidAI/RapidOCR)        | On-device OCR. Screenshots never leave your device                                                            | -                   |
+| Provider                                                   | Description                                                                                       | Requirements        |
+|------------------------------------------------------------|---------------------------------------------------------------------------------------------------|---------------------|
+| [**RapidOCR**](https://github.com/RapidAI/RapidOCR)        | On-device OCR. Screenshots never leave your device                                                | -                   |
 | [**OCR.space**](https://ocr.space/)                        | Free EU-based Cloud OCR API with some usage limitations. Good choice if you dont need to translate very often | Internet            |
-| [**Google Cloud Vision**](https://cloud.google.com/vision) | Best accuracy and speed. Great for complex/stylized text. Has a great free tier, but requires some setup      | Internet + API key  |
+| [**Google Cloud Vision**](https://cloud.google.com/vision) | Best accuracy and speed. Great for complex/stylized text. Has a great free tier, but requires some setup | Internet + API key  |
 
 ### Translation
 
-| Provider                                                           | Description                    | Requirements |
-|--------------------------------------------------------------------|--------------------------------|--------------|
-| [**Google Translate**](https://translate.google.com/)              | It's Google. And it translates | Internet     |
-| [**Google Cloud Translation**](https://cloud.google.com/translate) | High quality translations      | API key      |
+| Provider                                                           | Description                    | Requirements       |
+|--------------------------------------------------------------------|--------------------------------|--------------------|
+| [**Google Translate**](https://translate.google.com/)              | It's Google. And it translates | Internet           |
+| [**Google Cloud Translation**](https://cloud.google.com/translate) | High quality translations      | Internet + API key |
 
 
 **Note:** Google Cloud services require an API key but offer a generous free tier for personal use. 
@@ -74,7 +74,6 @@ Decky Translator allows you to choose different Text Recognition and Translation
 <details>
 <summary><h2>Hey, I want better results. How do I get this Google Cloud API Key?</h2></summary>
 
-You'll need a Google Cloud API key:
 
 ### Step 1: Create a Google Cloud Project
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -90,7 +89,14 @@ You'll need a Google Cloud API key:
 ### Step 3: Create an API Key
 1. Go to [APIs & Services > Credentials](https://console.cloud.google.com/apis/credentials)
 2. Click "Create Credentials" > "API Key"
+   - *Authenticate API calls through a service account*: keep unchecked
+   - Application Restrictions: None
 3. Copy your new API key
+4. If you need to find this API key later - press "Show key" button
+
+![API-Key-page](assets/google-cloud-key-1.jpg)
+![API-Key-modal](assets/google-cloud-key-2.jpg)
+
 
 ### Step 4: (Optional) Restrict Your API Key
 For security, you can restrict the API key to only the Vision and Translation APIs:
@@ -98,6 +104,8 @@ For security, you can restrict the API key to only the Vision and Translation AP
 2. Under "API restrictions", select "Restrict key"
 3. Select "Cloud Vision API" and "Cloud Translation API"
 4. Click "Save"
+
+![API-Key-Restriction](assets/google-cloud-key-4.jpg)
 
 ### Step 5: Add API Key to Plugin
 1. Open the Decky Translator plugin on your Steam Deck
@@ -107,6 +115,9 @@ For security, you can restrict the API key to only the Vision and Translation AP
 5. Enter your Google Cloud API key
 6. Click "Save"
 
+### API Key usually looks like this (but you should have your own):
+![API-Key-SteamOS](assets/google-cloud-key-3.jpg)
+
 ### IMPORTANT: NEVER SHARE THIS API KEY WITH ANYONE!
 
 ### Pricing Note
@@ -114,52 +125,85 @@ Google Cloud offers a free tier that should be sufficient for personal use:
 - **Vision API**: First 1,000 units/month free
 - **Translation API**: First 500,000 characters/month free
 
-Check [Google Cloud Pricing](https://cloud.google.com/pricing) for current rates.
+**From my own experience**, even everyday usage of Decky Translator with Google Cloud for both recognition and translation rarely goes beyond their free tier. 
+Only once I had to pay around 1€/month - and that was during VERY active development and testing phase. 
+
+**But if you want to stay on the safe side anyway** - you could set up a budget limit and notification in [Billing > Budgets & Alerts](https://console.cloud.google.com/billing/budgets)
+
+![API-Key-Budget](assets/google-cloud-key-5.jpg)
+
 
 </details>
 
 ## Troubleshooting
 
-### Black Screen on Capture
+### Black screen on capture
 - Try triggering translation again
-- If persistent, reboot Steam Deck
+- If persistent, reboot your Steam Deck
+
+### Translated text is too small
+- Try increasing the "Font Scaling" option in plugin settings
+
+### Plugin says I'm using a wrong API key
+- Double-check that you entered it correctly. If the issue persists, please raise an issue - let's investigate it together
+
+### I see nothing / Recognition is bad
+- Try other text recognition methods - RapidOCR may not work well with stylized or pixelated text. I also plan to continuously improve recognition quality, so you can expect improvements over time
 
 ## To-Do
-- [x] Add local/offline translation functionality
-- [ ] Disable in-game buttons while overlay is active
-- [x] Fix interface scaling issues on non-default SteamOS values
+### Functional
+- [x] Add offline OCR functionality
+- [x] Fix interface scaling issues on non-default SteamOS values (experimental)
 - [x] Rework temporary files solution
-- [ ] External gamepad support
+- [x] Gamepad support
+- [x] Overlay font scaling for large monitors
+- [ ] Fully offline Translation functionality
+- [ ] Disable in-game buttons while overlay is active
 - [ ] Desktop mode support
 - [ ] Nicer look for translation overlay
+- [ ] TTS for translated text (press the translated label to listen)
+
+### Languages
+- [ ] Arabic support for RapidOCR
+- [ ] Hindi support for RapidOCR
+- [x] Add Finnish language
+- [x] Add Romanian language
+- [x] Add Bulgarian language
+- [x] Add Vietnamese language
 
 <h2>Third-Party Dependencies</h2>
 
 This plugin downloads and uses the following third-party components:
 
-### Python 3.11 (required by RapidOCR)
-- Source: [astral-sh/python-build-standalone](https://github.com/astral-sh/python-build-standalone)
-- URL: https://github.com/astral-sh/python-build-standalone/releases/download/20251010/cpython-3.11.14+20251010-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
-- SHA256: `e84da4b01a4017222ed3d172f4ba261c930cca40b7db5d6ad97149a41b98a14c`
+### RapidOCR Models (PP-OCRv5)
 
-### RapidOCR Models
-- Source: [SWHL/RapidOCR on Hugging Face](https://huggingface.co/SWHL/RapidOCR)
+Based on [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) models (Apache 2.0), exported to ONNX format.
+
+- Text Detection + Chinese Recognition: [MeKo-Christian/paddleocr-onnx](https://github.com/MeKo-Christian/paddleocr-onnx)
+- Chinese Dictionary + per-language Recognition models: [monkt/paddleocr-onnx](https://huggingface.co/monkt/paddleocr-onnx) (Apache 2.0)
+- Text Classifier: [SWHL/RapidOCR](https://huggingface.co/SWHL/RapidOCR) (Apache 2.0)
 
 | File | Purpose |
 |------|---------|
-| [ch_PP-OCRv4_det_infer.onnx](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_det_infer.onnx) | Text detection model - finds where text is located in the image |
-| [ch_PP-OCRv4_rec_infer.onnx](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ch_PP-OCRv4_rec_infer.onnx) | Text recognition model - reads the actual characters from detected regions |
-| [ch_ppocr_mobile_v2.0_cls_train.onnx](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv3/ch_ppocr_mobile_v2.0_cls_train.onnx) | Text direction classifier - corrects orientation of rotated/upside-down text |
-| [ppocr_keys_v1.txt](https://huggingface.co/SWHL/RapidOCR/resolve/main/PP-OCRv4/ppocr_keys_v1.txt) | Character dictionary - list of all recognizable characters |
+| ch_PP-OCRv5_mobile_det.onnx | Text detection model (shared across all languages) |
+| ch_rec.onnx + ch_dict.txt | Chinese/Japanese/English recognition |
+| english_rec.onnx + english_dict.txt | English recognition |
+| latin_rec.onnx + latin_dict.txt | Latin script (French, German, Spanish, etc.) |
+| eslav_rec.onnx + eslav_dict.txt | East Slavic (Russian, Ukrainian) |
+| korean_rec.onnx + korean_dict.txt | Korean recognition |
+| greek_rec.onnx + greek_dict.txt | Greek recognition |
+| thai_rec.onnx + thai_dict.txt | Thai recognition |
+| ch_ppocr_mobile_v2.0_cls_infer.onnx | Text direction classifier |
 
 ### Python Packages (from PyPI)
 
-| Package | Purpose |
-|---------|---------|
-| Pillow==11.2.1 | Image processing library for screenshot handling |
-| requests==2.32.3 | HTTP library for API calls to translation services |
-| urllib3==2.4.0 | HTTP client (dependency of requests) |
-| rapidocr-onnxruntime>=1.3.0 | OCR engine that runs the ONNX models |
+| Package | License | Purpose |
+|---------|---------|---------|
+| Pillow==11.2.1 | MIT-CMU | Image processing for screenshot handling |
+| requests==2.32.3 | Apache 2.0 | HTTP library for API calls |
+| urllib3==2.4.0 | MIT | HTTP client (dependency of requests) |
+| rapidocr>=3.6.0 | Apache 2.0 | OCR engine that runs the PP-OCRv5 ONNX models |
+| onnxruntime>=1.7.0 | MIT | ONNX model inference runtime |
 
 
 ## Support
@@ -173,7 +217,8 @@ If you find this plugin useful - feel free to buy me a cup of coffee ❤️
 - [Valve](https://www.valvesoftware.com/) for creating the Steam Deck - a beautiful device that makes projects like this possible
 - [UGT (Universal Game Translator)](https://github.com/SethRobinson/UGT) by Seth Robinson for inspiration and the idea of using game translation as a language learning tool
 - [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) team for the plugin framework
-- [Steam Deck Homebrew](https://github.com/SteamDeckHomebrew) community for plugin development guides
+- [Steam Deck Homebrew](https://github.com/SteamDeckHomebrew) community for their amazing plugins, which served as a great reference while building this one
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR), [RapidOCR](https://github.com/RapidAI/RapidOCR) and [MeKo-Christian](https://github.com/MeKo-Christian/paddleocr-onnx) for OCR engine, OCR models and ONNX model exports that make offline text recognition possible
 - [OCR.space](https://ocr.space/) for the free OCR API
-- [Google Cloud](https://cloud.google.com/) for Vision and Translation APIs
+- [Google Cloud](https://cloud.google.com/) for Vision and Translation API
 - And You. Yes, You 😉
