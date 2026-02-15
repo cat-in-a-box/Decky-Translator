@@ -17,7 +17,7 @@ class GoogleTranslateProvider(TranslationProvider):
 
     SUPPORTED_LANGUAGES = [
         'auto', 'en', 'ja', 'zh-CN', 'zh-TW', 'ko', 'de', 'fr', 'es', 'it',
-        'pt', 'ru', 'ar', 'nl', 'pl', 'tr', 'uk', 'hi', 'el', 'th', 'vi', 'fi', 'id', 'ro'
+        'pt', 'ru', 'ar', 'nl', 'pl', 'tr', 'uk', 'hi', 'el', 'th', 'vi', 'fi', 'id', 'ro', 'bg'
     ]
 
     def __init__(self, api_key: str = ""):
