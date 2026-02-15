@@ -89,12 +89,6 @@ const HIDRAW_BUTTON_MAP: Record<string, Button> = {
     'RIGHT_PAD_CLICK': Button.RIGHT_TOUCHPAD_CLICK,
 };
 
-interface HidrawEvent {
-    button: string;
-    pressed: boolean;
-    timestamp: number;
-}
-
 export class Input {
     private onButtonsPressedListeners: Array<(actionType: ActionType) => void> = [];
     private onProgressListeners: Array<(progressInfo: ProgressInfo) => void> = [];
@@ -131,10 +125,6 @@ export class Input {
     // Track previous buttons state
     private previousButtons: Button[] = [];
 
-    // Track touchpad tap for toggling translations
-    private lastTapTime: number = 0;
-    private tapCooldown = 300; // 300ms cooldown for taps
-
     // Enabled state
     private enabled: boolean = true;
 
@@ -144,7 +134,7 @@ export class Input {
     // Track currently pressed buttons (using Button enum values now)
     private currentlyPressedButtons: Set<Button> = new Set();
 
-    constructor(shortcut: Button[]) {
+    constructor() {
         logger.info('Input', 'Initializing with hidraw-based detection');
         this.startHidrawPolling();
         this.startHealthCheck();

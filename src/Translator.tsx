@@ -47,7 +47,7 @@ export class GameTranslatorLogic {
         this.textTranslator = new TextTranslator();
 
         // Initialize for hidraw-based button detection
-        this.shortcutInput = new Input([]);
+        this.shortcutInput = new Input();
 
         // Set up listener for translate, dismiss, and toggle actions
         this.shortcutInput.onShortcutPressed((actionType: ActionType) => {
