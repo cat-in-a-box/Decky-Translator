@@ -949,6 +949,8 @@ class Plugin:
                 pass  # frontend-only, just persist to settings file
             elif key == "hide_identical_translations":
                 pass  # frontend-only, just persist to settings file
+            elif key == "allow_label_growth":
+                pass  # frontend-only, just persist to settings file
             elif key == "custom_recognition_settings":
                 pass  # frontend-only, just persist to settings file
             elif key == "debug_mode":
@@ -1019,6 +1021,7 @@ class Plugin:
                 "font_scale": self._settings.get_setting("font_scale", 1.0),
                 "grouping_power": self._settings.get_setting("grouping_power", 0.25),
                 "hide_identical_translations": self._settings.get_setting("hide_identical_translations", False),
+                "allow_label_growth": self._settings.get_setting("allow_label_growth", False),
                 "custom_recognition_settings": self._settings.get_setting("custom_recognition_settings", False)
             }
             return settings
@@ -1340,7 +1343,6 @@ class Plugin:
                 if right <= left or bottom <= top:
                     continue
 
-                # Sample a grid of pixels (up to ~25 points) for speed
                 w = right - left
                 h = bottom - top
                 step_x = max(1, w // 5)
@@ -1387,8 +1389,9 @@ class Plugin:
             )
             logger.info(f"OCR completed in {time.time() - start_time:.2f}s, found {len(text_regions)} regions")
 
-            # Sample background color for each region from the screenshot
-            self._sample_bg_colors(image_bytes, text_regions)
+            # Disabled temporarily
+            # TODO: Work on it
+            # self._sample_bg_colors(image_bytes, text_regions)
 
             return [region.to_dict() for region in text_regions]
 
