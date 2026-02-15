@@ -186,11 +186,11 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                     <BsTranslate style={{ marginRight: '8px', color: '#aaa' }} />
                                     <span style={{ color: '#888' }}>Translation:</span>
                                     <span style={{ marginLeft: '6px', fontWeight: 'bold' }}>
-                                        {settings.ocrProvider === 'googlecloud' ? 'Google Cloud' : 'Google Translate'}
+                                        {settings.translationProvider === 'googlecloud' ? 'Google Cloud' : 'Google Translate'}
                                     </span>
                                 </div>
                                 <div style={{ marginLeft: '22px', marginBottom: '6px' }}>
-                                    {settings.ocrProvider === 'googlecloud' && (
+                                    {settings.translationProvider === 'googlecloud' && (
                                         <div style={{ color: settings.googleApiKey ? '#666' : '#ff6b6b', fontSize: '10px' }}>
                                             {settings.googleApiKey ? 'API key configured' : 'API key required'}
                                         </div>
