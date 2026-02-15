@@ -265,18 +265,21 @@ export const TranslatedTextOverlay: VFC<{
     const updateImageDimensions = useCallback(() => {
         if (imgRef.current) {
             const rect = imgRef.current.getBoundingClientRect();
-            setImageDimensions({ width: rect.width, height: rect.height });
+            setImageDimensions(prev => {
+                if (prev.width === rect.width && prev.height === rect.height) return prev;
+                logger.debug('Overlay', `Rendered image dimensions: ${rect.width}x${rect.height}`);
+                return { width: rect.width, height: rect.height };
+            });
 
-            // Also capture the natural (original) image dimensions
-            // This is the actual screenshot resolution, which may vary with UI scaling
             const natWidth = imgRef.current.naturalWidth;
             const natHeight = imgRef.current.naturalHeight;
             if (natWidth > 0 && natHeight > 0) {
-                setNaturalDimensions({ width: natWidth, height: natHeight });
-                logger.debug('Overlay', `Natural image dimensions: ${natWidth}x${natHeight}`);
+                setNaturalDimensions(prev => {
+                    if (prev.width === natWidth && prev.height === natHeight) return prev;
+                    logger.debug('Overlay', `Natural image dimensions: ${natWidth}x${natHeight}`);
+                    return { width: natWidth, height: natHeight };
+                });
             }
-
-            logger.debug('Overlay', `Rendered image dimensions: ${rect.width}x${rect.height}`);
         }
     }, []);
 
@@ -357,10 +360,9 @@ export const TranslatedTextOverlay: VFC<{
                     maxHeight: "100vh",
                     maxWidth: "100vw",
                 }}>
-                    {/* Base screenshot image - adding key to force re-render with new image */}
+                    {/* Base screenshot image */}
                     <img
                         ref={imgRef}
-                        key={`img-${Date.now()}`}
                         src={formattedImageData}
                         onLoad={updateImageDimensions}
                         style={{
