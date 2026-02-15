@@ -3,6 +3,7 @@
 import {
     PanelSection,
     PanelSectionRow,
+    Dropdown,
     DropdownItem,
     SliderField,
     ToggleField,
@@ -16,7 +17,7 @@ import {
 
 import { VFC, useState, useEffect } from "react";
 import { useSettings } from "../SettingsContext";
-import { BsTrash } from "react-icons/bs";
+import { HiKey } from "react-icons/hi2";
 
 // @ts-ignore
 import ocrspaceLogo from "../../assets/ocrspace-logo.png";
@@ -152,21 +153,54 @@ export const TabTranslation: VFC = () => {
             <PanelSection title="Providers">
                 {/* OCR Provider Selection */}
                 <PanelSectionRow>
-                    <DropdownItem
+                    <Field
                         label="Text Recognition (OCR)"
-                        rgOptions={[
-                            { label: <span>RapidOCR</span>, data: "rapidocr" },
-                            { label: <span>OCR.space</span>, data: "ocrspace" },
-                            { label: <span>Google Cloud Vision</span>, data: "googlecloud" }
-                        ]}
-                        selectedOption={settings.ocrProvider}
-                        onChange={(option) => {
-                            updateSetting('ocrProvider', option.data, 'OCR provider');
-                            if (option.data === 'rapidocr' && settings.inputLanguage !== '' && !rapidocrLanguages.has(settings.inputLanguage)) {
-                                updateSetting('inputLanguage', '', 'Input language');
-                            }
-                        }}
-                    />
+                        childrenContainerWidth="fixed"
+                        focusable={false}
+                    >
+                        <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }} flow-children="horizontal">
+                            <Dropdown
+                                rgOptions={[
+                                    { label: <span>RapidOCR</span>, data: "rapidocr" },
+                                    { label: <span>OCR.space</span>, data: "ocrspace" },
+                                    { label: <span>Google Cloud</span>, data: "googlecloud" }
+                                ]}
+                                selectedOption={settings.ocrProvider}
+                                onChange={(option) => {
+                                    updateSetting('ocrProvider', option.data, 'OCR provider');
+                                    if (option.data === 'rapidocr' && settings.inputLanguage !== '' && !rapidocrLanguages.has(settings.inputLanguage)) {
+                                        updateSetting('inputLanguage', '', 'Input language');
+                                    }
+                                }}
+                            />
+                            {settings.ocrProvider === 'googlecloud' && (
+                                <DialogButton
+                                    onClick={() => {
+                                        showModal(
+                                            <ApiKeyModal
+                                                currentKey={settings.googleApiKey}
+                                                onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
+                                            />
+                                        );
+                                    }}
+                                    style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                >
+                                    <div style={{ position: "relative", display: "inline-flex" }}>
+                                        <HiKey />
+                                        <div style={{
+                                            position: "absolute",
+                                            bottom: "-8px",
+                                            right: "-6px",
+                                            width: "6px",
+                                            height: "6px",
+                                            borderRadius: "50%",
+                                            backgroundColor: settings.googleApiKey ? "#4caf50" : "#ff6b6b"
+                                        }} />
+                                    </div>
+                                </DialogButton>
+                            )}
+                        </Focusable>
+                    </Field>
                 </PanelSectionRow>
                 <PanelSectionRow>
                     <Field
@@ -207,7 +241,7 @@ export const TabTranslation: VFC = () => {
                                     <div>- Ideal for complex/stylized text</div>
                                     <div>- Requires API key</div>
                                     {!settings.googleApiKey && (
-                                        <div style={{ color: "#ffc107", marginTop: "4px" }}>⚠ API key required</div>
+                                        <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your API Key</div>
                                     )}
                                 </>
                             )}
@@ -301,15 +335,48 @@ export const TabTranslation: VFC = () => {
 
                 {/* Translation Provider Selection */}
                 <PanelSectionRow>
-                    <DropdownItem
+                    <Field
                         label="Translation"
-                        rgOptions={[
-                            { label: <span>Google Translate</span>, data: "freegoogle" },
-                            { label: <span>Google Cloud Translation</span>, data: "googlecloud" }
-                        ]}
-                        selectedOption={settings.translationProvider}
-                        onChange={(option) => updateSetting('translationProvider', option.data, 'Translation provider')}
-                    />
+                        childrenContainerWidth="fixed"
+                        focusable={false}
+                    >
+                        <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }} flow-children="horizontal">
+                            <Dropdown
+                                rgOptions={[
+                                    { label: <span>Google Translate</span>, data: "freegoogle" },
+                                    { label: <span>Google Cloud</span>, data: "googlecloud" }
+                                ]}
+                                selectedOption={settings.translationProvider}
+                                onChange={(option) => updateSetting('translationProvider', option.data, 'Translation provider')}
+                            />
+                            {settings.translationProvider === 'googlecloud' && (
+                                <DialogButton
+                                    onClick={() => {
+                                        showModal(
+                                            <ApiKeyModal
+                                                currentKey={settings.googleApiKey}
+                                                onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
+                                            />
+                                        );
+                                    }}
+                                    style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                >
+                                    <div style={{ position: "relative", display: "inline-flex" }}>
+                                        <HiKey />
+                                        <div style={{
+                                            position: "absolute",
+                                            bottom: "-8px",
+                                            right: "-6px",
+                                            width: "6px",
+                                            height: "6px",
+                                            borderRadius: "50%",
+                                            backgroundColor: settings.googleApiKey ? "#4caf50" : "#ff6b6b"
+                                        }} />
+                                    </div>
+                                </DialogButton>
+                            )}
+                        </Focusable>
+                    </Field>
                 </PanelSectionRow>
                 <PanelSectionRow>
                     <Field
@@ -336,53 +403,13 @@ export const TabTranslation: VFC = () => {
                                     <div>- High quality translations</div>
                                     <div>- Requires API key</div>
                                     {!settings.googleApiKey && (
-                                        <div style={{ color: "#ffc107", marginTop: "4px" }}>⚠ API key required</div>
+                                        <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your API Key</div>
                                     )}
                                 </>
                             )}
                         </div>
                     </Field>
                 </PanelSectionRow>
-
-                {/* Google Cloud API Key - show when either OCR or Translation uses Google Cloud */}
-                {(settings.ocrProvider === 'googlecloud' || settings.translationProvider === 'googlecloud') && (
-                    <PanelSectionRow>
-                        <Field
-                            label={settings.googleApiKey ? "Google Cloud API Key: ••••••" + settings.googleApiKey.slice(-3) : "No API Key Set"}
-                            description="Required for Google Cloud services"
-                            focusable={false}
-                            childrenContainerWidth="fixed"
-                        >
-                            <Focusable style={{ display: "flex", gap: "8px" }}>
-                                <DialogButton
-                                    onClick={() => {
-                                        showModal(
-                                            <ApiKeyModal
-                                                currentKey={settings.googleApiKey}
-                                                onSave={(key) => updateSetting('googleApiKey', key, 'Google API Key')}
-                                            />
-                                        );
-                                    }}
-                                    style={{ minWidth: "auto", padding: "10px 16px" }}
-                                >
-                                    {settings.googleApiKey ? "Change Key" : "Set Key"}
-                                </DialogButton>
-                                {settings.googleApiKey && (
-                                    <DialogButton
-                                        onClick={() => updateSetting('googleApiKey', '', 'Google API Key')}
-                                        style={{
-                                            minWidth: "40px",
-                                            width: "40px",
-                                            padding: "10px 0"
-                                        }}
-                                    >
-                                        <BsTrash />
-                                    </DialogButton>
-                                )}
-                            </Focusable>
-                        </Field>
-                    </PanelSectionRow>
-                )}
 
                 {/* Invisible spacer to help with scroll when focusing last element */}
                 <PanelSectionRow>
