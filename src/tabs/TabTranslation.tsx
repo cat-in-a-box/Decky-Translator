@@ -52,7 +52,8 @@ const languageOptions = [
     { label: "🇹🇷 Turkish", data: "tr" },
     { label: "🇺🇦 Ukrainian", data: "uk" },
     { label: "🇷🇴 Romanian", data: "ro" },
-    { label: "🇻🇳 Vietnamese", data: "vi" }
+    { label: "🇻🇳 Vietnamese", data: "vi" },
+    { label: "🇧🇬 Bulgarian", data: "bg" }
 ];
 
 const selectLanguageOption = { label: "Select language...", data: "" };
@@ -62,7 +63,7 @@ const outputLanguageOptions = languageOptions.filter(lang => lang.data !== "auto
 const rapidocrLanguages = new Set([
     'en', 'zh-CN', 'zh-TW', 'ja', 'ko',
     'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'tr', 'ro', 'vi', 'fi',
-    'ru', 'uk', 'el', 'th'
+    'ru', 'uk', 'el', 'th', 'bg'
 ]);
 
 // API Key Modal Component
