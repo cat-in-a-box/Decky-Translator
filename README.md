@@ -30,10 +30,10 @@ Might be helpful for learning a new language by playing games or some other purp
 *Coming soon*
 
 ### Manual Installation
-1. Download the latest release from the [Releases](https://github.com/cat-in-a-box/decky-translator/releases) page
-2. Upload the zip archive to any directory on your Steam Deck
+1. [Download](https://github.com/cat-in-a-box/Decky-Translator/releases/latest/download/Decky.Translator.zip) the latest release from the [Releases](https://github.com/cat-in-a-box/decky-translator/releases) page
+2. Upload *Decky.Translator.zip* archive to any directory on your Steam Deck
 3. Open Decky Loader settings and go to Developer section
-4. Install Plugin from ZIP file -> "Browse" and then select .zip file
+4. Install Plugin from ZIP file -> "Browse" and then select *Decky.Translator.zip*
 5. Open Decky menu and select "Decky Translator"
 6. Enjoy!
 
