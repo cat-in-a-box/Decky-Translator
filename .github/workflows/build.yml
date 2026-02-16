@@ -155,8 +155,8 @@ jobs:
       - name: Commit and tag release
         if: steps.version.outputs.is_release == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "Alexander Timoshuk"
+          git config user.email "46809884+cat-in-a-box@users.noreply.github.com"
 
           if git diff --quiet package.json; then
             echo "No changes to package.json"
