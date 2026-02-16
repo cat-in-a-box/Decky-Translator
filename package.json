@@ -1,6 +1,6 @@
 {
   "name": "decky-translator",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "type": "module",
   "description": "Translate anything on your screen to your language",
   "scripts": {
@@ -55,7 +55,7 @@
     {
       "name": "plugin-dependencies.tar.gz",
       "url": "https://github.com/cat-in-a-box/Decky-Translator/releases/download/0.8.0/plugin-dependencies.tar.gz",
-      "sha256hash": "7143640c350ad9b24d4c5c6f5559aeb18f49484ae45bd385d659ff4208124452"
+      "sha256hash": "3112dc9541e84d958670755a0a7f47d5a933368e4d48acebac3793834354fdd2"
     }
   ]
 }
