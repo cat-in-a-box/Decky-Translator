@@ -300,8 +300,10 @@ export const TranslatedTextOverlay: VFC<{
     processingStep: string,
     translationsVisible: boolean,
     fontScale: number,
-    allowLabelGrowth: boolean
-}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth }) => {
+    allowLabelGrowth: boolean,
+    explanationLoading: boolean,
+    explanationReady: boolean
+}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth, explanationLoading, explanationReady }) => {
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
@@ -511,6 +513,50 @@ export const TranslatedTextOverlay: VFC<{
                             );
                         });
                     })()}
+
+                    {/* AI Breakdown status indicator */}
+                    {!loading && explanationLoading && (
+                        <div style={{
+                            position: "absolute",
+                            bottom: "20px",
+                            right: "20px",
+                            background: "rgba(0, 0, 0, 0.7)",
+                            padding: "8px 12px",
+                            borderRadius: "20px",
+                            zIndex: 7003,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                        }}>
+                            <div style={{
+                                border: "2px solid #333",
+                                borderTop: "2px solid #64b5f6",
+                                borderRadius: "50%",
+                                width: "14px",
+                                height: "14px",
+                                animation: "spin 1.5s linear infinite",
+                            }} />
+                            <span style={{ fontSize: "12px", color: "#90caf9" }}>Loading breakdown...</span>
+                        </div>
+                    )}
+                    {!loading && explanationReady && (
+                        <div style={{
+                            position: "absolute",
+                            bottom: "20px",
+                            right: "20px",
+                            background: "rgba(0, 0, 0, 0.7)",
+                            padding: "8px 12px",
+                            borderRadius: "20px",
+                            zIndex: 7003,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            cursor: "pointer",
+                        }}>
+                            <span style={{ fontSize: "14px" }}>📖</span>
+                            <span style={{ fontSize: "12px", color: "#81c784" }}>Breakdown ready</span>
+                        </div>
+                    )}
 
                     {/* Indicator when translations are hidden - eye closed icon */}
                     {!translationsVisible && !loading && (
@@ -835,6 +881,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
                 translationsVisible={translationsVisible}
                 fontScale={fontScale}
                 allowLabelGrowth={allowLabelGrowth}
+                explanationLoading={explanationLoading}
+                explanationReady={!!explanationData && !explanationLoading}
             />
             <ExplanationPanel
                 data={explanationData}

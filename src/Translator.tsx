@@ -68,6 +68,12 @@ export class GameTranslatorLogic {
                     logger.debug('Translator', 'Toggling translation visibility');
                     this.imageState.toggleTranslationsVisibility();
                 }
+            } else if (actionType === ActionType.TOGGLE_EXPLANATION) {
+                // Toggle explanation panel
+                if (this.imageState.isVisible() && this.imageState.hasExplanation()) {
+                    logger.debug('Translator', 'Toggling explanation panel');
+                    this.imageState.toggleExplanationVisible();
+                }
             } else {
                 // Translate action
                 if (!this.imageState.isVisible()) {

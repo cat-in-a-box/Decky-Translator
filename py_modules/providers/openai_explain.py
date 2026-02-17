@@ -4,11 +4,19 @@
 import asyncio
 import json
 import logging
+import socket
 from typing import List, Dict, Any, Optional
 
 import requests
+from urllib3.util.connection import allowed_gai_family
 
 from .base import NetworkError, ApiKeyError
+
+# Force IPv4 for all connections in this module
+_original_gai_family = allowed_gai_family
+def _force_ipv4():
+    return socket.AF_INET
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +25,7 @@ class OpenAIExplainProvider:
     """Provides AI-powered language learning explanations via OpenAI API."""
 
     API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4o-mini"
+    MODEL = "gpt-4.1-nano"
 
     SYSTEM_PROMPT = """You are a Japanese language learning assistant. Given Japanese text and its English translation, provide a detailed learning breakdown.
 
@@ -60,6 +68,8 @@ Always respond with valid JSON only."""
 
     def set_api_key(self, api_key: str) -> None:
         self._api_key = api_key
+        if self._session:
+            self._session.headers["Authorization"] = f"Bearer {api_key}"
         logger.debug(f"OpenAI API key updated, key_set={bool(api_key)}")
 
     def is_available(self) -> bool:
@@ -67,7 +77,13 @@ Always respond with valid JSON only."""
 
     def _get_session(self) -> requests.Session:
         if self._session is None:
+            import urllib3.util.connection
+            urllib3.util.connection.allowed_gai_family = _force_ipv4
             self._session = requests.Session()
+            self._session.headers.update({
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json"
+            })
         return self._session
 
     def _explain_sync(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
@@ -75,7 +91,6 @@ Always respond with valid JSON only."""
         if not self._api_key:
             raise ApiKeyError("OpenAI API key not configured")
 
-        # Build user message from regions
         parts = []
         for i, region in enumerate(regions):
             text = region.get("text", "")
@@ -95,18 +110,12 @@ Always respond with valid JSON only."""
             "max_tokens": 4096
         }
 
-        headers = {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json"
-        }
-
         try:
             session = self._get_session()
             response = session.post(
                 self.API_URL,
                 json=payload,
-                headers=headers,
-                timeout=30.0
+                timeout=(10, 30)
             )
 
             if response.status_code == 401:
