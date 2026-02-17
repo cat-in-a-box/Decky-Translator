@@ -71,15 +71,17 @@ const ApiKeyModal: VFC<{
     currentKey: string;
     onSave: (key: string) => void;
     closeModal?: () => void;
-}> = ({ currentKey, onSave, closeModal }) => {
+    title?: string;
+    description?: string;
+}> = ({ currentKey, onSave, closeModal, title, description }) => {
     const [apiKey, setApiKey] = useState(currentKey || "");
 
     return (
         <ModalRoot onCancel={closeModal} onEscKeypress={closeModal}>
             <div style={{ padding: "20px", minWidth: "400px" }}>
-                <h2 style={{ marginBottom: "15px" }}>Google Cloud API Key</h2>
+                <h2 style={{ marginBottom: "15px" }}>{title || "Google Cloud API Key"}</h2>
                 <p style={{ marginBottom: "15px", color: "#aaa", fontSize: "13px" }}>
-                    Enter your Google Cloud API key for Vision and Translation services.
+                    {description || "Enter your Google Cloud API key for Vision and Translation services."}
                 </p>
                 <TextField
                     label="API Key"
@@ -421,6 +423,162 @@ export const TabTranslation: VFC = () => {
                         onActivate={() => {}}
                     />
                 </PanelSectionRow>
+            </PanelSection>
+
+            <PanelSection title="AI Learning">
+                <PanelSectionRow>
+                    <ToggleField
+                        label="AI Explanation"
+                        description="Get word-by-word breakdown, grammar notes, and cultural context after each translation"
+                        checked={settings.aiExplanationEnabled}
+                        onChange={(value) => updateSetting('aiExplanationEnabled', value, 'AI Explanation')}
+                    />
+                </PanelSectionRow>
+
+                {settings.aiExplanationEnabled && (
+                    <>
+                        <PanelSectionRow>
+                            <Field label="AI Provider" childrenContainerWidth="fixed" focusable={false}>
+                                <Dropdown
+                                    rgOptions={[
+                                        { data: "gemini", label: "Google Gemini" },
+                                        { data: "openai", label: "OpenAI" }
+                                    ]}
+                                    selectedOption={settings.aiExplainProvider}
+                                    onChange={(option: any) => {
+                                        updateSetting('aiExplainProvider', option.data, 'AI Provider');
+                                        updateSetting('aiExplainModel', '', 'AI Model');
+                                    }}
+                                />
+                            </Field>
+                        </PanelSectionRow>
+
+                        <PanelSectionRow>
+                            <Field label="Model" childrenContainerWidth="fixed" focusable={false}>
+                                <Dropdown
+                                    rgOptions={settings.aiExplainProvider === 'gemini' ? [
+                                        { data: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+                                        { data: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+                                        { data: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+                                    ] : [
+                                        { data: "gpt-4o-mini", label: "GPT-4o Mini" },
+                                        { data: "gpt-4o", label: "GPT-4o" },
+                                        { data: "gpt-4.1-mini", label: "GPT-4.1 Mini" },
+                                        { data: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
+                                    ]}
+                                    selectedOption={settings.aiExplainModel || (settings.aiExplainProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini')}
+                                    onChange={(option: any) => updateSetting('aiExplainModel', option.data, 'AI Model')}
+                                />
+                            </Field>
+                        </PanelSectionRow>
+
+                        {settings.aiExplainProvider === 'gemini' && (
+                            <PanelSectionRow>
+                                <Field
+                                    label="Gemini API Key"
+                                    childrenContainerWidth="fixed"
+                                    focusable={false}
+                                >
+                                    <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <DialogButton
+                                            onClick={() => {
+                                                showModal(
+                                                    <ApiKeyModal
+                                                        currentKey={settings.geminiApiKey}
+                                                        onSave={(key) => updateSetting('geminiApiKey', key, 'Gemini API Key')}
+                                                        title="Gemini API Key"
+                                                        description="Enter your Google Gemini API key. Get one free at aistudio.google.com/apikey"
+                                                    />
+                                                );
+                                            }}
+                                            style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                        >
+                                            <div style={{ position: "relative", display: "inline-flex" }}>
+                                                <HiKey />
+                                                <div style={{
+                                                    position: "absolute",
+                                                    bottom: "-8px",
+                                                    right: "-6px",
+                                                    width: "6px",
+                                                    height: "6px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: settings.geminiApiKey ? "#4caf50" : "#ff6b6b"
+                                                }} />
+                                            </div>
+                                        </DialogButton>
+                                    </Focusable>
+                                </Field>
+                            </PanelSectionRow>
+                        )}
+
+                        {settings.aiExplainProvider === 'openai' && (
+                            <PanelSectionRow>
+                                <Field
+                                    label="OpenAI API Key"
+                                    childrenContainerWidth="fixed"
+                                    focusable={false}
+                                >
+                                    <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <DialogButton
+                                            onClick={() => {
+                                                showModal(
+                                                    <ApiKeyModal
+                                                        currentKey={settings.openaiApiKey}
+                                                        onSave={(key) => updateSetting('openaiApiKey', key, 'OpenAI API Key')}
+                                                        title="OpenAI API Key"
+                                                        description="Enter your OpenAI API key for AI-powered language explanations."
+                                                    />
+                                                );
+                                            }}
+                                            style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                        >
+                                            <div style={{ position: "relative", display: "inline-flex" }}>
+                                                <HiKey />
+                                                <div style={{
+                                                    position: "absolute",
+                                                    bottom: "-8px",
+                                                    right: "-6px",
+                                                    width: "6px",
+                                                    height: "6px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: settings.openaiApiKey ? "#4caf50" : "#ff6b6b"
+                                                }} />
+                                            </div>
+                                        </DialogButton>
+                                    </Focusable>
+                                </Field>
+                            </PanelSectionRow>
+                        )}
+
+                        <PanelSectionRow>
+                            <Field
+                                focusable={true}
+                                childrenContainerWidth="max"
+                            >
+                                <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
+                                    <div>- Provides word-by-word meanings with readings</div>
+                                    <div>- Grammar notes, idioms, and cultural context</div>
+                                    {settings.aiExplainProvider === 'gemini' ? (
+                                        <>
+                                            <div>- Gemini has a generous free tier (15 req/min)</div>
+                                            <div>- Get a free key at aistudio.google.com/apikey</div>
+                                            {!settings.geminiApiKey && (
+                                                <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your Gemini API Key</div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>- Requires an OpenAI API key</div>
+                                            {!settings.openaiApiKey && (
+                                                <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your OpenAI API Key</div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </Field>
+                        </PanelSectionRow>
+                    </>
+                )}
             </PanelSection>
         </div>
     );

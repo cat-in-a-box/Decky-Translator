@@ -68,8 +68,33 @@ Decky Translator allows you to choose different Text Recognition and Translation
 | [**Google Translate**](https://translate.google.com/)              | It's Google. And it translates | Internet           |
 | [**Google Cloud Translation**](https://cloud.google.com/translate) | High quality translations      | Internet + API key |
 
+### AI Explanation
 
-**Note:** Google Cloud services require an API key but offer a generous free tier for personal use. 
+After each translation, you can get an AI-powered breakdown of the source text — word-by-word meanings, grammar notes, idioms, and cultural context. Great for language learners.
+
+| Provider | Models | Requirements |
+|---|---|---|
+| [**Google Gemini**](https://ai.google.dev/) | Gemini 2.5 Flash, 2.0 Flash, 2.5 Pro | Internet + API key (free tier available) |
+| [**OpenAI**](https://platform.openai.com/) | GPT-4o Mini, GPT-4o, GPT-4.1 Mini, GPT-4.1 Nano | Internet + API key |
+
+#### How to set up AI Explanation
+
+1. Open the plugin and go to the **Translation** tab
+2. Enable the **AI Explanation** toggle
+3. Select your **AI Provider** (Google Gemini or OpenAI)
+4. Select a **Model** (Gemini 2.5 Flash is recommended — fast and free)
+5. Tap the key icon to enter your API key
+   - **Gemini**: Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (15 requests/min free)
+   - **OpenAI**: Get a key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys) (paid)
+
+#### How to use AI Explanation
+
+1. Trigger a translation as usual (button hold or menu)
+2. Once the translation overlay appears, **tap on any translated text region**
+3. The AI explanation will load and show the word-by-word breakdown
+4. The explanation adapts to your selected input language — it only breaks down words from the source language
+
+**Note:** Google Cloud services require an API key but offer a generous free tier for personal use.
 
 <details>
 <summary><h2>Hey, I want better results. How do I get this Google Cloud API Key?</h2></summary>

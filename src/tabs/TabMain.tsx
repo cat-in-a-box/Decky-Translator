@@ -12,7 +12,7 @@ import {
 } from "@decky/ui";
 
 import { VFC } from "react";
-import { BsTranslate, BsXLg, BsEye } from "react-icons/bs";
+import { BsTranslate, BsXLg, BsEye, BsBook } from "react-icons/bs";
 import { SiKofi } from "react-icons/si";
 import { HiQrCode } from "react-icons/hi2";
 import showQrModal from "../showQrModal";
@@ -67,6 +67,18 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                                 }
                             </ButtonItem>
                         </PanelSectionRow>
+
+                        {overlayVisible && settings.aiExplanationEnabled && settings.openaiApiKey && (
+                            <PanelSectionRow>
+                                <ButtonItem
+                                    bottomSeparator="standard"
+                                    layout="below"
+                                    disabled={!logic.imageState.hasExplanation()}
+                                    onClick={() => logic.imageState.toggleExplanationVisible()}>
+                                    <span><BsBook style={{marginRight: "8px"}} /> Show Breakdown</span>
+                                </ButtonItem>
+                            </PanelSectionRow>
+                        )}
 
                         {/* Provider Status */}
                         <PanelSectionRow>
