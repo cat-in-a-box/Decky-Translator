@@ -428,7 +428,7 @@ export const TabTranslation: VFC = () => {
             <PanelSection title="AI Learning">
                 <PanelSectionRow>
                     <ToggleField
-                        label="AI Japanese Explanation"
+                        label="AI Explanation"
                         description="Get word-by-word breakdown, grammar notes, and cultural context after each translation"
                         checked={settings.aiExplanationEnabled}
                         onChange={(value) => updateSetting('aiExplanationEnabled', value, 'AI Explanation')}
@@ -441,11 +441,33 @@ export const TabTranslation: VFC = () => {
                             <Field label="AI Provider" childrenContainerWidth="fixed" focusable={false}>
                                 <Dropdown
                                     rgOptions={[
-                                        { data: "gemini", label: "Gemini 2.5 Flash" },
-                                        { data: "openai", label: "OpenAI GPT-4o Mini" }
+                                        { data: "gemini", label: "Google Gemini" },
+                                        { data: "openai", label: "OpenAI" }
                                     ]}
                                     selectedOption={settings.aiExplainProvider}
-                                    onChange={(option: any) => updateSetting('aiExplainProvider', option.data, 'AI Provider')}
+                                    onChange={(option: any) => {
+                                        updateSetting('aiExplainProvider', option.data, 'AI Provider');
+                                        updateSetting('aiExplainModel', '', 'AI Model');
+                                    }}
+                                />
+                            </Field>
+                        </PanelSectionRow>
+
+                        <PanelSectionRow>
+                            <Field label="Model" childrenContainerWidth="fixed" focusable={false}>
+                                <Dropdown
+                                    rgOptions={settings.aiExplainProvider === 'gemini' ? [
+                                        { data: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+                                        { data: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
+                                        { data: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+                                    ] : [
+                                        { data: "gpt-4o-mini", label: "GPT-4o Mini" },
+                                        { data: "gpt-4o", label: "GPT-4o" },
+                                        { data: "gpt-4.1-mini", label: "GPT-4.1 Mini" },
+                                        { data: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
+                                    ]}
+                                    selectedOption={settings.aiExplainModel || (settings.aiExplainProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini')}
+                                    onChange={(option: any) => updateSetting('aiExplainModel', option.data, 'AI Model')}
                                 />
                             </Field>
                         </PanelSectionRow>
@@ -538,7 +560,7 @@ export const TabTranslation: VFC = () => {
                                     <div>- Grammar notes, idioms, and cultural context</div>
                                     {settings.aiExplainProvider === 'gemini' ? (
                                         <>
-                                            <div>- Uses Gemini 2.5 Flash (free tier: 15 req/min)</div>
+                                            <div>- Gemini has a generous free tier (15 req/min)</div>
                                             <div>- Get a free key at aistudio.google.com/apikey</div>
                                             {!settings.geminiApiKey && (
                                                 <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your Gemini API Key</div>
@@ -546,7 +568,6 @@ export const TabTranslation: VFC = () => {
                                         </>
                                     ) : (
                                         <>
-                                            <div>- Uses OpenAI GPT-4o Mini (~$0.001/translation)</div>
                                             <div>- Requires an OpenAI API key</div>
                                             {!settings.openaiApiKey && (
                                                 <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your OpenAI API Key</div>

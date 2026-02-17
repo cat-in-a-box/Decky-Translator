@@ -1,5 +1,5 @@
 # providers/gemini_explain.py
-# AI-powered Japanese learning explanation using Google Gemini API
+# AI-powered language learning explanation using Google Gemini API
 
 import asyncio
 import json
@@ -12,29 +12,30 @@ from .base import NetworkError, ApiKeyError
 
 logger = logging.getLogger(__name__)
 
+GEMINI_MODELS = {
+    "gemini-2.5-flash": "Gemini 2.5 Flash",
+    "gemini-2.0-flash": "Gemini 2.0 Flash",
+    "gemini-2.5-pro": "Gemini 2.5 Pro",
+}
 
-class GeminiExplainProvider:
-    """Provides AI-powered language learning explanations via Google Gemini API."""
+SYSTEM_PROMPT_TEMPLATE = """You are a {language} language learning assistant. Given {language} text and its English translation, provide a detailed learning breakdown.
 
-    MODEL = "gemini-2.5-flash"
-    API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
-
-    SYSTEM_PROMPT = """You are a Japanese language learning assistant. Given Japanese text and its English translation, provide a detailed learning breakdown.
+IMPORTANT: Only include words and phrases that are actually in the original {language} text. Do not add words from other languages or translations.
 
 Return a JSON object with the following structure for each text region:
-{
+{{
   "explanations": [
-    {
-      "original": "the original Japanese text",
+    {{
+      "original": "the original {language} text",
       "translation": "the English translation",
       "literal_translation": "a more literal word-by-word English translation",
       "words": [
-        {
-          "word": "Japanese word/morpheme",
-          "reading": "hiragana reading (only if word contains kanji)",
+        {{
+          "word": "{language} word/morpheme from the original text",
+          "reading": "pronunciation guide (e.g. hiragana for kanji, pinyin for Chinese, romaji for Japanese)",
           "meaning": "English meaning",
           "pos": "part of speech (noun, verb, adjective, particle, etc.)"
-        }
+        }}
       ],
       "grammar": [
         "Brief explanation of each grammar point used"
@@ -45,22 +46,33 @@ Return a JSON object with the following structure for each text region:
       "cultural_context": [
         "Any relevant cultural notes for understanding"
       ]
-    }
+    }}
   ]
-}
+}}
 
 Be concise but thorough. Focus on what a learner needs to understand the text.
-If the text is not Japanese, still provide word-by-word breakdown appropriate for that language.
+Only break down words that appear in the original {language} text.
 Always respond with valid JSON only."""
 
-    def __init__(self, api_key: str = ""):
+
+class GeminiExplainProvider:
+    """Provides AI-powered language learning explanations via Google Gemini API."""
+
+    API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+    def __init__(self, api_key: str = "", model: str = "gemini-2.5-flash"):
         self._api_key = api_key
+        self._model = model
         self._session: Optional[requests.Session] = None
         logger.debug("GeminiExplainProvider initialized")
 
     def set_api_key(self, api_key: str) -> None:
         self._api_key = api_key
         logger.debug(f"Gemini API key updated, key_set={bool(api_key)}")
+
+    def set_model(self, model: str) -> None:
+        self._model = model
+        logger.debug(f"Gemini model set to {model}")
 
     def is_available(self) -> bool:
         return bool(self._api_key)
@@ -73,7 +85,10 @@ Always respond with valid JSON only."""
             })
         return self._session
 
-    def _explain_sync(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
+    def _build_system_prompt(self, language: str) -> str:
+        return SYSTEM_PROMPT_TEMPLATE.format(language=language)
+
+    def _explain_sync(self, regions: List[Dict[str, str]], language: str = "Japanese") -> Dict[str, Any]:
         """Synchronous explanation call. Run in a thread to avoid blocking."""
         if not self._api_key:
             raise ApiKeyError("Gemini API key not configured")
@@ -82,11 +97,20 @@ Always respond with valid JSON only."""
         for i, region in enumerate(regions):
             text = region.get("text", "")
             translated = region.get("translatedText", "")
-            parts.append(f"[{i+1}] Japanese: {text}\nTranslation: {translated}")
+            parts.append(f"[{i+1}] {language}: {text}\nTranslation: {translated}")
 
         user_message = "\n\n".join(parts)
 
-        url = f"{self.API_BASE}/{self.MODEL}:generateContent?key={self._api_key}"
+        url = f"{self.API_BASE}/{self._model}:generateContent?key={self._api_key}"
+
+        # Use thinkingBudget: 0 for 2.5 models to avoid thinking overhead
+        gen_config = {
+            "temperature": 0.3,
+            "maxOutputTokens": 4096,
+            "responseMimeType": "application/json",
+        }
+        if "2.5" in self._model:
+            gen_config["thinkingConfig"] = {"thinkingBudget": 0}
 
         payload = {
             "contents": [
@@ -96,14 +120,9 @@ Always respond with valid JSON only."""
                 }
             ],
             "systemInstruction": {
-                "parts": [{"text": self.SYSTEM_PROMPT}]
+                "parts": [{"text": self._build_system_prompt(language)}]
             },
-            "generationConfig": {
-                "temperature": 0.3,
-                "maxOutputTokens": 4096,
-                "responseMimeType": "application/json",
-                "thinkingConfig": {"thinkingBudget": 0}
-            }
+            "generationConfig": gen_config
         }
 
         try:
@@ -155,12 +174,13 @@ Always respond with valid JSON only."""
             logger.error(f"Gemini explain error: {e}")
             raise NetworkError(f"Gemini request failed: {e}") from e
 
-    async def explain(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
+    async def explain(self, regions: List[Dict[str, str]], language: str = "Japanese") -> Dict[str, Any]:
         """
         Get AI-powered learning explanation for text regions.
 
         Args:
             regions: List of dicts with 'text' and 'translatedText' keys
+            language: The source language name (e.g. "Japanese", "Korean")
 
         Returns:
             Dict with 'explanations' list containing breakdowns per region
@@ -168,7 +188,7 @@ Always respond with valid JSON only."""
         if not regions:
             return {"explanations": []}
 
-        logger.debug(f"Requesting Gemini explanation for {len(regions)} regions")
-        result = await asyncio.to_thread(self._explain_sync, regions)
+        logger.debug(f"Requesting Gemini explanation for {len(regions)} regions (language={language})")
+        result = await asyncio.to_thread(self._explain_sync, regions, language)
         logger.debug(f"Gemini explanation received with {len(result.get('explanations', []))} entries")
         return result

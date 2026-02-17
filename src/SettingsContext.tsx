@@ -32,6 +32,7 @@ export interface Settings {
     customRecognitionSettings: boolean;
     aiExplanationEnabled: boolean;
     aiExplainProvider: 'openai' | 'gemini';
+    aiExplainModel: string;
     openaiApiKey: string;
     geminiApiKey: string;
 }
@@ -69,6 +70,7 @@ const initialSettings: Settings = {
     customRecognitionSettings: false,
     aiExplanationEnabled: false,
     aiExplainProvider: "gemini",
+    aiExplainModel: "",
     openaiApiKey: "",
     geminiApiKey: ""
 };
@@ -141,6 +143,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     customRecognitionSettings: serverSettings.custom_recognition_settings ?? false,
                     aiExplanationEnabled: serverSettings.ai_explanation_enabled ?? false,
                     aiExplainProvider: serverSettings.ai_explain_provider || "gemini",
+                    aiExplainModel: serverSettings.ai_explain_model || "",
                     openaiApiKey: serverSettings.openai_api_key || "",
                     geminiApiKey: serverSettings.gemini_api_key || ""
                 };
@@ -218,6 +221,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 customRecognitionSettings: 'custom_recognition_settings',
                 aiExplanationEnabled: 'ai_explanation_enabled',
                 aiExplainProvider: 'ai_explain_provider',
+                aiExplainModel: 'ai_explain_model',
                 openaiApiKey: 'openai_api_key',
                 geminiApiKey: 'gemini_api_key'
             };

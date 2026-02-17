@@ -885,6 +885,7 @@ class Plugin:
     _gemini_api_key: str = ""
     _ai_explanation_enabled: bool = False
     _ai_explain_provider_choice: str = "openai"  # "openai" or "gemini"
+    _ai_explain_model: str = ""  # empty = use provider default
     _openai_explain_provider: OpenAIExplainProvider = None
     _gemini_explain_provider: GeminiExplainProvider = None
 
@@ -1005,6 +1006,12 @@ class Plugin:
                     self._gemini_explain_provider.set_api_key(value)
             elif key == "ai_explain_provider":
                 self._ai_explain_provider_choice = value
+            elif key == "ai_explain_model":
+                self._ai_explain_model = value
+                if self._ai_explain_provider_choice == "gemini" and self._gemini_explain_provider:
+                    self._gemini_explain_provider.set_model(value)
+                elif self._ai_explain_provider_choice == "openai" and self._openai_explain_provider:
+                    self._openai_explain_provider.set_model(value)
             elif key == "ai_explanation_enabled":
                 self._ai_explanation_enabled = value
             else:
@@ -1046,6 +1053,7 @@ class Plugin:
                 "openai_api_key": self._openai_api_key,
                 "gemini_api_key": self._gemini_api_key,
                 "ai_explain_provider": self._ai_explain_provider_choice,
+                "ai_explain_model": self._ai_explain_model,
                 "ai_explanation_enabled": self._ai_explanation_enabled
             }
             return settings
@@ -1500,6 +1508,17 @@ class Plugin:
             logger.error(traceback.format_exc())
             return None
 
+    LANG_CODE_TO_NAME = {
+        "ja": "Japanese", "ko": "Korean", "zh-CN": "Chinese",
+        "zh-TW": "Chinese", "en": "English", "es": "Spanish",
+        "fr": "French", "de": "German", "it": "Italian",
+        "pt": "Portuguese", "ru": "Russian", "ar": "Arabic",
+        "hi": "Hindi", "th": "Thai", "vi": "Vietnamese",
+        "tr": "Turkish", "pl": "Polish", "nl": "Dutch",
+        "fi": "Finnish", "uk": "Ukrainian", "ro": "Romanian",
+        "bg": "Bulgarian", "el": "Greek",
+    }
+
     async def explain_text(self, text_regions):
         try:
             if not self._ai_explanation_enabled:
@@ -1519,8 +1538,10 @@ class Plugin:
             if not text_regions:
                 return {"explanations": []}
 
+            language = self.LANG_CODE_TO_NAME.get(self._input_language, "Japanese")
+
             start_time = time.time()
-            result = await provider.explain(text_regions)
+            result = await provider.explain(text_regions, language=language)
             elapsed = time.time() - start_time
             logger.info(f"AI explanation ({provider_name}) completed in {elapsed:.2f}s")
 
@@ -1733,8 +1754,14 @@ class Plugin:
             self._gemini_api_key = self._settings.get_setting("gemini_api_key", "")
             self._ai_explanation_enabled = self._settings.get_setting("ai_explanation_enabled", False)
             self._ai_explain_provider_choice = self._settings.get_setting("ai_explain_provider", "openai")
+            self._ai_explain_model = self._settings.get_setting("ai_explain_model", "")
             self._openai_explain_provider = OpenAIExplainProvider(self._openai_api_key)
             self._gemini_explain_provider = GeminiExplainProvider(self._gemini_api_key)
+            if self._ai_explain_model:
+                if self._ai_explain_provider_choice == "gemini":
+                    self._gemini_explain_provider.set_model(self._ai_explain_model)
+                else:
+                    self._openai_explain_provider.set_model(self._ai_explain_model)
 
             # Load and apply RapidOCR-specific settings
             if self._settings.get_setting("custom_recognition_settings", False):

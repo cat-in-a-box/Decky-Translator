@@ -1,5 +1,5 @@
 # providers/openai_explain.py
-# AI-powered Japanese learning explanation using OpenAI API
+# AI-powered language learning explanation using OpenAI API
 
 import asyncio
 import json
@@ -12,29 +12,31 @@ from .base import NetworkError, ApiKeyError
 
 logger = logging.getLogger(__name__)
 
+OPENAI_MODELS = {
+    "gpt-4o-mini": "GPT-4o Mini",
+    "gpt-4o": "GPT-4o",
+    "gpt-4.1-mini": "GPT-4.1 Mini",
+    "gpt-4.1-nano": "GPT-4.1 Nano",
+}
 
-class OpenAIExplainProvider:
-    """Provides AI-powered language learning explanations via OpenAI API."""
+SYSTEM_PROMPT_TEMPLATE = """You are a {language} language learning assistant. Given {language} text and its English translation, provide a detailed learning breakdown.
 
-    API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4o-mini"
-
-    SYSTEM_PROMPT = """You are a Japanese language learning assistant. Given Japanese text and its English translation, provide a detailed learning breakdown.
+IMPORTANT: Only include words and phrases that are actually in the original {language} text. Do not add words from other languages or translations.
 
 Return a JSON object with the following structure for each text region:
-{
+{{
   "explanations": [
-    {
-      "original": "the original Japanese text",
+    {{
+      "original": "the original {language} text",
       "translation": "the English translation",
       "literal_translation": "a more literal word-by-word English translation",
       "words": [
-        {
-          "word": "Japanese word/morpheme",
-          "reading": "hiragana reading (only if word contains kanji)",
+        {{
+          "word": "{language} word/morpheme from the original text",
+          "reading": "pronunciation guide (e.g. hiragana for kanji, pinyin for Chinese, romaji for Japanese)",
           "meaning": "English meaning",
           "pos": "part of speech (noun, verb, adjective, particle, etc.)"
-        }
+        }}
       ],
       "grammar": [
         "Brief explanation of each grammar point used"
@@ -45,16 +47,23 @@ Return a JSON object with the following structure for each text region:
       "cultural_context": [
         "Any relevant cultural notes for understanding"
       ]
-    }
+    }}
   ]
-}
+}}
 
 Be concise but thorough. Focus on what a learner needs to understand the text.
-If the text is not Japanese, still provide word-by-word breakdown appropriate for that language.
+Only break down words that appear in the original {language} text.
 Always respond with valid JSON only."""
 
-    def __init__(self, api_key: str = ""):
+
+class OpenAIExplainProvider:
+    """Provides AI-powered language learning explanations via OpenAI API."""
+
+    API_URL = "https://api.openai.com/v1/chat/completions"
+
+    def __init__(self, api_key: str = "", model: str = "gpt-4o-mini"):
         self._api_key = api_key
+        self._model = model
         self._session: Optional[requests.Session] = None
         logger.debug("OpenAIExplainProvider initialized")
 
@@ -63,6 +72,10 @@ Always respond with valid JSON only."""
         if self._session:
             self._session.headers["Authorization"] = f"Bearer {api_key}"
         logger.debug(f"OpenAI API key updated, key_set={bool(api_key)}")
+
+    def set_model(self, model: str) -> None:
+        self._model = model
+        logger.debug(f"OpenAI model set to {model}")
 
     def is_available(self) -> bool:
         return bool(self._api_key)
@@ -76,7 +89,10 @@ Always respond with valid JSON only."""
             })
         return self._session
 
-    def _explain_sync(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
+    def _build_system_prompt(self, language: str) -> str:
+        return SYSTEM_PROMPT_TEMPLATE.format(language=language)
+
+    def _explain_sync(self, regions: List[Dict[str, str]], language: str = "Japanese") -> Dict[str, Any]:
         """Synchronous explanation call. Run in a thread to avoid blocking."""
         if not self._api_key:
             raise ApiKeyError("OpenAI API key not configured")
@@ -85,14 +101,14 @@ Always respond with valid JSON only."""
         for i, region in enumerate(regions):
             text = region.get("text", "")
             translated = region.get("translatedText", "")
-            parts.append(f"[{i+1}] Japanese: {text}\nTranslation: {translated}")
+            parts.append(f"[{i+1}] {language}: {text}\nTranslation: {translated}")
 
         user_message = "\n\n".join(parts)
 
         payload = {
-            "model": self.MODEL,
+            "model": self._model,
             "messages": [
-                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "system", "content": self._build_system_prompt(language)},
                 {"role": "user", "content": user_message}
             ],
             "response_format": {"type": "json_object"},
@@ -141,12 +157,13 @@ Always respond with valid JSON only."""
             logger.error(f"OpenAI explain error: {e}")
             raise NetworkError(f"OpenAI request failed: {e}") from e
 
-    async def explain(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
+    async def explain(self, regions: List[Dict[str, str]], language: str = "Japanese") -> Dict[str, Any]:
         """
         Get AI-powered learning explanation for text regions.
 
         Args:
             regions: List of dicts with 'text' and 'translatedText' keys
+            language: The source language name (e.g. "Japanese", "Korean")
 
         Returns:
             Dict with 'explanations' list containing breakdowns per region
@@ -154,7 +171,7 @@ Always respond with valid JSON only."""
         if not regions:
             return {"explanations": []}
 
-        logger.debug(f"Requesting AI explanation for {len(regions)} regions")
-        result = await asyncio.to_thread(self._explain_sync, regions)
+        logger.debug(f"Requesting AI explanation for {len(regions)} regions (language={language})")
+        result = await asyncio.to_thread(self._explain_sync, regions, language)
         logger.debug(f"AI explanation received with {len(result.get('explanations', []))} entries")
         return result
