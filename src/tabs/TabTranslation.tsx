@@ -438,41 +438,96 @@ export const TabTranslation: VFC = () => {
                 {settings.aiExplanationEnabled && (
                     <>
                         <PanelSectionRow>
-                            <Field
-                                label="OpenAI API Key"
-                                childrenContainerWidth="fixed"
-                                focusable={false}
-                            >
-                                <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                    <DialogButton
-                                        onClick={() => {
-                                            showModal(
-                                                <ApiKeyModal
-                                                    currentKey={settings.openaiApiKey}
-                                                    onSave={(key) => updateSetting('openaiApiKey', key, 'OpenAI API Key')}
-                                                    title="OpenAI API Key"
-                                                    description="Enter your OpenAI API key for AI-powered language explanations."
-                                                />
-                                            );
-                                        }}
-                                        style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
-                                    >
-                                        <div style={{ position: "relative", display: "inline-flex" }}>
-                                            <HiKey />
-                                            <div style={{
-                                                position: "absolute",
-                                                bottom: "-8px",
-                                                right: "-6px",
-                                                width: "6px",
-                                                height: "6px",
-                                                borderRadius: "50%",
-                                                backgroundColor: settings.openaiApiKey ? "#4caf50" : "#ff6b6b"
-                                            }} />
-                                        </div>
-                                    </DialogButton>
-                                </Focusable>
+                            <Field label="AI Provider" childrenContainerWidth="fixed" focusable={false}>
+                                <Dropdown
+                                    rgOptions={[
+                                        { data: "gemini", label: "Gemini 2.5 Flash" },
+                                        { data: "openai", label: "OpenAI GPT-4o Mini" }
+                                    ]}
+                                    selectedOption={settings.aiExplainProvider}
+                                    onChange={(option: any) => updateSetting('aiExplainProvider', option.data, 'AI Provider')}
+                                />
                             </Field>
                         </PanelSectionRow>
+
+                        {settings.aiExplainProvider === 'gemini' && (
+                            <PanelSectionRow>
+                                <Field
+                                    label="Gemini API Key"
+                                    childrenContainerWidth="fixed"
+                                    focusable={false}
+                                >
+                                    <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <DialogButton
+                                            onClick={() => {
+                                                showModal(
+                                                    <ApiKeyModal
+                                                        currentKey={settings.geminiApiKey}
+                                                        onSave={(key) => updateSetting('geminiApiKey', key, 'Gemini API Key')}
+                                                        title="Gemini API Key"
+                                                        description="Enter your Google Gemini API key. Get one free at aistudio.google.com/apikey"
+                                                    />
+                                                );
+                                            }}
+                                            style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                        >
+                                            <div style={{ position: "relative", display: "inline-flex" }}>
+                                                <HiKey />
+                                                <div style={{
+                                                    position: "absolute",
+                                                    bottom: "-8px",
+                                                    right: "-6px",
+                                                    width: "6px",
+                                                    height: "6px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: settings.geminiApiKey ? "#4caf50" : "#ff6b6b"
+                                                }} />
+                                            </div>
+                                        </DialogButton>
+                                    </Focusable>
+                                </Field>
+                            </PanelSectionRow>
+                        )}
+
+                        {settings.aiExplainProvider === 'openai' && (
+                            <PanelSectionRow>
+                                <Field
+                                    label="OpenAI API Key"
+                                    childrenContainerWidth="fixed"
+                                    focusable={false}
+                                >
+                                    <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                        <DialogButton
+                                            onClick={() => {
+                                                showModal(
+                                                    <ApiKeyModal
+                                                        currentKey={settings.openaiApiKey}
+                                                        onSave={(key) => updateSetting('openaiApiKey', key, 'OpenAI API Key')}
+                                                        title="OpenAI API Key"
+                                                        description="Enter your OpenAI API key for AI-powered language explanations."
+                                                    />
+                                                );
+                                            }}
+                                            style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                        >
+                                            <div style={{ position: "relative", display: "inline-flex" }}>
+                                                <HiKey />
+                                                <div style={{
+                                                    position: "absolute",
+                                                    bottom: "-8px",
+                                                    right: "-6px",
+                                                    width: "6px",
+                                                    height: "6px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: settings.openaiApiKey ? "#4caf50" : "#ff6b6b"
+                                                }} />
+                                            </div>
+                                        </DialogButton>
+                                    </Focusable>
+                                </Field>
+                            </PanelSectionRow>
+                        )}
+
                         <PanelSectionRow>
                             <Field
                                 focusable={true}
@@ -481,10 +536,22 @@ export const TabTranslation: VFC = () => {
                                 <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
                                     <div>- Provides word-by-word meanings with readings</div>
                                     <div>- Grammar notes, idioms, and cultural context</div>
-                                    <div>- Uses OpenAI GPT-4o Mini (~$0.001/translation)</div>
-                                    <div>- Requires an OpenAI API key</div>
-                                    {!settings.openaiApiKey && (
-                                        <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your OpenAI API Key</div>
+                                    {settings.aiExplainProvider === 'gemini' ? (
+                                        <>
+                                            <div>- Uses Gemini 2.5 Flash (free tier: 15 req/min)</div>
+                                            <div>- Get a free key at aistudio.google.com/apikey</div>
+                                            {!settings.geminiApiKey && (
+                                                <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your Gemini API Key</div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>- Uses OpenAI GPT-4o Mini (~$0.001/translation)</div>
+                                            <div>- Requires an OpenAI API key</div>
+                                            {!settings.openaiApiKey && (
+                                                <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your OpenAI API Key</div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </Field>

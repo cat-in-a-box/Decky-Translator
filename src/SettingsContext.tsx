@@ -31,7 +31,9 @@ export interface Settings {
     allowLabelGrowth: boolean;
     customRecognitionSettings: boolean;
     aiExplanationEnabled: boolean;
+    aiExplainProvider: 'openai' | 'gemini';
     openaiApiKey: string;
+    geminiApiKey: string;
 }
 
 // Define action types
@@ -66,7 +68,9 @@ const initialSettings: Settings = {
     allowLabelGrowth: false,
     customRecognitionSettings: false,
     aiExplanationEnabled: false,
-    openaiApiKey: ""
+    aiExplainProvider: "gemini",
+    openaiApiKey: "",
+    geminiApiKey: ""
 };
 
 // Create the reducer
@@ -136,7 +140,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     allowLabelGrowth: serverSettings.allow_label_growth ?? false,
                     customRecognitionSettings: serverSettings.custom_recognition_settings ?? false,
                     aiExplanationEnabled: serverSettings.ai_explanation_enabled ?? false,
-                    openaiApiKey: serverSettings.openai_api_key || ""
+                    aiExplainProvider: serverSettings.ai_explain_provider || "gemini",
+                    openaiApiKey: serverSettings.openai_api_key || "",
+                    geminiApiKey: serverSettings.gemini_api_key || ""
                 };
 
                 // Update settings in context
@@ -159,6 +165,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setTranslationProvider(serverSettings.translation_provider || "freegoogle");
                 logic.setHasGoogleApiKey(!!serverSettings.google_api_key);
                 logic.setHasOpenaiApiKey(!!serverSettings.openai_api_key);
+                logic.setHasGeminiApiKey(!!serverSettings.gemini_api_key);
+                logic.setAiExplainProvider(serverSettings.ai_explain_provider || "gemini");
 
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
                 logic.setGroupingPower(serverSettings.grouping_power ?? 0.25);
@@ -209,7 +217,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 allowLabelGrowth: 'allow_label_growth',
                 customRecognitionSettings: 'custom_recognition_settings',
                 aiExplanationEnabled: 'ai_explanation_enabled',
-                openaiApiKey: 'openai_api_key'
+                aiExplainProvider: 'ai_explain_provider',
+                openaiApiKey: 'openai_api_key',
+                geminiApiKey: 'gemini_api_key'
             };
 
             // Skip settings that don't need to be saved to backend
@@ -272,6 +282,12 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'openaiApiKey':
                     logic.setHasOpenaiApiKey(!!value);
+                    break;
+                case 'geminiApiKey':
+                    logic.setHasGeminiApiKey(!!value);
+                    break;
+                case 'aiExplainProvider':
+                    logic.setAiExplainProvider(value);
                     break;
             }
 

@@ -32,6 +32,8 @@ export class GameTranslatorLogic {
     private translationProvider: string = "freegoogle";
     private hasGoogleApiKey: boolean = false;
     private hasOpenaiApiKey: boolean = false;
+    private hasGeminiApiKey: boolean = false;
+    private aiExplainProvider: string = "gemini";
 
     isOverlayVisible(): boolean {
         return this.imageState.isVisible();
@@ -556,6 +558,16 @@ export class GameTranslatorLogic {
         logger.debug('Translator', `OpenAI API key available: ${hasKey}`);
     }
 
+    setHasGeminiApiKey = (hasKey: boolean): void => {
+        this.hasGeminiApiKey = hasKey;
+        logger.debug('Translator', `Gemini API key available: ${hasKey}`);
+    }
+
+    setAiExplainProvider = (provider: string): void => {
+        this.aiExplainProvider = provider;
+        logger.debug('Translator', `AI explain provider: ${provider}`);
+    }
+
     // Check if the current provider configuration requires an API key that's missing
     private requiresApiKeyButMissing(): { missing: boolean; message: string } {
         const ocrNeedsKey = this.ocrProvider === 'googlecloud';
@@ -574,8 +586,9 @@ export class GameTranslatorLogic {
     }
 
     private fetchAiExplanation(translatedRegions: any[]): void {
-        if (!this.hasOpenaiApiKey) {
-            logger.warn('Translator', 'Skipping AI explanation: no OpenAI API key');
+        const hasKey = this.aiExplainProvider === 'gemini' ? this.hasGeminiApiKey : this.hasOpenaiApiKey;
+        if (!hasKey) {
+            logger.warn('Translator', `Skipping AI explanation: no ${this.aiExplainProvider} API key`);
             return;
         }
 

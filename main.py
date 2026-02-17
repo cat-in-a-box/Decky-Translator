@@ -81,7 +81,7 @@ import requests
 
 # Import provider system
 from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError, RateLimitError
-from providers import OpenAIExplainProvider
+from providers import OpenAIExplainProvider, GeminiExplainProvider
 
 _processing_lock = False
 
@@ -882,8 +882,11 @@ class Plugin:
     _google_translate_api_key: str = ""
 
     _openai_api_key: str = ""
+    _gemini_api_key: str = ""
     _ai_explanation_enabled: bool = False
+    _ai_explain_provider_choice: str = "openai"  # "openai" or "gemini"
     _openai_explain_provider: OpenAIExplainProvider = None
+    _gemini_explain_provider: GeminiExplainProvider = None
 
     # Generic settings handlers
     async def get_setting(self, key, default=None):
@@ -996,6 +999,12 @@ class Plugin:
                 self._openai_api_key = value
                 if self._openai_explain_provider:
                     self._openai_explain_provider.set_api_key(value)
+            elif key == "gemini_api_key":
+                self._gemini_api_key = value
+                if self._gemini_explain_provider:
+                    self._gemini_explain_provider.set_api_key(value)
+            elif key == "ai_explain_provider":
+                self._ai_explain_provider_choice = value
             elif key == "ai_explanation_enabled":
                 self._ai_explanation_enabled = value
             else:
@@ -1035,6 +1044,8 @@ class Plugin:
                 "allow_label_growth": self._settings.get_setting("allow_label_growth", False),
                 "custom_recognition_settings": self._settings.get_setting("custom_recognition_settings", False),
                 "openai_api_key": self._openai_api_key,
+                "gemini_api_key": self._gemini_api_key,
+                "ai_explain_provider": self._ai_explain_provider_choice,
                 "ai_explanation_enabled": self._ai_explanation_enabled
             }
             return settings
@@ -1494,21 +1505,30 @@ class Plugin:
             if not self._ai_explanation_enabled:
                 return {"error": "ai_explanation_disabled", "message": "AI explanation is disabled"}
 
-            if not self._openai_explain_provider or not self._openai_explain_provider.is_available():
-                return {"error": "api_key_error", "message": "OpenAI API key not configured"}
+            # Pick the active provider
+            if self._ai_explain_provider_choice == "gemini":
+                provider = self._gemini_explain_provider
+                provider_name = "Gemini"
+            else:
+                provider = self._openai_explain_provider
+                provider_name = "OpenAI"
+
+            if not provider or not provider.is_available():
+                return {"error": "api_key_error", "message": f"{provider_name} API key not configured"}
 
             if not text_regions:
                 return {"explanations": []}
 
             start_time = time.time()
-            result = await self._openai_explain_provider.explain(text_regions)
-            logger.info(f"AI explanation completed in {time.time() - start_time:.2f}s")
+            result = await provider.explain(text_regions)
+            elapsed = time.time() - start_time
+            logger.info(f"AI explanation ({provider_name}) completed in {elapsed:.2f}s")
 
             return result
 
         except ApiKeyError as e:
             logger.error(f"API key error during explanation: {e}")
-            return {"error": "api_key_error", "message": "Invalid OpenAI API key"}
+            return {"error": "api_key_error", "message": str(e)}
         except NetworkError as e:
             logger.error(f"Network error during explanation: {e}")
             return {"error": "network_error", "message": str(e)}
@@ -1710,8 +1730,11 @@ class Plugin:
 
             # Load AI explanation settings
             self._openai_api_key = self._settings.get_setting("openai_api_key", "")
+            self._gemini_api_key = self._settings.get_setting("gemini_api_key", "")
             self._ai_explanation_enabled = self._settings.get_setting("ai_explanation_enabled", False)
+            self._ai_explain_provider_choice = self._settings.get_setting("ai_explain_provider", "openai")
             self._openai_explain_provider = OpenAIExplainProvider(self._openai_api_key)
+            self._gemini_explain_provider = GeminiExplainProvider(self._gemini_api_key)
 
             # Load and apply RapidOCR-specific settings
             if self._settings.get_setting("custom_recognition_settings", False):
@@ -1769,6 +1792,11 @@ class Plugin:
                 if self._openai_explain_provider._session:
                     self._openai_explain_provider._session.close()
                 self._openai_explain_provider = None
+
+            if self._gemini_explain_provider:
+                if self._gemini_explain_provider._session:
+                    self._gemini_explain_provider._session.close()
+                self._gemini_explain_provider = None
 
             std_out_file.close()
             std_err_file.close()

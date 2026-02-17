@@ -1,5 +1,5 @@
-# providers/openai_explain.py
-# AI-powered Japanese learning explanation using OpenAI API
+# providers/gemini_explain.py
+# AI-powered Japanese learning explanation using Google Gemini API
 
 import asyncio
 import json
@@ -13,11 +13,11 @@ from .base import NetworkError, ApiKeyError
 logger = logging.getLogger(__name__)
 
 
-class OpenAIExplainProvider:
-    """Provides AI-powered language learning explanations via OpenAI API."""
+class GeminiExplainProvider:
+    """Provides AI-powered language learning explanations via Google Gemini API."""
 
-    API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4o-mini"
+    MODEL = "gemini-2.5-flash"
+    API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
     SYSTEM_PROMPT = """You are a Japanese language learning assistant. Given Japanese text and its English translation, provide a detailed learning breakdown.
 
@@ -56,13 +56,11 @@ Always respond with valid JSON only."""
     def __init__(self, api_key: str = ""):
         self._api_key = api_key
         self._session: Optional[requests.Session] = None
-        logger.debug("OpenAIExplainProvider initialized")
+        logger.debug("GeminiExplainProvider initialized")
 
     def set_api_key(self, api_key: str) -> None:
         self._api_key = api_key
-        if self._session:
-            self._session.headers["Authorization"] = f"Bearer {api_key}"
-        logger.debug(f"OpenAI API key updated, key_set={bool(api_key)}")
+        logger.debug(f"Gemini API key updated, key_set={bool(api_key)}")
 
     def is_available(self) -> bool:
         return bool(self._api_key)
@@ -71,7 +69,6 @@ Always respond with valid JSON only."""
         if self._session is None:
             self._session = requests.Session()
             self._session.headers.update({
-                "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json"
             })
         return self._session
@@ -79,7 +76,7 @@ Always respond with valid JSON only."""
     def _explain_sync(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
         """Synchronous explanation call. Run in a thread to avoid blocking."""
         if not self._api_key:
-            raise ApiKeyError("OpenAI API key not configured")
+            raise ApiKeyError("Gemini API key not configured")
 
         parts = []
         for i, region in enumerate(regions):
@@ -89,57 +86,74 @@ Always respond with valid JSON only."""
 
         user_message = "\n\n".join(parts)
 
+        url = f"{self.API_BASE}/{self.MODEL}:generateContent?key={self._api_key}"
+
         payload = {
-            "model": self.MODEL,
-            "messages": [
-                {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": user_message}
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": user_message}]
+                }
             ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.3,
-            "max_tokens": 4096
+            "systemInstruction": {
+                "parts": [{"text": self.SYSTEM_PROMPT}]
+            },
+            "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": 4096,
+                "responseMimeType": "application/json",
+                "thinkingConfig": {"thinkingBudget": 0}
+            }
         }
 
         try:
             session = self._get_session()
             response = session.post(
-                self.API_URL,
+                url,
                 json=payload,
                 timeout=(10, 120)
             )
 
-            if response.status_code == 401:
-                raise ApiKeyError("Invalid OpenAI API key")
+            if response.status_code == 400:
+                body = response.json()
+                error_msg = body.get("error", {}).get("message", "")
+                if "API_KEY" in error_msg or "key" in error_msg.lower():
+                    raise ApiKeyError("Invalid Gemini API key")
+                logger.error(f"Gemini API error 400: {error_msg}")
+                raise NetworkError(f"Gemini API error: {error_msg}")
+
+            if response.status_code == 403:
+                raise ApiKeyError("Invalid Gemini API key or insufficient permissions")
 
             if response.status_code != 200:
-                logger.error(f"OpenAI API error: {response.status_code} - {response.text[:200]}")
-                raise NetworkError(f"OpenAI API returned status {response.status_code}")
+                logger.error(f"Gemini API error: {response.status_code} - {response.text[:200]}")
+                raise NetworkError(f"Gemini API returned status {response.status_code}")
 
             result = response.json()
-            content = result["choices"][0]["message"]["content"]
-            logger.debug(f"OpenAI raw content (first 500 chars): {content[:500]}")
+            content = result["candidates"][0]["content"]["parts"][0]["text"]
+            logger.debug(f"Gemini raw content (first 500 chars): {content[:500]}")
             parsed = json.loads(content)
             if not parsed.get("explanations"):
-                logger.warning(f"OpenAI returned no explanations. Full content: {content[:1000]}")
+                logger.warning(f"Gemini returned no explanations. Full content: {content[:1000]}")
             return parsed
 
         except ApiKeyError:
             raise
         except requests.exceptions.ConnectionError as e:
-            logger.error(f"OpenAI connection error: {e}")
+            logger.error(f"Gemini connection error: {e}")
             raise NetworkError("No internet connection") from e
         except requests.exceptions.Timeout as e:
-            logger.error(f"OpenAI timeout error: {e}")
-            raise NetworkError("OpenAI request timed out") from e
+            logger.error(f"Gemini timeout error: {e}")
+            raise NetworkError("Gemini request timed out") from e
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse OpenAI response as JSON: {e}")
+            logger.error(f"Failed to parse Gemini response as JSON: {e}")
             return {"explanations": [], "error": "Failed to parse AI response"}
         except (KeyError, IndexError) as e:
-            logger.error(f"Unexpected OpenAI response structure: {e}")
+            logger.error(f"Unexpected Gemini response structure: {e}")
             return {"explanations": [], "error": "Unexpected AI response format"}
         except Exception as e:
-            logger.error(f"OpenAI explain error: {e}")
-            raise NetworkError(f"OpenAI request failed: {e}") from e
+            logger.error(f"Gemini explain error: {e}")
+            raise NetworkError(f"Gemini request failed: {e}") from e
 
     async def explain(self, regions: List[Dict[str, str]]) -> Dict[str, Any]:
         """
@@ -154,7 +168,7 @@ Always respond with valid JSON only."""
         if not regions:
             return {"explanations": []}
 
-        logger.debug(f"Requesting AI explanation for {len(regions)} regions")
+        logger.debug(f"Requesting Gemini explanation for {len(regions)} regions")
         result = await asyncio.to_thread(self._explain_sync, regions)
-        logger.debug(f"AI explanation received with {len(result.get('explanations', []))} entries")
+        logger.debug(f"Gemini explanation received with {len(result.get('explanations', []))} entries")
         return result
