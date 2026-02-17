@@ -574,25 +574,32 @@ export class GameTranslatorLogic {
     }
 
     private fetchAiExplanation(translatedRegions: any[]): void {
-        if (!this.hasOpenaiApiKey) return;
+        if (!this.hasOpenaiApiKey) {
+            logger.warn('Translator', 'Skipping AI explanation: no OpenAI API key');
+            return;
+        }
 
         const regionsData = translatedRegions.map(r => ({
             text: r.text,
             translatedText: r.translatedText
         }));
 
+        logger.info('Translator', `Fetching AI explanation for ${regionsData.length} regions`);
         this.imageState.setExplanationLoading(true);
 
         call('explain_text', regionsData)
             .then((result: any) => {
+                logger.info('Translator', `AI explanation result: ${JSON.stringify(result).substring(0, 200)}`);
                 if (result && !result.error) {
                     this.imageState.setExplanationData(result);
                 } else {
-                    logger.warn('Translator', `AI explanation failed: ${result?.message || 'unknown error'}`);
+                    logger.warn('Translator', `AI explanation failed: ${result?.error || 'unknown'} - ${result?.message || ''}`);
+                    this.imageState.setExplanationError(result?.message || result?.error || 'Unknown error');
                 }
             })
             .catch(error => {
                 logger.error('Translator', 'AI explanation error', error);
+                this.imageState.setExplanationError(String(error));
             })
             .finally(() => {
                 this.imageState.setExplanationLoading(false);

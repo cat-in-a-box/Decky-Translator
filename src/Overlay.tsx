@@ -47,8 +47,9 @@ export class ImageState {
     private explanationData: any = null;
     private explanationLoading = false;
     private explanationVisible = false;
+    private explanationError: string = "";
     private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void> = [];
-    private onExplanationChangedListeners: Array<(data: any, loading: boolean, visible: boolean) => void> = [];
+    private onExplanationChangedListeners: Array<(data: any, loading: boolean, visible: boolean, error: string) => void> = [];
 
     onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void): void {
         this.onStateChangedListeners.push(callback);
@@ -196,6 +197,7 @@ export class ImageState {
         this.explanationData = null;
         this.explanationLoading = false;
         this.explanationVisible = false;
+        this.explanationError = "";
 
         logger.debug('ImageState', 'Hiding image and clearing all state');
 
@@ -210,11 +212,11 @@ export class ImageState {
     }
 
     // Explanation state methods
-    onExplanationChanged(callback: (data: any, loading: boolean, visible: boolean) => void): void {
+    onExplanationChanged(callback: (data: any, loading: boolean, visible: boolean, error: string) => void): void {
         this.onExplanationChangedListeners.push(callback);
     }
 
-    offExplanationChanged(callback: (data: any, loading: boolean, visible: boolean) => void): void {
+    offExplanationChanged(callback: (data: any, loading: boolean, visible: boolean, error: string) => void): void {
         const index = this.onExplanationChangedListeners.indexOf(callback);
         if (index !== -1) {
             this.onExplanationChangedListeners.splice(index, 1);
@@ -223,17 +225,23 @@ export class ImageState {
 
     private notifyExplanationListeners(): void {
         for (const callback of this.onExplanationChangedListeners) {
-            callback(this.explanationData, this.explanationLoading, this.explanationVisible);
+            callback(this.explanationData, this.explanationLoading, this.explanationVisible, this.explanationError);
         }
     }
 
     setExplanationData(data: any): void {
         this.explanationData = data;
+        this.explanationError = "";
         this.notifyExplanationListeners();
     }
 
     setExplanationLoading(loading: boolean): void {
         this.explanationLoading = loading;
+        this.notifyExplanationListeners();
+    }
+
+    setExplanationError(error: string): void {
+        this.explanationError = error;
         this.notifyExplanationListeners();
     }
 
@@ -302,8 +310,9 @@ export const TranslatedTextOverlay: VFC<{
     fontScale: number,
     allowLabelGrowth: boolean,
     explanationLoading: boolean,
-    explanationReady: boolean
-}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth, explanationLoading, explanationReady }) => {
+    explanationReady: boolean,
+    explanationError: string
+}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth, explanationLoading, explanationReady, explanationError }) => {
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
@@ -412,6 +421,16 @@ export const TranslatedTextOverlay: VFC<{
                  opacity: visible ? 1 : 0,
                  pointerEvents: visible ? "auto" : "none",
              }}>
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                @keyframes fadeInTranslation {
+                    0% { opacity: 0; transform: translateY(10px); }
+                    100% { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
 
             {/* Screenshot with Translations */}
             {imageData && (
@@ -557,6 +576,22 @@ export const TranslatedTextOverlay: VFC<{
                             <span style={{ fontSize: "12px", color: "#81c784" }}>Breakdown ready</span>
                         </div>
                     )}
+                    {!loading && !explanationLoading && explanationError && (
+                        <div style={{
+                            position: "absolute",
+                            bottom: "20px",
+                            right: "20px",
+                            background: "rgba(0, 0, 0, 0.7)",
+                            padding: "8px 12px",
+                            borderRadius: "20px",
+                            zIndex: 7003,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                        }}>
+                            <span style={{ fontSize: "12px", color: "#ef5350" }}>{explanationError}</span>
+                        </div>
+                    )}
 
                     {/* Indicator when translations are hidden - eye closed icon */}
                     {!translationsVisible && !loading && (
@@ -619,16 +654,6 @@ export const TranslatedTextOverlay: VFC<{
                         animation: "spin 1.5s linear infinite",
                         marginRight: "10px",
                     }}></div>
-                    <style>{`
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                        @keyframes fadeInTranslation {
-                            0% { opacity: 0; transform: translateY(10px); }
-                            100% { opacity: 1; transform: translateY(0); }
-                        }
-                    `}</style>
                     <div style={{ fontSize: "14px", whiteSpace: "nowrap" }}>
                         {processingStep}...
                     </div>
@@ -822,6 +847,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [explanationData, setExplanationData] = useState<any>(null);
     const [explanationLoading, setExplanationLoading] = useState<boolean>(false);
     const [explanationVisible, setExplanationVisible] = useState<boolean>(false);
+    const [explanationError, setExplanationError] = useState<string>("");
 
     useEffect(() => {
         logger.debug('ImageOverlay', 'useEffect mounting, registering state listener');
@@ -849,10 +875,11 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
 
         state.onStateChanged(handleStateChanged);
 
-        const handleExplanationChanged = (data: any, expLoading: boolean, expVisible: boolean) => {
+        const handleExplanationChanged = (data: any, expLoading: boolean, expVisible: boolean, expError: string) => {
             setExplanationData(data);
             setExplanationLoading(expLoading);
             setExplanationVisible(expVisible);
+            setExplanationError(expError);
         };
         state.onExplanationChanged(handleExplanationChanged);
 
@@ -883,6 +910,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
                 allowLabelGrowth={allowLabelGrowth}
                 explanationLoading={explanationLoading}
                 explanationReady={!!explanationData && !explanationLoading}
+                explanationError={explanationError}
             />
             <ExplanationPanel
                 data={explanationData}

@@ -4,19 +4,11 @@
 import asyncio
 import json
 import logging
-import socket
 from typing import List, Dict, Any, Optional
 
 import requests
-from urllib3.util.connection import allowed_gai_family
 
 from .base import NetworkError, ApiKeyError
-
-# Force IPv4 for all connections in this module
-_original_gai_family = allowed_gai_family
-def _force_ipv4():
-    return socket.AF_INET
-
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +17,7 @@ class OpenAIExplainProvider:
     """Provides AI-powered language learning explanations via OpenAI API."""
 
     API_URL = "https://api.openai.com/v1/chat/completions"
-    MODEL = "gpt-4.1-nano"
+    MODEL = "gpt-4o-mini"
 
     SYSTEM_PROMPT = """You are a Japanese language learning assistant. Given Japanese text and its English translation, provide a detailed learning breakdown.
 
@@ -77,8 +69,6 @@ Always respond with valid JSON only."""
 
     def _get_session(self) -> requests.Session:
         if self._session is None:
-            import urllib3.util.connection
-            urllib3.util.connection.allowed_gai_family = _force_ipv4
             self._session = requests.Session()
             self._session.headers.update({
                 "Authorization": f"Bearer {self._api_key}",
@@ -115,7 +105,7 @@ Always respond with valid JSON only."""
             response = session.post(
                 self.API_URL,
                 json=payload,
-                timeout=(10, 30)
+                timeout=60
             )
 
             if response.status_code == 401:
