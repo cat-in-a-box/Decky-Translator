@@ -81,6 +81,7 @@ import requests
 
 # Import provider system
 from providers import ProviderManager, TextRegion, NetworkError, ApiKeyError, RateLimitError
+from providers import OpenAIExplainProvider
 
 _processing_lock = False
 
@@ -880,6 +881,10 @@ class Plugin:
     _google_vision_api_key: str = ""
     _google_translate_api_key: str = ""
 
+    _openai_api_key: str = ""
+    _ai_explanation_enabled: bool = False
+    _openai_explain_provider: OpenAIExplainProvider = None
+
     # Generic settings handlers
     async def get_setting(self, key, default=None):
         return self._settings.get_setting(key, default)
@@ -987,6 +992,12 @@ class Plugin:
                         ocr_provider=self._ocr_provider,
                         translation_provider=value
                     )
+            elif key == "openai_api_key":
+                self._openai_api_key = value
+                if self._openai_explain_provider:
+                    self._openai_explain_provider.set_api_key(value)
+            elif key == "ai_explanation_enabled":
+                self._ai_explanation_enabled = value
             else:
                 logger.warning(f"Unknown setting key: {key}")
 
@@ -1022,7 +1033,9 @@ class Plugin:
                 "grouping_power": self._settings.get_setting("grouping_power", 0.25),
                 "hide_identical_translations": self._settings.get_setting("hide_identical_translations", False),
                 "allow_label_growth": self._settings.get_setting("allow_label_growth", False),
-                "custom_recognition_settings": self._settings.get_setting("custom_recognition_settings", False)
+                "custom_recognition_settings": self._settings.get_setting("custom_recognition_settings", False),
+                "openai_api_key": self._openai_api_key,
+                "ai_explanation_enabled": self._ai_explanation_enabled
             }
             return settings
         except Exception as e:
@@ -1476,6 +1489,34 @@ class Plugin:
             logger.error(traceback.format_exc())
             return None
 
+    async def explain_text(self, text_regions):
+        try:
+            if not self._ai_explanation_enabled:
+                return {"error": "ai_explanation_disabled", "message": "AI explanation is disabled"}
+
+            if not self._openai_explain_provider or not self._openai_explain_provider.is_available():
+                return {"error": "api_key_error", "message": "OpenAI API key not configured"}
+
+            if not text_regions:
+                return {"explanations": []}
+
+            start_time = time.time()
+            result = await self._openai_explain_provider.explain(text_regions)
+            logger.info(f"AI explanation completed in {time.time() - start_time:.2f}s")
+
+            return result
+
+        except ApiKeyError as e:
+            logger.error(f"API key error during explanation: {e}")
+            return {"error": "api_key_error", "message": "Invalid OpenAI API key"}
+        except NetworkError as e:
+            logger.error(f"Network error during explanation: {e}")
+            return {"error": "network_error", "message": str(e)}
+        except Exception as e:
+            logger.error(f"AI explanation error: {e}")
+            logger.error(traceback.format_exc())
+            return {"error": "unknown_error", "message": str(e)}
+
     async def get_enabled_state(self):
         return await self.get_setting("enabled", True)
 
@@ -1667,6 +1708,11 @@ class Plugin:
                 translation_provider=self._translation_provider
             )
 
+            # Load AI explanation settings
+            self._openai_api_key = self._settings.get_setting("openai_api_key", "")
+            self._ai_explanation_enabled = self._settings.get_setting("ai_explanation_enabled", False)
+            self._openai_explain_provider = OpenAIExplainProvider(self._openai_api_key)
+
             # Load and apply RapidOCR-specific settings
             if self._settings.get_setting("custom_recognition_settings", False):
                 self._rapidocr_confidence = load_setting("rapidocr_confidence", self._rapidocr_confidence)
@@ -1718,6 +1764,11 @@ class Plugin:
             if self._hidraw_monitor:
                 self._hidraw_monitor.stop()
                 self._hidraw_monitor = None
+
+            if self._openai_explain_provider:
+                if self._openai_explain_provider._session:
+                    self._openai_explain_provider._session.close()
+                self._openai_explain_provider = None
 
             std_out_file.close()
             std_err_file.close()

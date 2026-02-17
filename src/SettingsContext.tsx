@@ -30,6 +30,8 @@ export interface Settings {
     hideIdenticalTranslations: boolean;
     allowLabelGrowth: boolean;
     customRecognitionSettings: boolean;
+    aiExplanationEnabled: boolean;
+    openaiApiKey: string;
 }
 
 // Define action types
@@ -62,7 +64,9 @@ const initialSettings: Settings = {
     groupingPower: 0.25,
     hideIdenticalTranslations: false,
     allowLabelGrowth: false,
-    customRecognitionSettings: false
+    customRecognitionSettings: false,
+    aiExplanationEnabled: false,
+    openaiApiKey: ""
 };
 
 // Create the reducer
@@ -130,7 +134,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     groupingPower: serverSettings.grouping_power ?? 0.25,
                     hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false,
                     allowLabelGrowth: serverSettings.allow_label_growth ?? false,
-                    customRecognitionSettings: serverSettings.custom_recognition_settings ?? false
+                    customRecognitionSettings: serverSettings.custom_recognition_settings ?? false,
+                    aiExplanationEnabled: serverSettings.ai_explanation_enabled ?? false,
+                    openaiApiKey: serverSettings.openai_api_key || ""
                 };
 
                 // Update settings in context
@@ -152,6 +158,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setOcrProvider(serverSettings.ocr_provider || "rapidocr");
                 logic.setTranslationProvider(serverSettings.translation_provider || "freegoogle");
                 logic.setHasGoogleApiKey(!!serverSettings.google_api_key);
+                logic.setHasOpenaiApiKey(!!serverSettings.openai_api_key);
 
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
                 logic.setGroupingPower(serverSettings.grouping_power ?? 0.25);
@@ -200,7 +207,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 groupingPower: 'grouping_power',
                 hideIdenticalTranslations: 'hide_identical_translations',
                 allowLabelGrowth: 'allow_label_growth',
-                customRecognitionSettings: 'custom_recognition_settings'
+                customRecognitionSettings: 'custom_recognition_settings',
+                aiExplanationEnabled: 'ai_explanation_enabled',
+                openaiApiKey: 'openai_api_key'
             };
 
             // Skip settings that don't need to be saved to backend
@@ -260,6 +269,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'googleApiKey':
                     logic.setHasGoogleApiKey(!!value);
+                    break;
+                case 'openaiApiKey':
+                    logic.setHasOpenaiApiKey(!!value);
                     break;
             }
 

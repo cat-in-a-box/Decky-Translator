@@ -31,6 +31,7 @@ export class GameTranslatorLogic {
     private ocrProvider: string = "rapidocr";
     private translationProvider: string = "freegoogle";
     private hasGoogleApiKey: boolean = false;
+    private hasOpenaiApiKey: boolean = false;
 
     isOverlayVisible(): boolean {
         return this.imageState.isVisible();
@@ -407,6 +408,9 @@ export class GameTranslatorLogic {
                         }
 
                         this.imageState.showTranslatedImage(result.base64, translatedRegions);
+
+                        // Fire-and-forget AI explanation fetch
+                        this.fetchAiExplanation(translatedRegions);
                     } else {
                         // No text found, show message
                         this.imageState.updateProcessingStep("No text found");
@@ -541,6 +545,11 @@ export class GameTranslatorLogic {
         logger.debug('Translator', `Google API key available: ${hasKey}`);
     }
 
+    setHasOpenaiApiKey = (hasKey: boolean): void => {
+        this.hasOpenaiApiKey = hasKey;
+        logger.debug('Translator', `OpenAI API key available: ${hasKey}`);
+    }
+
     // Check if the current provider configuration requires an API key that's missing
     private requiresApiKeyButMissing(): { missing: boolean; message: string } {
         const ocrNeedsKey = this.ocrProvider === 'googlecloud';
@@ -556,5 +565,31 @@ export class GameTranslatorLogic {
             }
         }
         return { missing: false, message: "" };
+    }
+
+    private fetchAiExplanation(translatedRegions: any[]): void {
+        if (!this.hasOpenaiApiKey) return;
+
+        const regionsData = translatedRegions.map(r => ({
+            text: r.text,
+            translatedText: r.translatedText
+        }));
+
+        this.imageState.setExplanationLoading(true);
+
+        call('explain_text', regionsData)
+            .then((result: any) => {
+                if (result && !result.error) {
+                    this.imageState.setExplanationData(result);
+                } else {
+                    logger.warn('Translator', `AI explanation failed: ${result?.message || 'unknown error'}`);
+                }
+            })
+            .catch(error => {
+                logger.error('Translator', 'AI explanation error', error);
+            })
+            .finally(() => {
+                this.imageState.setExplanationLoading(false);
+            });
     }
 }

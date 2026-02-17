@@ -71,15 +71,17 @@ const ApiKeyModal: VFC<{
     currentKey: string;
     onSave: (key: string) => void;
     closeModal?: () => void;
-}> = ({ currentKey, onSave, closeModal }) => {
+    title?: string;
+    description?: string;
+}> = ({ currentKey, onSave, closeModal, title, description }) => {
     const [apiKey, setApiKey] = useState(currentKey || "");
 
     return (
         <ModalRoot onCancel={closeModal} onEscKeypress={closeModal}>
             <div style={{ padding: "20px", minWidth: "400px" }}>
-                <h2 style={{ marginBottom: "15px" }}>Google Cloud API Key</h2>
+                <h2 style={{ marginBottom: "15px" }}>{title || "Google Cloud API Key"}</h2>
                 <p style={{ marginBottom: "15px", color: "#aaa", fontSize: "13px" }}>
-                    Enter your Google Cloud API key for Vision and Translation services.
+                    {description || "Enter your Google Cloud API key for Vision and Translation services."}
                 </p>
                 <TextField
                     label="API Key"
@@ -421,6 +423,74 @@ export const TabTranslation: VFC = () => {
                         onActivate={() => {}}
                     />
                 </PanelSectionRow>
+            </PanelSection>
+
+            <PanelSection title="AI Learning">
+                <PanelSectionRow>
+                    <ToggleField
+                        label="AI Japanese Explanation"
+                        description="Get word-by-word breakdown, grammar notes, and cultural context after each translation"
+                        checked={settings.aiExplanationEnabled}
+                        onChange={(value) => updateSetting('aiExplanationEnabled', value, 'AI Explanation')}
+                    />
+                </PanelSectionRow>
+
+                {settings.aiExplanationEnabled && (
+                    <>
+                        <PanelSectionRow>
+                            <Field
+                                label="OpenAI API Key"
+                                childrenContainerWidth="fixed"
+                                focusable={false}
+                            >
+                                <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    <DialogButton
+                                        onClick={() => {
+                                            showModal(
+                                                <ApiKeyModal
+                                                    currentKey={settings.openaiApiKey}
+                                                    onSave={(key) => updateSetting('openaiApiKey', key, 'OpenAI API Key')}
+                                                    title="OpenAI API Key"
+                                                    description="Enter your OpenAI API key for AI-powered language explanations."
+                                                />
+                                            );
+                                        }}
+                                        style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
+                                    >
+                                        <div style={{ position: "relative", display: "inline-flex" }}>
+                                            <HiKey />
+                                            <div style={{
+                                                position: "absolute",
+                                                bottom: "-8px",
+                                                right: "-6px",
+                                                width: "6px",
+                                                height: "6px",
+                                                borderRadius: "50%",
+                                                backgroundColor: settings.openaiApiKey ? "#4caf50" : "#ff6b6b"
+                                            }} />
+                                        </div>
+                                    </DialogButton>
+                                </Focusable>
+                            </Field>
+                        </PanelSectionRow>
+                        <PanelSectionRow>
+                            <Field
+                                focusable={true}
+                                childrenContainerWidth="max"
+                            >
+                                <div style={{ color: "#8b929a", fontSize: "12px", lineHeight: "1.6" }}>
+                                    <div>- Provides word-by-word meanings with readings</div>
+                                    <div>- Grammar notes, idioms, and cultural context</div>
+                                    <div>- Uses OpenAI GPT-4o Mini (~$0.001/translation)</div>
+                                    <div>- Requires an OpenAI API key</div>
+                                    {!settings.openaiApiKey && (
+                                        <div style={{ color: "#ff6b6b", marginTop: "4px" }}>You need to add your OpenAI API Key</div>
+                                    )}
+                                </div>
+                            </Field>
+                        </PanelSectionRow>
+                    </>
+                )}
             </PanelSection>
         </div>
     );

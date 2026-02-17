@@ -44,7 +44,11 @@ export class ImageState {
     private translationsVisible = true; // New property to track translation visibility
     private fontScale = 1.0;
     private allowLabelGrowth = false;
+    private explanationData: any = null;
+    private explanationLoading = false;
+    private explanationVisible = false;
     private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void> = [];
+    private onExplanationChangedListeners: Array<(data: any, loading: boolean, visible: boolean) => void> = [];
 
     onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void): void {
         this.onStateChangedListeners.push(callback);
@@ -188,15 +192,58 @@ export class ImageState {
         this.imageData = "";
         this.translatedRegions = [];
 
+        // Clear explanation state
+        this.explanationData = null;
+        this.explanationLoading = false;
+        this.explanationVisible = false;
+
         logger.debug('ImageState', 'Hiding image and clearing all state');
 
         this.notifyListeners();
+        this.notifyExplanationListeners();
     }
 
     private notifyListeners(): void {
         for (const callback of this.onStateChangedListeners) {
             callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale, this.allowLabelGrowth);
         }
+    }
+
+    // Explanation state methods
+    onExplanationChanged(callback: (data: any, loading: boolean, visible: boolean) => void): void {
+        this.onExplanationChangedListeners.push(callback);
+    }
+
+    offExplanationChanged(callback: (data: any, loading: boolean, visible: boolean) => void): void {
+        const index = this.onExplanationChangedListeners.indexOf(callback);
+        if (index !== -1) {
+            this.onExplanationChangedListeners.splice(index, 1);
+        }
+    }
+
+    private notifyExplanationListeners(): void {
+        for (const callback of this.onExplanationChangedListeners) {
+            callback(this.explanationData, this.explanationLoading, this.explanationVisible);
+        }
+    }
+
+    setExplanationData(data: any): void {
+        this.explanationData = data;
+        this.notifyExplanationListeners();
+    }
+
+    setExplanationLoading(loading: boolean): void {
+        this.explanationLoading = loading;
+        this.notifyExplanationListeners();
+    }
+
+    toggleExplanationVisible(): void {
+        this.explanationVisible = !this.explanationVisible;
+        this.notifyExplanationListeners();
+    }
+
+    hasExplanation(): boolean {
+        return !!this.explanationData && !this.explanationLoading;
     }
 
     isVisible(): boolean {
@@ -547,6 +594,175 @@ export const TranslatedTextOverlay: VFC<{
 
 
 
+// Explanation panel for AI learning breakdown
+const ExplanationPanel: VFC<{
+    data: any;
+    loading: boolean;
+    visible: boolean;
+}> = ({ data, loading, visible }) => {
+    if (!visible) return null;
+
+    const explanations = data?.explanations || [];
+
+    return (
+        <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0,0,0,0.95)",
+            zIndex: 7004,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            overflowY: "auto",
+        }}>
+            <div style={{
+                maxWidth: "800px",
+                width: "100%",
+                padding: "24px 20px",
+                color: "#e0e0e0",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            }}>
+                <div style={{
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    marginBottom: "16px",
+                    color: "#ffffff",
+                    borderBottom: "1px solid #333",
+                    paddingBottom: "8px",
+                }}>
+                    Learning Breakdown
+                </div>
+
+                {loading && (
+                    <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "20px 0",
+                        color: "#aaa",
+                    }}>
+                        <div style={{
+                            border: "3px solid #333",
+                            borderTop: "3px solid #3498db",
+                            borderRadius: "50%",
+                            width: "20px",
+                            height: "20px",
+                            animation: "spin 1.5s linear infinite",
+                        }} />
+                        Loading explanation...
+                    </div>
+                )}
+
+                {!loading && explanations.length === 0 && (
+                    <div style={{ color: "#888", padding: "20px 0" }}>
+                        No explanation data available.
+                    </div>
+                )}
+
+                {explanations.map((entry: any, idx: number) => (
+                    <div key={idx} style={{
+                        marginBottom: "20px",
+                        padding: "16px",
+                        backgroundColor: "rgba(255,255,255,0.04)",
+                        borderRadius: "8px",
+                        border: "1px solid #2a2a2a",
+                    }}>
+                        {/* Original & Translation */}
+                        <div style={{ marginBottom: "12px" }}>
+                            <div style={{ fontSize: "16px", fontWeight: "bold", color: "#fff", marginBottom: "4px" }}>
+                                {entry.original}
+                            </div>
+                            <div style={{ fontSize: "14px", color: "#90caf9" }}>
+                                {entry.translation}
+                            </div>
+                            {entry.literal_translation && (
+                                <div style={{ fontSize: "12px", color: "#78909c", marginTop: "2px", fontStyle: "italic" }}>
+                                    Literal: {entry.literal_translation}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Words */}
+                        {entry.words && entry.words.length > 0 && (
+                            <div style={{ marginBottom: "10px" }}>
+                                <div style={{ fontSize: "11px", color: "#64b5f6", fontWeight: "bold", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                    Words
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                    {entry.words.map((w: any, wi: number) => (
+                                        <div key={wi} style={{
+                                            backgroundColor: "rgba(100,181,246,0.12)",
+                                            border: "1px solid rgba(100,181,246,0.25)",
+                                            borderRadius: "6px",
+                                            padding: "4px 8px",
+                                            fontSize: "12px",
+                                            lineHeight: "1.4",
+                                        }}>
+                                            <span style={{ fontWeight: "bold", color: "#e3f2fd" }}>{w.word}</span>
+                                            {w.reading && (
+                                                <span style={{ color: "#90caf9", marginLeft: "4px" }}>({w.reading})</span>
+                                            )}
+                                            <span style={{ color: "#b0bec5", marginLeft: "6px" }}>{w.meaning}</span>
+                                            {w.pos && (
+                                                <span style={{ color: "#78909c", marginLeft: "4px", fontSize: "10px", fontStyle: "italic" }}>{w.pos}</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Grammar */}
+                        {entry.grammar && entry.grammar.length > 0 && (
+                            <div style={{ marginBottom: "10px" }}>
+                                <div style={{ fontSize: "11px", color: "#ffa726", fontWeight: "bold", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                    Grammar
+                                </div>
+                                {entry.grammar.map((g: string, gi: number) => (
+                                    <div key={gi} style={{ fontSize: "12px", color: "#ffe0b2", marginBottom: "2px", paddingLeft: "8px" }}>
+                                        - {g}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Idioms */}
+                        {entry.idioms && entry.idioms.length > 0 && (
+                            <div style={{ marginBottom: "10px" }}>
+                                <div style={{ fontSize: "11px", color: "#ce93d8", fontWeight: "bold", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                    Idioms
+                                </div>
+                                {entry.idioms.map((idm: string, ii: number) => (
+                                    <div key={ii} style={{ fontSize: "12px", color: "#e1bee7", marginBottom: "2px", paddingLeft: "8px" }}>
+                                        - {idm}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Cultural Context */}
+                        {entry.cultural_context && entry.cultural_context.length > 0 && (
+                            <div>
+                                <div style={{ fontSize: "11px", color: "#f48fb1", fontWeight: "bold", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                    Cultural Context
+                                </div>
+                                {entry.cultural_context.map((ctx: string, ci: number) => (
+                                    <div key={ci} style={{ fontSize: "12px", color: "#f8bbd0", marginBottom: "2px", paddingLeft: "8px" }}>
+                                        - {ctx}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // Main image overlay component
 export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [visible, setVisible] = useState<boolean>(false);
@@ -557,6 +773,9 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [translationsVisible, setTranslationsVisible] = useState<boolean>(true);
     const [fontScale, setFontScale] = useState<number>(1.0);
     const [allowLabelGrowth, setAllowLabelGrowth] = useState<boolean>(false);
+    const [explanationData, setExplanationData] = useState<any>(null);
+    const [explanationLoading, setExplanationLoading] = useState<boolean>(false);
+    const [explanationVisible, setExplanationVisible] = useState<boolean>(false);
 
     useEffect(() => {
         logger.debug('ImageOverlay', 'useEffect mounting, registering state listener');
@@ -584,6 +803,13 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
 
         state.onStateChanged(handleStateChanged);
 
+        const handleExplanationChanged = (data: any, expLoading: boolean, expVisible: boolean) => {
+            setExplanationData(data);
+            setExplanationLoading(expLoading);
+            setExplanationVisible(expVisible);
+        };
+        state.onExplanationChanged(handleExplanationChanged);
+
         // Handle system suspend
         const suspend_register = SteamClient.User.RegisterForPrepareForSystemSuspendProgress(function() {
             state.hideImage();
@@ -591,6 +817,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
 
         return () => {
             state.offStateChanged(handleStateChanged);
+            state.offExplanationChanged(handleExplanationChanged);
             suspend_register.unregister();
         };
     }, [state]);
@@ -598,15 +825,22 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     // Always render TranslatedTextOverlay to keep useUIComposition hook active
     // This prevents Steam UI flash during translation transitions
     return (
-        <TranslatedTextOverlay
-            visible={visible}
-            imageData={imageData}
-            regions={regions}
-            loading={loading}
-            processingStep={processingStep}
-            translationsVisible={translationsVisible}
-            fontScale={fontScale}
-            allowLabelGrowth={allowLabelGrowth}
-        />
+        <>
+            <TranslatedTextOverlay
+                visible={visible}
+                imageData={imageData}
+                regions={regions}
+                loading={loading}
+                processingStep={processingStep}
+                translationsVisible={translationsVisible}
+                fontScale={fontScale}
+                allowLabelGrowth={allowLabelGrowth}
+            />
+            <ExplanationPanel
+                data={explanationData}
+                loading={explanationLoading}
+                visible={explanationVisible}
+            />
+        </>
     );
 };

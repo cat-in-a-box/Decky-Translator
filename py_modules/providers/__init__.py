@@ -18,6 +18,7 @@ from .google_translate import GoogleTranslateProvider
 from .ocrspace import OCRSpaceProvider
 from .free_translate import FreeTranslateProvider
 from .rapidocr_provider import RapidOCRProvider
+from .openai_explain import OpenAIExplainProvider
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ __all__ = [
     'OCRSpaceProvider',
     'FreeTranslateProvider',
     'RapidOCRProvider',
+    'OpenAIExplainProvider',
     'ProviderManager',
 ]
 
