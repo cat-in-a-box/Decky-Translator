@@ -27,6 +27,7 @@ export interface Settings {
     debugMode: boolean; // Debug mode for verbose console logging
     fontScale: number; // Overlay font scale multiplier for external monitors
     groupingPower: number; // Text grouping aggressiveness (0.25 normal - 1.0 huge)
+    translatedTextAlignment: 'left' | 'right' | 'center' | 'justify';
     hideIdenticalTranslations: boolean;
     allowLabelGrowth: boolean;
     customRecognitionSettings: boolean;
@@ -60,6 +61,7 @@ const initialSettings: Settings = {
     debugMode: false, // Debug mode off by default
     fontScale: 1.0,
     groupingPower: 0.25,
+    translatedTextAlignment: 'justify',
     hideIdenticalTranslations: false,
     allowLabelGrowth: false,
     customRecognitionSettings: false
@@ -128,6 +130,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     debugMode: serverSettings.debug_mode || false, // Debug mode
                     fontScale: serverSettings.font_scale ?? 1.0,
                     groupingPower: serverSettings.grouping_power ?? 0.25,
+                    translatedTextAlignment: serverSettings.translated_text_alignment ?? 'justify',
                     hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false,
                     allowLabelGrowth: serverSettings.allow_label_growth ?? false,
                     customRecognitionSettings: serverSettings.custom_recognition_settings ?? false
@@ -155,6 +158,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
 
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
                 logic.setGroupingPower(serverSettings.grouping_power ?? 0.25);
+                logic.setTranslatedTextAlignment(serverSettings.translated_text_alignment ?? 'justify');
                 logic.setHideIdenticalTranslations(serverSettings.hide_identical_translations ?? false);
                 logic.setAllowLabelGrowth(serverSettings.allow_label_growth ?? false);
 
@@ -198,6 +202,7 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 debugMode: 'debug_mode',
                 fontScale: 'font_scale',
                 groupingPower: 'grouping_power',
+                translatedTextAlignment: 'translated_text_alignment',
                 hideIdenticalTranslations: 'hide_identical_translations',
                 allowLabelGrowth: 'allow_label_growth',
                 customRecognitionSettings: 'custom_recognition_settings'
@@ -245,6 +250,9 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'groupingPower':
                     logic.setGroupingPower(value);
+                    break;
+                case 'translatedTextAlignment':
+                    logic.setTranslatedTextAlignment(value);
                     break;
                 case 'hideIdenticalTranslations':
                     logic.setHideIdenticalTranslations(value);

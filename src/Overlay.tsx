@@ -7,6 +7,8 @@ import { VFC, useEffect, useState, useRef, useCallback } from "react";
 import { TranslatedRegion } from "./TextTranslator";
 import { logger } from "./Logger";
 
+export type HorizontalTextAlignment = 'left' | 'right' | 'center' | 'justify';
+
 // UI Composition for overlay
 enum UIComposition {
     Hidden = 0,
@@ -44,13 +46,14 @@ export class ImageState {
     private translationsVisible = true; // New property to track translation visibility
     private fontScale = 1.0;
     private allowLabelGrowth = false;
-    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void> = [];
+    private translatedTextAlignment: HorizontalTextAlignment = 'justify';
+    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment) => void> = [];
 
-    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void): void {
+    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment) => void): void {
         this.onStateChangedListeners.push(callback);
     }
 
-    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean) => void): void {
+    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment) => void): void {
         const index = this.onStateChangedListeners.indexOf(callback);
         if (index !== -1) {
             this.onStateChangedListeners.splice(index, 1);
@@ -104,6 +107,15 @@ export class ImageState {
 
     getAllowLabelGrowth(): boolean {
         return this.allowLabelGrowth;
+    }
+
+    setTranslatedTextAlignment(alignment: HorizontalTextAlignment): void {
+        this.translatedTextAlignment = alignment;
+        this.notifyListeners();
+    }
+
+    getTranslatedTextAlignment(): HorizontalTextAlignment {
+        return this.translatedTextAlignment;
     }
 
     // Update the current processing step
@@ -195,7 +207,7 @@ export class ImageState {
 
     private notifyListeners(): void {
         for (const callback of this.onStateChangedListeners) {
-            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale, this.allowLabelGrowth);
+            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale, this.allowLabelGrowth, this.translatedTextAlignment);
         }
     }
 
@@ -253,8 +265,9 @@ export const TranslatedTextOverlay: VFC<{
     processingStep: string,
     translationsVisible: boolean,
     fontScale: number,
-    allowLabelGrowth: boolean
-}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth }) => {
+    allowLabelGrowth: boolean,
+    translatedTextAlignment: HorizontalTextAlignment
+}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth, translatedTextAlignment }) => {
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
@@ -425,6 +438,14 @@ export const TranslatedTextOverlay: VFC<{
                         return regions.map((region, index) => {
                             const fontSize = calculateFontSize(region, generalFactor, fontScale);
                             const displayText = region.translatedText || region.text;
+                            const alignmentStyles =
+                                translatedTextAlignment === 'right'
+                                    ? { textAlign: 'right' as const, justifyContent: 'flex-end' as const }
+                                    : translatedTextAlignment === 'center'
+                                        ? { textAlign: 'center' as const, justifyContent: 'center' as const }
+                                        : translatedTextAlignment === 'justify'
+                                            ? { textAlign: 'justify' as const, justifyContent: 'flex-start' as const }
+                                            : { textAlign: 'left' as const, justifyContent: 'flex-start' as const };
 
                             return (
                                 <div
@@ -432,8 +453,7 @@ export const TranslatedTextOverlay: VFC<{
                                     style={{
                                         position: "absolute",
                                         display: 'flex',
-                                        textAlign: 'justify',
-                                        justifyContent: 'center',
+                                        justifyContent: alignmentStyles.justifyContent,
                                         alignItems: 'center',
                                         left: `${scaled[index].left}px`,
                                         top: `${scaled[index].top}px`,
@@ -459,7 +479,13 @@ export const TranslatedTextOverlay: VFC<{
                                         animation: "fadeInTranslation 0.2s ease-out forwards"
                                     }}
                                 >
-                                    {displayText}
+                                    <div style={{
+                                        width: '100%',
+                                        textAlign: alignmentStyles.textAlign,
+                                        textAlignLast: translatedTextAlignment === 'justify' ? 'justify' : alignmentStyles.textAlign,
+                                    }}>
+                                        {displayText}
+                                    </div>
                                 </div>
                             );
                         });
@@ -557,6 +583,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [translationsVisible, setTranslationsVisible] = useState<boolean>(true);
     const [fontScale, setFontScale] = useState<number>(1.0);
     const [allowLabelGrowth, setAllowLabelGrowth] = useState<boolean>(false);
+    const [translatedTextAlignment, setTranslatedTextAlignment] = useState<HorizontalTextAlignment>('justify');
 
     useEffect(() => {
         logger.debug('ImageOverlay', 'useEffect mounting, registering state listener');
@@ -569,7 +596,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             currProcessingStep: string,
             areTranslationsVisible: boolean,
             currentFontScale: number,
-            currentAllowLabelGrowth: boolean
+            currentAllowLabelGrowth: boolean,
+            currentTranslatedTextAlignment: HorizontalTextAlignment
         ) => {
             logger.debug('ImageOverlay', `State changed - visible=${isVisible}, imgData.length=${imgData?.length || 0}, regions=${textRegions?.length || 0}`);
             setVisible(isVisible);
@@ -580,6 +608,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             setTranslationsVisible(areTranslationsVisible);
             setFontScale(currentFontScale);
             setAllowLabelGrowth(currentAllowLabelGrowth);
+            setTranslatedTextAlignment(currentTranslatedTextAlignment);
         };
 
         state.onStateChanged(handleStateChanged);
@@ -607,6 +636,7 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             translationsVisible={translationsVisible}
             fontScale={fontScale}
             allowLabelGrowth={allowLabelGrowth}
+            translatedTextAlignment={translatedTextAlignment}
         />
     );
 };

@@ -27,6 +27,13 @@ const inputModeOptions = [
     { label: "Both Touchpads Touch", data: InputMode.TOUCHPAD_COMBO }
 ];
 
+const translatedTextAlignmentOptions = [
+    { label: "Left", data: 'left' },
+    { label: "Right", data: 'right' },
+    { label: "Center", data: 'center' },
+    { label: "Stretch", data: 'justify' }
+];
+
 // Helper to get button labels for current input mode
 const getInputModeButtons = (mode: string): string => {
     switch (mode) {
@@ -152,6 +159,16 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         onChange={(value) => {
                             updateSetting('groupingPower', value, 'Text grouping');
                         }}
+                    />
+                </PanelSectionRow>
+
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Translated Text Alignment"
+                        description="Choose alignment for translated text labels"
+                        rgOptions={translatedTextAlignmentOptions}
+                        selectedOption={settings.translatedTextAlignment}
+                        onChange={(option) => updateSetting('translatedTextAlignment', option.data, 'Text alignment')}
                     />
                 </PanelSectionRow>
 
