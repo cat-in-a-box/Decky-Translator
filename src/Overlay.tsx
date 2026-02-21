@@ -488,8 +488,11 @@ export const TranslatedTextOverlay: VFC<{
                                             ? { textAlign: 'justify' as const, justifyContent: 'flex-start' as const }
                                             : { textAlign: 'left' as const, justifyContent: 'flex-start' as const };
 
-                            // Compute label position and max width based on alignment and expansion
+                            // Compute label position and size based on alignment and expansion
                             let labelMaxWidth = scaled[index].width;
+                            // Use max-content width for right/center/justify so single-line
+                            // blocks don't over-stretch while multi-line blocks still expand
+                            let useMaxContentWidth = false;
                             // Position styles differ per alignment direction
                             let positionStyles: Record<string, string> = {
                                 left: `${scaled[index].left}px`,
@@ -499,17 +502,19 @@ export const TranslatedTextOverlay: VFC<{
                                 const { maxExpandRight, maxExpandLeft } = expansionLimits[index];
 
                                 if (translatedTextAlignment === 'left') {
-                                    // Expand to the right — anchor left edge
+                                    // Expand to the right — anchor left edge, auto-size width
                                     labelMaxWidth = scaled[index].width + maxExpandRight;
                                     positionStyles = { left: `${scaled[index].left}px` };
                                 } else if (translatedTextAlignment === 'right') {
-                                    // Expand to the left — anchor right edge using CSS right
+                                    // Expand to the left — anchor right edge
                                     labelMaxWidth = scaled[index].width + maxExpandLeft;
+                                    useMaxContentWidth = true;
                                     positionStyles = { right: `${imgWidth - (scaled[index].left + scaled[index].width)}px` };
                                 } else {
                                     // Center or Justify — expand equally from center
                                     const expandEach = Math.min(maxExpandLeft, maxExpandRight);
                                     labelMaxWidth = scaled[index].width + expandEach * 2;
+                                    useMaxContentWidth = true;
                                     const centerX = scaled[index].left + scaled[index].width / 2;
                                     positionStyles = { left: `${centerX}px`, transform: 'translateX(-50%)' };
                                 }
@@ -526,7 +531,9 @@ export const TranslatedTextOverlay: VFC<{
                                         ...positionStyles,
                                         top: `${scaled[index].top}px`,
                                         minWidth: `${scaled[index].width}px`,
-                                        maxWidth: `${labelMaxWidth}px`,
+                                        ...(useMaxContentWidth
+                                            ? { width: 'max-content', maxWidth: `${labelMaxWidth}px` }
+                                            : { maxWidth: `${labelMaxWidth}px` }),
                                         minHeight: `${scaled[index].height}px`,
                                         boxSizing: 'border-box',
 
