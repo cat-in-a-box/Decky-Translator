@@ -447,24 +447,33 @@ export const TranslatedTextOverlay: VFC<{
                             height: Math.round((region.rect.bottom - region.rect.top) * heightFactor + pad * 2),
                         }));
 
-                        // For each label, find how far right it can grow before hitting a neighbor
-                        const maxWidths = scaled.map((rect, i) => {
+                        // For each label, find how far it can grow in both directions
+                        const expansionLimits = scaled.map((rect, i) => {
                             let maxRight = imgWidth;
+                            let minLeft = 0;
                             const rectBottom = rect.top + rect.height;
 
                             for (let j = 0; j < scaled.length; j++) {
                                 if (i === j) continue;
                                 const other = scaled[j];
 
-                                // Only care about vertically overlapping neighbors to the right
-                                if (other.left > rect.left &&
-                                    rect.top < other.top + other.height &&
-                                    rectBottom > other.top) {
-                                    maxRight = Math.min(maxRight, other.left - gap);
+                                // Check vertical overlap
+                                if (rect.top < other.top + other.height && rectBottom > other.top) {
+                                    // Neighbor to the right
+                                    if (other.left > rect.left) {
+                                        maxRight = Math.min(maxRight, other.left - gap);
+                                    }
+                                    // Neighbor to the left
+                                    if (other.left < rect.left) {
+                                        minLeft = Math.max(minLeft, other.left + other.width + gap);
+                                    }
                                 }
                             }
 
-                            return Math.max(rect.width, maxRight - rect.left);
+                            const maxExpandRight = Math.max(0, maxRight - (rect.left + rect.width));
+                            const maxExpandLeft = Math.max(0, rect.left - minLeft);
+
+                            return { maxExpandRight, maxExpandLeft };
                         });
 
                         return regions.map((region, index) => {
@@ -479,6 +488,33 @@ export const TranslatedTextOverlay: VFC<{
                                             ? { textAlign: 'justify' as const, justifyContent: 'flex-start' as const }
                                             : { textAlign: 'left' as const, justifyContent: 'flex-start' as const };
 
+                            // Compute label position and max width based on alignment and expansion
+                            let labelMaxWidth = scaled[index].width;
+                            // Position styles differ per alignment direction
+                            let positionStyles: Record<string, string> = {
+                                left: `${scaled[index].left}px`,
+                            };
+
+                            if (allowLabelGrowth) {
+                                const { maxExpandRight, maxExpandLeft } = expansionLimits[index];
+
+                                if (translatedTextAlignment === 'left') {
+                                    // Expand to the right — anchor left edge
+                                    labelMaxWidth = scaled[index].width + maxExpandRight;
+                                    positionStyles = { left: `${scaled[index].left}px` };
+                                } else if (translatedTextAlignment === 'right') {
+                                    // Expand to the left — anchor right edge using CSS right
+                                    labelMaxWidth = scaled[index].width + maxExpandLeft;
+                                    positionStyles = { right: `${imgWidth - (scaled[index].left + scaled[index].width)}px` };
+                                } else {
+                                    // Center or Justify — expand equally from center
+                                    const expandEach = Math.min(maxExpandLeft, maxExpandRight);
+                                    labelMaxWidth = scaled[index].width + expandEach * 2;
+                                    const centerX = scaled[index].left + scaled[index].width / 2;
+                                    positionStyles = { left: `${centerX}px`, transform: 'translateX(-50%)' };
+                                }
+                            }
+
                             return (
                                 <div
                                     key={index}
@@ -487,10 +523,10 @@ export const TranslatedTextOverlay: VFC<{
                                         display: 'flex',
                                         justifyContent: alignmentStyles.justifyContent,
                                         alignItems: 'center',
-                                        left: `${scaled[index].left}px`,
+                                        ...positionStyles,
                                         top: `${scaled[index].top}px`,
                                         minWidth: `${scaled[index].width}px`,
-                                        maxWidth: `${allowLabelGrowth ? maxWidths[index] : scaled[index].width}px`,
+                                        maxWidth: `${labelMaxWidth}px`,
                                         minHeight: `${scaled[index].height}px`,
                                         boxSizing: 'border-box',
 
