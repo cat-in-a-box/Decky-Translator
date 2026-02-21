@@ -206,15 +206,30 @@ export class TextRecognizer {
 
                 if (minWidth > 0 && overlapWidth / minWidth < 0.3) continue;
 
-                // Height ratio (font size similarity)
+                // Height ratio (font size similarity).
+                // For multi-line regions (e.g. OCR returned a block spanning
+                // multiple visual lines), normalize by estimated line count
+                // so the comparison reflects per-line font size, not total height.
                 const hA = la.rect.bottom - la.rect.top;
                 const hB = lb.rect.bottom - lb.rect.top;
-                if (hA > 0 && hB > 0 && Math.max(hA, hB) / Math.min(hA, hB) > 1.4) continue;
+                const estLinesA = Math.max(1, Math.round(hA / medianH));
+                const estLinesB = Math.max(1, Math.round(hB / medianH));
+                const lineHA = hA / estLinesA;
+                const lineHB = hB / estLinesB;
+                if (lineHA > 0 && lineHB > 0 && Math.max(lineHA, lineHB) / Math.min(lineHA, lineHB) > 1.4) continue;
 
-                // Left-edge alignment: if left edges are far apart relative to
-                // line height, these are likely separate UI elements even if they
-                // have some horizontal overlap
-                if (Math.abs(la.rect.left - lb.rect.left) > 2.0 * medianH) continue;
+                // Alignment check: reject pairs whose left edges, right edges,
+                // AND horizontal centers are all far apart.  This allows
+                // left-aligned, right-aligned, and center-aligned text to merge
+                // while still separating unrelated UI elements.
+                const leftEdgeDist = Math.abs(la.rect.left - lb.rect.left);
+                const rightEdgeDist = Math.abs(la.rect.right - lb.rect.right);
+                const centerA = (la.rect.left + la.rect.right) / 2;
+                const centerB = (lb.rect.left + lb.rect.right) / 2;
+                const centerDist = Math.abs(centerA - centerB);
+                const edgeThresh = 2.0 * medianH;
+                const centerThresh = 1.0 * medianH;
+                if (leftEdgeDist > edgeThresh && rightEdgeDist > edgeThresh && centerDist > centerThresh) continue;
 
                 // Width ratio: a very narrow line next to a wide one is probably
                 // a stray label, not a continuation. Skip this check for the
