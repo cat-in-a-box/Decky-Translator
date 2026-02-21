@@ -3,9 +3,11 @@
 import { findModuleChild } from "@decky/ui";
 
 
-import { VFC, useEffect, useState, useRef, useCallback } from "react";
+import { VFC, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { TranslatedRegion } from "./TextTranslator";
 import { logger } from "./Logger";
+import { resolveTranslatedFontFamily, resolveFontStyleCSS } from "./fontPresets";
+import type { FontStyleOption } from "./fontPresets";
 
 export type HorizontalTextAlignment = 'left' | 'right' | 'center' | 'justify';
 
@@ -47,13 +49,15 @@ export class ImageState {
     private fontScale = 1.0;
     private allowLabelGrowth = false;
     private translatedTextAlignment: HorizontalTextAlignment = 'justify';
-    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment) => void> = [];
+    private translatedTextFontFamily = "";
+    private translatedTextFontStyle: FontStyleOption = 'normal';
+    private onStateChangedListeners: Array<(visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment, translatedTextFontFamily: string, translatedTextFontStyle: FontStyleOption) => void> = [];
 
-    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment) => void): void {
+    onStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment, translatedTextFontFamily: string, translatedTextFontStyle: FontStyleOption) => void): void {
         this.onStateChangedListeners.push(callback);
     }
 
-    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment) => void): void {
+    offStateChanged(callback: (visible: boolean, imageData: string, regions: TranslatedRegion[], loading: boolean, processingStep: string, translationsVisible: boolean, fontScale: number, allowLabelGrowth: boolean, translatedTextAlignment: HorizontalTextAlignment, translatedTextFontFamily: string, translatedTextFontStyle: FontStyleOption) => void): void {
         const index = this.onStateChangedListeners.indexOf(callback);
         if (index !== -1) {
             this.onStateChangedListeners.splice(index, 1);
@@ -116,6 +120,24 @@ export class ImageState {
 
     getTranslatedTextAlignment(): HorizontalTextAlignment {
         return this.translatedTextAlignment;
+    }
+
+    setTranslatedTextFontFamily(fontFamily: string): void {
+        this.translatedTextFontFamily = fontFamily;
+        this.notifyListeners();
+    }
+
+    getTranslatedTextFontFamily(): string {
+        return this.translatedTextFontFamily;
+    }
+
+    setTranslatedTextFontStyle(style: FontStyleOption): void {
+        this.translatedTextFontStyle = style;
+        this.notifyListeners();
+    }
+
+    getTranslatedTextFontStyle(): FontStyleOption {
+        return this.translatedTextFontStyle;
     }
 
     // Update the current processing step
@@ -207,7 +229,7 @@ export class ImageState {
 
     private notifyListeners(): void {
         for (const callback of this.onStateChangedListeners) {
-            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale, this.allowLabelGrowth, this.translatedTextAlignment);
+            callback(this.visible, this.imageData, this.translatedRegions, this.loading, this.processingStep, this.translationsVisible, this.fontScale, this.allowLabelGrowth, this.translatedTextAlignment, this.translatedTextFontFamily, this.translatedTextFontStyle);
         }
     }
 
@@ -266,8 +288,10 @@ export const TranslatedTextOverlay: VFC<{
     translationsVisible: boolean,
     fontScale: number,
     allowLabelGrowth: boolean,
-    translatedTextAlignment: HorizontalTextAlignment
-}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth, translatedTextAlignment }) => {
+    translatedTextAlignment: HorizontalTextAlignment,
+    translatedTextFontFamily: string,
+    translatedTextFontStyle: FontStyleOption
+}> = ({ visible, imageData, regions, loading, processingStep, translationsVisible, fontScale, allowLabelGrowth, translatedTextAlignment, translatedTextFontFamily, translatedTextFontStyle }) => {
     // Use the UI composition system - always active to prevent Steam UI flash
     useUIComposition(UIComposition.Notification);
 
@@ -280,6 +304,14 @@ export const TranslatedTextOverlay: VFC<{
     // State to track the natural (original) image dimensions from the screenshot
     const [naturalDimensions, setNaturalDimensions] = useState({ width: 1280, height: 800 });
 
+    const translatedOverlayFontFamily = useMemo(
+        () => {
+            const resolved = resolveTranslatedFontFamily(translatedTextFontFamily);
+            logger.debug('Overlay', `Font resolved: "${translatedTextFontFamily}" → "${resolved}"`);
+            return resolved;
+        },
+        [translatedTextFontFamily]
+    );
 
     const formattedImageData = imageData && imageData.startsWith('data:')
         ? imageData
@@ -470,8 +502,8 @@ export const TranslatedTextOverlay: VFC<{
 
                                         fontSize: `${Math.round(fontSize)}px`,
                                         lineHeight: '1.15',
-                                        fontWeight: "400",
-                                        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                                        ...resolveFontStyleCSS(translatedTextFontStyle),
+                                        fontFamily: translatedOverlayFontFamily,
 
                                         wordWrap: "break-word",
                                         whiteSpace: "pre-wrap",
@@ -584,6 +616,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
     const [fontScale, setFontScale] = useState<number>(1.0);
     const [allowLabelGrowth, setAllowLabelGrowth] = useState<boolean>(false);
     const [translatedTextAlignment, setTranslatedTextAlignment] = useState<HorizontalTextAlignment>('justify');
+    const [translatedTextFontFamily, setTranslatedTextFontFamily] = useState<string>("");
+    const [translatedTextFontStyle, setTranslatedTextFontStyle] = useState<FontStyleOption>('normal');
 
     useEffect(() => {
         logger.debug('ImageOverlay', 'useEffect mounting, registering state listener');
@@ -597,7 +631,9 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             areTranslationsVisible: boolean,
             currentFontScale: number,
             currentAllowLabelGrowth: boolean,
-            currentTranslatedTextAlignment: HorizontalTextAlignment
+            currentTranslatedTextAlignment: HorizontalTextAlignment,
+            currentTranslatedTextFontFamily: string,
+            currentTranslatedTextFontStyle: FontStyleOption
         ) => {
             logger.debug('ImageOverlay', `State changed - visible=${isVisible}, imgData.length=${imgData?.length || 0}, regions=${textRegions?.length || 0}`);
             setVisible(isVisible);
@@ -609,6 +645,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             setFontScale(currentFontScale);
             setAllowLabelGrowth(currentAllowLabelGrowth);
             setTranslatedTextAlignment(currentTranslatedTextAlignment);
+            setTranslatedTextFontFamily(currentTranslatedTextFontFamily);
+            setTranslatedTextFontStyle(currentTranslatedTextFontStyle);
         };
 
         state.onStateChanged(handleStateChanged);
@@ -637,6 +675,8 @@ export const ImageOverlay: VFC<{ state: ImageState }> = ({ state }) => {
             fontScale={fontScale}
             allowLabelGrowth={allowLabelGrowth}
             translatedTextAlignment={translatedTextAlignment}
+            translatedTextFontFamily={translatedTextFontFamily}
+            translatedTextFontStyle={translatedTextFontStyle}
         />
     );
 };

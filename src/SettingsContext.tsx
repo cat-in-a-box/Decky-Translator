@@ -28,6 +28,8 @@ export interface Settings {
     fontScale: number; // Overlay font scale multiplier for external monitors
     groupingPower: number; // Text grouping aggressiveness (0.25 normal - 1.0 huge)
     translatedTextAlignment: 'left' | 'right' | 'center' | 'justify';
+    translatedTextFontFamily: string;
+    translatedTextFontStyle: 'normal' | 'bold' | 'italic' | 'bolditalic';
     hideIdenticalTranslations: boolean;
     allowLabelGrowth: boolean;
     customRecognitionSettings: boolean;
@@ -62,6 +64,8 @@ const initialSettings: Settings = {
     fontScale: 1.0,
     groupingPower: 0.25,
     translatedTextAlignment: 'justify',
+    translatedTextFontFamily: '',
+    translatedTextFontStyle: 'normal',
     hideIdenticalTranslations: false,
     allowLabelGrowth: false,
     customRecognitionSettings: false
@@ -131,6 +135,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     fontScale: serverSettings.font_scale ?? 1.0,
                     groupingPower: serverSettings.grouping_power ?? 0.25,
                     translatedTextAlignment: serverSettings.translated_text_alignment ?? 'justify',
+                    translatedTextFontFamily: serverSettings.translated_text_font_family ?? '',
+                    translatedTextFontStyle: serverSettings.translated_text_font_style ?? 'normal',
                     hideIdenticalTranslations: serverSettings.hide_identical_translations ?? false,
                     allowLabelGrowth: serverSettings.allow_label_growth ?? false,
                     customRecognitionSettings: serverSettings.custom_recognition_settings ?? false
@@ -159,6 +165,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setFontScale(serverSettings.font_scale ?? 1.0);
                 logic.setGroupingPower(serverSettings.grouping_power ?? 0.25);
                 logic.setTranslatedTextAlignment(serverSettings.translated_text_alignment ?? 'justify');
+                logic.setTranslatedTextFontFamily(serverSettings.translated_text_font_family ?? '');
+                logic.setTranslatedTextFontStyle(serverSettings.translated_text_font_style ?? 'normal');
                 logic.setHideIdenticalTranslations(serverSettings.hide_identical_translations ?? false);
                 logic.setAllowLabelGrowth(serverSettings.allow_label_growth ?? false);
 
@@ -203,6 +211,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 fontScale: 'font_scale',
                 groupingPower: 'grouping_power',
                 translatedTextAlignment: 'translated_text_alignment',
+                translatedTextFontFamily: 'translated_text_font_family',
+                translatedTextFontStyle: 'translated_text_font_style',
                 hideIdenticalTranslations: 'hide_identical_translations',
                 allowLabelGrowth: 'allow_label_growth',
                 customRecognitionSettings: 'custom_recognition_settings'
@@ -253,6 +263,12 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'translatedTextAlignment':
                     logic.setTranslatedTextAlignment(value);
+                    break;
+                case 'translatedTextFontFamily':
+                    logic.setTranslatedTextFontFamily(value);
+                    break;
+                case 'translatedTextFontStyle':
+                    logic.setTranslatedTextFontStyle(value);
                     break;
                 case 'hideIdenticalTranslations':
                     logic.setHideIdenticalTranslations(value);

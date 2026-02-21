@@ -12,6 +12,7 @@ import {
 import { VFC } from "react";
 import { useSettings } from "../SettingsContext";
 import { InputMode } from "../Input";
+import { WEB_FONTS, isWebFont, loadGoogleFont, useFontOptions } from "../fontPresets";
 
 // Input mode options for dropdown
 const inputModeOptions = [
@@ -57,6 +58,7 @@ interface TabControlsProps {
 
 export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
     const { settings, updateSetting } = useSettings();
+    const { availableFonts, fontOptions } = useFontOptions(settings.translatedTextFontFamily);
 
     return (
         <div style={{ marginLeft: "-8px", marginRight: "-8px" }}>
@@ -169,6 +171,44 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
                         rgOptions={translatedTextAlignmentOptions}
                         selectedOption={settings.translatedTextAlignment}
                         onChange={(option) => updateSetting('translatedTextAlignment', option.data, 'Text alignment')}
+                    />
+                </PanelSectionRow>
+
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Translated Text Font"
+                        description={`${availableFonts.length} local + ${WEB_FONTS.filter(f => !availableFonts.includes(f)).length} web fonts`}
+                        rgOptions={fontOptions}
+                        selectedOption={settings.translatedTextFontFamily}
+                        onChange={(option) => {
+                            const fontName = option.data;
+                            if (fontName && isWebFont(fontName)) {
+                                const previousFont = settings.translatedTextFontFamily;
+                                updateSetting('translatedTextFontFamily', fontName, 'Text font');
+                                loadGoogleFont(fontName).then((ok) => {
+                                    if (!ok) {
+                                        updateSetting('translatedTextFontFamily', previousFont, 'Text font');
+                                    }
+                                });
+                            } else {
+                                updateSetting('translatedTextFontFamily', fontName, 'Text font');
+                            }
+                        }}
+                    />
+                </PanelSectionRow>
+
+                <PanelSectionRow>
+                    <DropdownItem
+                        label="Translated Text Style"
+                        description="Font weight and style for translated text"
+                        rgOptions={[
+                            { label: "Normal", data: "normal" },
+                            { label: "Bold", data: "bold" },
+                            { label: "Italic", data: "italic" },
+                            { label: "Bold Italic", data: "bolditalic" }
+                        ]}
+                        selectedOption={settings.translatedTextFontStyle}
+                        onChange={(option) => updateSetting('translatedTextFontStyle', option.data, 'Text style')}
                     />
                 </PanelSectionRow>
 

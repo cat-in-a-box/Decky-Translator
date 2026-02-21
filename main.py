@@ -953,6 +953,10 @@ class Plugin:
                 pass  # frontend-only, just persist to settings file
             elif key == "translated_text_alignment":
                 pass  # frontend-only, just persist to settings file
+            elif key == "translated_text_font_family":
+                pass  # frontend-only, just persist to settings file
+            elif key == "translated_text_font_style":
+                pass  # frontend-only, just persist to settings file
             elif key == "custom_recognition_settings":
                 pass  # frontend-only, just persist to settings file
             elif key == "debug_mode":
@@ -1023,6 +1027,8 @@ class Plugin:
                 "font_scale": self._settings.get_setting("font_scale", 1.0),
                 "grouping_power": self._settings.get_setting("grouping_power", 0.25),
                 "translated_text_alignment": self._settings.get_setting("translated_text_alignment", "justify"),
+                "translated_text_font_family": self._settings.get_setting("translated_text_font_family", ""),
+                "translated_text_font_style": self._settings.get_setting("translated_text_font_style", "normal"),
                 "hide_identical_translations": self._settings.get_setting("hide_identical_translations", False),
                 "allow_label_growth": self._settings.get_setting("allow_label_growth", False),
                 "custom_recognition_settings": self._settings.get_setting("custom_recognition_settings", False)

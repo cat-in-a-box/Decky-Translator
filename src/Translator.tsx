@@ -529,6 +529,14 @@ export class GameTranslatorLogic {
         this.imageState.setTranslatedTextAlignment(alignment);
     }
 
+    setTranslatedTextFontFamily = (fontFamily: string): void => {
+        this.imageState.setTranslatedTextFontFamily(fontFamily);
+    }
+
+    setTranslatedTextFontStyle = (style: 'normal' | 'bold' | 'italic' | 'bolditalic'): void => {
+        this.imageState.setTranslatedTextFontStyle(style);
+    }
+
     // Methods for provider settings (used for upfront API key validation)
     setOcrProvider = (provider: string): void => {
         this.ocrProvider = provider;
