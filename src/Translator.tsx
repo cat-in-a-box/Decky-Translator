@@ -76,7 +76,7 @@ export class GameTranslatorLogic {
         });
 
         // Set up listener for overlay state changes to track visibility
-        imageState.onStateChanged((visible, _, __, ___, ____, _____, ______, _______) => {
+        imageState.onStateChanged((visible, _, __, ___, ____, _____, ______, _______, ________) => {
             this.shortcutInput.setOverlayVisible(visible);
 
             // Don't process game pause/resume if plugin is disabled
@@ -523,6 +523,18 @@ export class GameTranslatorLogic {
 
     setAllowLabelGrowth = (allow: boolean): void => {
         this.imageState.setAllowLabelGrowth(allow);
+    }
+
+    setTranslatedTextAlignment = (alignment: 'left' | 'right' | 'center' | 'justify'): void => {
+        this.imageState.setTranslatedTextAlignment(alignment);
+    }
+
+    setTranslatedTextFontFamily = (fontFamily: string): void => {
+        this.imageState.setTranslatedTextFontFamily(fontFamily);
+    }
+
+    setTranslatedTextFontStyle = (style: 'normal' | 'bold' | 'italic' | 'bolditalic'): void => {
+        this.imageState.setTranslatedTextFontStyle(style);
     }
 
     // Methods for provider settings (used for upfront API key validation)
