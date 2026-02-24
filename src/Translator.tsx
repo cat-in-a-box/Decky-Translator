@@ -602,17 +602,28 @@ export class GameTranslatorLogic {
 
         call('explain_text', regionsData)
             .then((result: any) => {
-                logger.info('Translator', `AI explanation result: ${JSON.stringify(result).substring(0, 200)}`);
-                if (result && !result.error) {
-                    this.imageState.setExplanationData(result);
-                } else {
-                    logger.warn('Translator', `AI explanation failed: ${result?.error || 'unknown'} - ${result?.message || ''}`);
-                    this.imageState.setExplanationError(result?.message || result?.error || 'Unknown error');
+                try {
+                    logger.info('Translator', `AI explanation result: ${JSON.stringify(result ?? null).substring(0, 200)}`);
+                    if (result && result.explanations && !result.error) {
+                        this.imageState.setExplanationData(result);
+                    } else {
+                        const msg = result?.message || result?.error || 'Unknown error';
+                        logger.warn('Translator', `AI explanation failed: ${msg}`);
+                        this.imageState.setExplanationError(msg);
+                    }
+                } catch (e) {
+                    logger.error('Translator', 'Error processing AI explanation result', e);
+                    this.imageState.setExplanationError('Failed to process AI response');
                 }
             })
-            .catch(error => {
-                logger.error('Translator', 'AI explanation error', error);
-                this.imageState.setExplanationError(String(error));
+            .catch((error: any) => {
+                try {
+                    const msg = error?.message || String(error) || 'Connection error';
+                    logger.error('Translator', `AI explanation error: ${msg}`);
+                    this.imageState.setExplanationError(msg);
+                } catch (_) {
+                    this.imageState.setExplanationError('Connection error');
+                }
             })
             .finally(() => {
                 this.imageState.setExplanationLoading(false);
