@@ -13,9 +13,29 @@ from .base import NetworkError, ApiKeyError
 logger = logging.getLogger(__name__)
 
 GEMINI_MODELS = {
-    "gemini-2.5-flash": "Gemini 2.5 Flash",
-    "gemini-2.0-flash": "Gemini 2.0 Flash",
-    "gemini-2.5-pro": "Gemini 2.5 Pro",
+    "gemini-2.5-flash": {
+        "label": "Gemini 2.5 Flash",
+        "max_tokens": 16384,
+        "thinking_budget": 0,
+    },
+    "gemini-2.5-flash-lite": {
+        "label": "Gemini 2.5 Flash Lite",
+        "max_tokens": 8192,
+        "thinking_budget": 0,
+    },
+    "gemini-2.0-flash": {
+        "label": "Gemini 2.0 Flash",
+        "max_tokens": 8192,
+    },
+    "gemini-2.5-pro": {
+        "label": "Gemini 2.5 Pro",
+        "max_tokens": 16384,
+        "thinking_budget": 0,
+    },
+    "gemini-3-flash-preview": {
+        "label": "Gemini 3 Flash Preview",
+        "max_tokens": 16384,
+    },
 }
 
 SYSTEM_PROMPT_TEMPLATE = """You are a {language} language learning assistant. Given {language} text and its English translation, provide a detailed learning breakdown.
@@ -103,14 +123,15 @@ class GeminiExplainProvider:
 
         url = f"{self.API_BASE}/{self._model}:generateContent?key={self._api_key}"
 
-        # Use thinkingBudget: 0 for 2.5 models to avoid thinking overhead
+        model_config = GEMINI_MODELS.get(self._model, {})
+
         gen_config = {
-            "temperature": 0.3,
-            "maxOutputTokens": 4096,
+            "maxOutputTokens": model_config.get("max_tokens", 8192),
             "responseMimeType": "application/json",
         }
-        if "2.5" in self._model:
-            gen_config["thinkingConfig"] = {"thinkingBudget": 0}
+        gen_config["temperature"] = model_config.get("temperature", 0.3)
+        if "thinking_budget" in model_config:
+            gen_config["thinkingConfig"] = {"thinkingBudget": model_config["thinking_budget"]}
 
         payload = {
             "contents": [
@@ -152,6 +173,9 @@ class GeminiExplainProvider:
             content = result["candidates"][0]["content"]["parts"][0]["text"]
             logger.debug(f"Gemini raw content (first 500 chars): {content[:500]}")
             parsed = json.loads(content)
+            # Handle case where model returns a list instead of {"explanations": [...]}
+            if isinstance(parsed, list):
+                parsed = {"explanations": parsed}
             if not parsed.get("explanations"):
                 logger.warning(f"Gemini returned no explanations. Full content: {content[:1000]}")
             return parsed

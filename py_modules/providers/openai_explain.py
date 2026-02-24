@@ -13,10 +13,34 @@ from .base import NetworkError, ApiKeyError
 logger = logging.getLogger(__name__)
 
 OPENAI_MODELS = {
-    "gpt-4o-mini": "GPT-4o Mini",
-    "gpt-4o": "GPT-4o",
-    "gpt-4.1-mini": "GPT-4.1 Mini",
-    "gpt-4.1-nano": "GPT-4.1 Nano",
+    "gpt-4o-mini": {
+        "label": "GPT-4o Mini",
+        "max_tokens": 8192,
+        "temperature": 0.3,
+    },
+    "gpt-4o": {
+        "label": "GPT-4o",
+        "max_tokens": 16384,
+        "temperature": 0.3,
+    },
+    "gpt-4.1-mini": {
+        "label": "GPT-4.1 Mini",
+        "max_tokens": 16384,
+        "temperature": 0.3,
+    },
+    "gpt-4.1-nano": {
+        "label": "GPT-4.1 Nano",
+        "max_tokens": 8192,
+        "temperature": 0.3,
+    },
+    "gpt-5-mini": {
+        "label": "GPT-5 Mini",
+        "max_tokens": 16384,
+    },
+    "gpt-5-nano": {
+        "label": "GPT-5 Nano",
+        "max_tokens": 16384,
+    },
 }
 
 SYSTEM_PROMPT_TEMPLATE = """You are a {language} language learning assistant. Given {language} text and its English translation, provide a detailed learning breakdown.
@@ -105,6 +129,8 @@ class OpenAIExplainProvider:
 
         user_message = "\n\n".join(parts)
 
+        model_config = OPENAI_MODELS.get(self._model, {})
+
         payload = {
             "model": self._model,
             "messages": [
@@ -112,9 +138,10 @@ class OpenAIExplainProvider:
                 {"role": "user", "content": user_message}
             ],
             "response_format": {"type": "json_object"},
-            "temperature": 0.3,
-            "max_tokens": 4096
+            "max_completion_tokens": model_config.get("max_tokens", 8192),
         }
+        if "temperature" in model_config:
+            payload["temperature"] = model_config["temperature"]
 
         try:
             session = self._get_session()

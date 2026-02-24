@@ -458,13 +458,17 @@ export const TabTranslation: VFC = () => {
                                 <Dropdown
                                     rgOptions={settings.aiExplainProvider === 'gemini' ? [
                                         { data: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+                                        { data: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
                                         { data: "gemini-2.0-flash", label: "Gemini 2.0 Flash" },
                                         { data: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+                                        { data: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview" },
                                     ] : [
                                         { data: "gpt-4o-mini", label: "GPT-4o Mini" },
                                         { data: "gpt-4o", label: "GPT-4o" },
                                         { data: "gpt-4.1-mini", label: "GPT-4.1 Mini" },
                                         { data: "gpt-4.1-nano", label: "GPT-4.1 Nano" },
+                                        { data: "gpt-5-mini", label: "GPT-5 Mini" },
+                                        { data: "gpt-5-nano", label: "GPT-5 Nano" },
                                     ]}
                                     selectedOption={settings.aiExplainModel || (settings.aiExplainProvider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini')}
                                     onChange={(option: any) => updateSetting('aiExplainModel', option.data, 'AI Model')}
