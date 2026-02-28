@@ -31,6 +31,9 @@ export class GameTranslatorLogic {
     private ocrProvider: string = "rapidocr";
     private translationProvider: string = "freegoogle";
     private hasGoogleApiKey: boolean = false;
+    private hasOpenaiApiKey: boolean = false;
+    private hasGeminiApiKey: boolean = false;
+    private aiExplainProvider: string = "gemini";
 
     isOverlayVisible(): boolean {
         return this.imageState.isVisible();
@@ -66,6 +69,12 @@ export class GameTranslatorLogic {
                 if (this.imageState.isVisible()) {
                     logger.debug('Translator', 'Toggling translation visibility');
                     this.imageState.toggleTranslationsVisibility();
+                }
+            } else if (actionType === ActionType.TOGGLE_EXPLANATION) {
+                // Toggle explanation panel
+                if (this.imageState.isVisible() && this.imageState.hasExplanation()) {
+                    logger.debug('Translator', 'Toggling explanation panel');
+                    this.imageState.toggleExplanationVisible();
                 }
             } else {
                 // Translate action
@@ -407,6 +416,9 @@ export class GameTranslatorLogic {
                         }
 
                         this.imageState.showTranslatedImage(result.base64, translatedRegions);
+
+                        // Fire-and-forget AI explanation fetch
+                        this.fetchAiExplanation(translatedRegions);
                     } else {
                         // No text found, show message
                         this.imageState.updateProcessingStep("No text found");
@@ -541,6 +553,21 @@ export class GameTranslatorLogic {
         logger.debug('Translator', `Google API key available: ${hasKey}`);
     }
 
+    setHasOpenaiApiKey = (hasKey: boolean): void => {
+        this.hasOpenaiApiKey = hasKey;
+        logger.debug('Translator', `OpenAI API key available: ${hasKey}`);
+    }
+
+    setHasGeminiApiKey = (hasKey: boolean): void => {
+        this.hasGeminiApiKey = hasKey;
+        logger.debug('Translator', `Gemini API key available: ${hasKey}`);
+    }
+
+    setAiExplainProvider = (provider: string): void => {
+        this.aiExplainProvider = provider;
+        logger.debug('Translator', `AI explain provider: ${provider}`);
+    }
+
     // Check if the current provider configuration requires an API key that's missing
     private requiresApiKeyButMissing(): { missing: boolean; message: string } {
         const ocrNeedsKey = this.ocrProvider === 'googlecloud';
@@ -556,5 +583,50 @@ export class GameTranslatorLogic {
             }
         }
         return { missing: false, message: "" };
+    }
+
+    private fetchAiExplanation(translatedRegions: any[]): void {
+        const hasKey = this.aiExplainProvider === 'gemini' ? this.hasGeminiApiKey : this.hasOpenaiApiKey;
+        if (!hasKey) {
+            logger.warn('Translator', `Skipping AI explanation: no ${this.aiExplainProvider} API key`);
+            return;
+        }
+
+        const regionsData = translatedRegions.map(r => ({
+            text: r.text,
+            translatedText: r.translatedText
+        }));
+
+        logger.info('Translator', `Fetching AI explanation for ${regionsData.length} regions`);
+        this.imageState.setExplanationLoading(true);
+
+        call('explain_text', regionsData)
+            .then((result: any) => {
+                try {
+                    logger.info('Translator', `AI explanation result: ${JSON.stringify(result ?? null).substring(0, 200)}`);
+                    if (result && result.explanations && !result.error) {
+                        this.imageState.setExplanationData(result);
+                    } else {
+                        const msg = result?.message || result?.error || 'Unknown error';
+                        logger.warn('Translator', `AI explanation failed: ${msg}`);
+                        this.imageState.setExplanationError(msg);
+                    }
+                } catch (e) {
+                    logger.error('Translator', 'Error processing AI explanation result', e);
+                    this.imageState.setExplanationError('Failed to process AI response');
+                }
+            })
+            .catch((error: any) => {
+                try {
+                    const msg = error?.message || String(error) || 'Connection error';
+                    logger.error('Translator', `AI explanation error: ${msg}`);
+                    this.imageState.setExplanationError(msg);
+                } catch (_) {
+                    this.imageState.setExplanationError('Connection error');
+                }
+            })
+            .finally(() => {
+                this.imageState.setExplanationLoading(false);
+            });
     }
 }

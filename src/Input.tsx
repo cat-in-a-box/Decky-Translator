@@ -50,7 +50,8 @@ export enum InputMode {
 export enum ActionType {
     TRANSLATE = 0,
     DISMISS = 1,
-    TOGGLE_TRANSLATIONS = 2
+    TOGGLE_TRANSLATIONS = 2,
+    TOGGLE_EXPLANATION = 3
 }
 
 export interface ProgressInfo {
@@ -646,6 +647,15 @@ export class Input {
             }
         } else if (!buttonPressed && wasButtonPressed) {
             logger.debug('Input', `${modeName} released, stopping progress`);
+            // Short tap detection: if overlay is visible and button was released
+            // before the dismiss timer fired, toggle the explanation panel
+            if (this.overlayVisible && this.touchStartTime !== null) {
+                const elapsed = Date.now() - this.touchStartTime;
+                if (elapsed < this.dismissHoldTime) {
+                    logger.info('Input', `Short tap detected (${elapsed}ms), toggling explanation`);
+                    this.onButtonsPressedListeners.forEach(cb => cb(ActionType.TOGGLE_EXPLANATION));
+                }
+            }
             this.stopProgressAnimation();
         } else {
             logger.debug('Input', `${modeName} no action: buttonPressed=${buttonPressed}, wasButtonPressed=${wasButtonPressed}, inCooldown=${this.inCooldown}, waitingForRelease=${this.waitingForRelease}`);
