@@ -8,6 +8,7 @@ import { TranslatedRegion } from "./TextTranslator";
 import { logger } from "./Logger";
 import { buildTranslatedFontFamily, ensureFontLoaded, resolveFontStyleCSS } from "./fonts";
 import type { FontStyleOption } from "./fonts";
+import { t } from "./i18n/i18n";
 
 export type HorizontalTextAlignment = 'left' | 'right' | 'center' | 'justify';
 
@@ -75,7 +76,7 @@ export class ImageState {
     }
 
     // Show the overlay with loading indicator immediately
-    startLoading(step: string = "Capturing"): void {
+    startLoading(step: string = t("STEP_CAPTURING", "Capturing")): void {
         // Set internal state immediately
         this.visible = true;
         this.loading = true;
