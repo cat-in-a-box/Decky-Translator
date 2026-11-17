@@ -7,6 +7,7 @@ import { TextTranslator } from "./TextTranslator";
 import { Input, InputMode, ActionType, ProgressInfo } from "./Input";
 import { ImageState } from "./Overlay";
 import { logger } from "./Logger";
+import { t } from "./i18n/i18n";
 
 // Screenshot response interface
 export interface ScreenshotResponse {
@@ -339,17 +340,17 @@ export class GameTranslatorLogic {
 
             if (!result || !result.path || !result.base64) {
                 logger.warn('Translator', 'Screenshot capture failed, not opening overlay');
-                this.notify('Screen capture failed', 2500, 'Try pressing the shortcut again');
+                this.notify(t("TOAST_SCREEN_CAPTURE_FAILED", 'Screen capture failed'), 2500, t("TOAST_TRY_AGAIN", 'Try pressing the shortcut again'));
                 return;
             }
 
             logger.debug('Translator', `Screenshot captured, path: ${result.path}, base64 length: ${result.base64.length}`);
 
-            this.imageState.startLoading("Processing");
+            this.imageState.startLoading(t("STEP_PROCESSING", "Processing"));
             this.imageState.showImage(result.base64);
             const recognizingStep = this.ocrProvider === 'gemini_vision'
-                ? "Recognizing and Translating"
-                : "Recognizing";
+                ? t("STEP_RECOGNIZING_AND_TRANSLATING", "Recognizing and Translating")
+                : t("STEP_RECOGNIZING", "Recognizing");
             this.imageState.updateProcessingStep(recognizingStep, false, this.ocrMethodHint());
 
             const textRegions = await this.textRecognizer.recognizeTextFile(result.path);
@@ -362,7 +363,7 @@ export class GameTranslatorLogic {
             if (textRegions.length > 0) {
                 const alreadyTranslated = textRegions.every(r => r.translatedText);
                 if (!alreadyTranslated) {
-                    this.imageState.updateProcessingStep("Translating text", false, this.translationMethodHint());
+                    this.imageState.updateProcessingStep(t("STEP_TRANSLATING_TEXT", "Translating text"), false, this.translationMethodHint());
                 }
 
                 // Translate text (skips backend call if already translated by OCR provider)
@@ -386,7 +387,7 @@ export class GameTranslatorLogic {
                 this.imageState.showTranslatedImage(result.base64, translatedRegions);
             } else {
                 // No text found, show message
-                this.imageState.updateProcessingStep("No text found");
+                this.imageState.updateProcessingStep(t("STEP_NO_TEXT_FOUND", "No text found"));
 
                 // Hide overlay after a short delay
                 setTimeout(() => {
@@ -403,14 +404,14 @@ export class GameTranslatorLogic {
 
             // Check if this is a network error
             if (error instanceof NetworkError) {
-                const msg = error.message || "No internet connection";
+                const msg = error.message || t("STEP_NO_INTERNET", "No internet connection");
                 this.imageState.updateProcessingStep(msg, true);
                 // Hide overlay after showing the error message
                 setTimeout(() => {
                     this.imageState.hideImage();
                 }, 2500); // 2.5 seconds delay for network error
             } else if (error instanceof ApiKeyError) {
-                this.imageState.updateProcessingStep(error.message || "Invalid API key", true);
+                this.imageState.updateProcessingStep(error.message || t("STEP_INVALID_API_KEY", "Invalid API key"), true);
                 // Hide overlay after showing the error message
                 setTimeout(() => {
                     this.imageState.hideImage();
@@ -532,20 +533,20 @@ export class GameTranslatorLogic {
 
     private translationMethodHint(): string {
         const labels: Record<string, string> = {
-            ct2: "On-Device",
-            freegoogle: "Google Translate",
-            googlecloud: "Google Cloud",
+            ct2: t("ON_DEVICE", "On-Device"),
+            freegoogle: t("GOOGLE_TRANSLATE", "Google Translate"),
+            googlecloud: t("GOOGLE_CLOUD", "Google Cloud"),
         };
         return labels[this.translationProvider] || this.translationProvider;
     }
 
     private ocrMethodHint(): string {
         const labels: Record<string, string> = {
-            rapidocr: "On-Device",
-            chromescreenai: "On-Device",
-            ocrspace: "OCR.space",
-            googlecloud: "Google Cloud",
-            gemini_vision: "Gemini Vision",
+            rapidocr: t("ON_DEVICE", "On-Device"),
+            chromescreenai: t("ON_DEVICE", "On-Device"),
+            ocrspace: t("OCR_SPACE", "OCR.space"),
+            googlecloud: t("GOOGLE_CLOUD", "Google Cloud"),
+            gemini_vision: t("GEMINI_VISION", "Gemini Vision"),
         };
         return labels[this.ocrProvider] || this.ocrProvider;
     }
@@ -567,30 +568,30 @@ export class GameTranslatorLogic {
         const targetLang = this.getTargetLanguage();
         if (!inputLang && targetLang) {
             logger.warn('Translator', 'Cannot start translation: languages not configured');
-            this.notify("Input language is not set", 3000, "Please select it in the plugin settings");
+            this.notify(t("TOAST_INPUT_LANG_NOT_SET", "Input language is not set"), 3000, t("TOAST_SELECT_IN_SETTINGS", "Please select it in the plugin settings"));
             return false;
         }
         if (!targetLang && inputLang) {
             logger.warn('Translator', 'Cannot start translation: languages not configured');
-            this.notify("Output language is not set", 3000, "Please select it in the plugin settings");
+            this.notify(t("TOAST_OUTPUT_LANG_NOT_SET", "Output language is not set"), 3000, t("TOAST_SELECT_IN_SETTINGS", "Please select it in the plugin settings"));
             return false;
         }
         if (!inputLang && !targetLang) {
             logger.warn('Translator', 'Cannot start translation: languages not configured');
-            this.notify("Output and Input languages are not set", 3000, "Please select them in the plugin settings");
+            this.notify(t("TOAST_LANGUAGES_NOT_SET", "Output and Input languages are not set"), 3000, t("TOAST_SELECT_BOTH_IN_SETTINGS", "Please select them in the plugin settings"));
             return false;
         }
 
         if (inputLang !== 'auto' && inputLang === targetLang) {
             logger.warn('Translator', `Cannot start translation: input and output language are both ${inputLang}`);
-            this.notify("Input and output languages can not be the same", 3000, "Select change them in plugin settings");
+            this.notify(t("TOAST_LANG_SAME", "Input and output languages can not be the same"), 3000, t("TOAST_CHANGE_IN_SETTINGS", "Please change them in the plugin settings"));
             return false;
         }
 
         const apiKeyCheck = this.requiresApiKeyButMissing();
         if (apiKeyCheck.missing) {
             logger.warn('Translator', `Cannot start translation: ${apiKeyCheck.message}`);
-            this.notify(apiKeyCheck.message, 3000, "Please configure your API key in the Translation settings tab.");
+            this.notify(apiKeyCheck.message, 3000, t("TOAST_CONFIGURE_API_KEY", "Please configure your API key in the Translation settings tab."));
             return false;
         }
 
@@ -600,7 +601,7 @@ export class GameTranslatorLogic {
     // Check if the current provider configuration requires an API key that's missing
     private requiresApiKeyButMissing(): { missing: boolean; message: string } {
         if (this.ocrProvider === 'gemini_vision' && !this.hasGeminiApiKey) {
-            return { missing: true, message: "Gemini API key required for Gemini Vision" };
+            return { missing: true, message: t("TOAST_GEMINI_KEY_REQUIRED", "Gemini API key required for Gemini Vision") };
         }
 
         const ocrNeedsKey = this.ocrProvider === 'googlecloud';
@@ -608,11 +609,11 @@ export class GameTranslatorLogic {
 
         if ((ocrNeedsKey || translationNeedsKey) && !this.hasGoogleApiKey) {
             if (ocrNeedsKey && translationNeedsKey) {
-                return { missing: true, message: "API key required for OCR & Translation" };
+                return { missing: true, message: t("TOAST_API_KEY_BOTH", "API key required for OCR & Translation") };
             } else if (ocrNeedsKey) {
-                return { missing: true, message: "API key required for OCR" };
+                return { missing: true, message: t("TOAST_API_KEY_OCR", "API key required for OCR") };
             } else {
-                return { missing: true, message: "API key required for Translation" };
+                return { missing: true, message: t("TOAST_API_KEY_TRANS", "API key required for Translation") };
             }
         }
         return { missing: false, message: "" };

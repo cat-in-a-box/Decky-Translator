@@ -29,6 +29,7 @@ import { ProgressInfo } from "./Input";
 import { ActivationIndicator } from "./ActivationIndicator";
 import { SettingsProvider, useSettings } from "./SettingsContext";
 import { logger } from "./Logger";
+import { t, useCurrentLanguage } from "./i18n/i18n";
 
 // Import tab components
 import { TabMain, TabTranslation, TabControls } from "./tabs";
@@ -54,6 +55,7 @@ const IconGear = () => (
 
 // Main plugin component
 const GameTranslator: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
+    useCurrentLanguage();
     const { settings, initialized } = useSettings();
     const [overlayVisible, setOverlayVisible] = useState<boolean>(logic.isOverlayVisible());
     const [inputDiagnostics, setInputDiagnostics] = useState<any>(null);
@@ -169,7 +171,7 @@ const GameTranslator: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
         return (
             <PanelSection>
                 <PanelSectionRow>
-                    <div>Loading...</div>
+                    <div>{t("LOADING", "Loading...")}</div>
                 </PanelSectionRow>
             </PanelSection>
         );
@@ -226,6 +228,7 @@ const GameTranslator: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
 
 // Activation Indicator component
 const HoldActivationIndicator: VFC<{ logic: GameTranslatorLogic }> = ({logic}) => {
+    useCurrentLanguage();
     const {settings} = useSettings();
     const [progressInfo, setProgressInfo] = useState<ProgressInfo>({
         active: false,
@@ -278,10 +281,10 @@ const HoldActivationIndicator: VFC<{ logic: GameTranslatorLogic }> = ({logic}) =
     const getActivationText = () => {
         if (!progressInfo.active) return "";
 
-        const action = progressInfo.forDismiss ? "Dismiss" : "Translate";
+        const action = progressInfo.forDismiss ? t("ACTION_DISMISS", "Dismiss") : t("ACTION_TRANSLATE", "Translate");
         const timeRequired = `${(progressInfo.forDismiss ? settings.holdTimeDismiss : settings.holdTimeTranslate) / 1000}s`;
 
-        return `Hold to ${action} (${timeRequired})`;
+        return t("HOLD_TO_ACTION", "Hold to {action} ({timeRequired})", { action, timeRequired });
     };
 
     // Only show the indicator if the plugin is enabled
