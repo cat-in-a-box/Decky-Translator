@@ -184,7 +184,7 @@ const CacheEntriesModal: VFC<{ closeModal?: () => void; onCleared?: () => void }
     }, [totalPages, page]);
 
     useEffect(() => {
-        const sc = wrapRef.current?.querySelector(".dt-cache-scroll") as HTMLElement | null;
+        const sc = wrapRef.current?.querySelector(".dlt-cache-scroll") as HTMLElement | null;
         const track = trackRef.current;
         const thumbEl = thumbRef.current;
         if (!sc || !track || !thumbEl) return;
@@ -225,7 +225,7 @@ const CacheEntriesModal: VFC<{ closeModal?: () => void; onCleared?: () => void }
 
     const onThumbDown = (e: any) => {
         e.preventDefault();
-        const sc = wrapRef.current?.querySelector(".dt-cache-scroll") as HTMLElement | null;
+        const sc = wrapRef.current?.querySelector(".dlt-cache-scroll") as HTMLElement | null;
         if (!sc) return;
         const startY = e.clientY;
         const startScroll = sc.scrollTop;
@@ -276,18 +276,18 @@ const CacheEntriesModal: VFC<{ closeModal?: () => void; onCleared?: () => void }
                         </Focusable>
                     )}
                 </div>
-                <style>{`.dt-rowfocus { background: rgba(103,160,255,0.22) !important; }`}</style>
+                <style>{`.dlt-rowfocus { background: rgba(103,160,255,0.22) !important; }`}</style>
                 {entries === null && <p style={{ color: "#aaa" }}>Loading...</p>}
                 {entries !== null && shown.length === 0 && (
                     <p style={{ color: "#aaa" }}>{all.length === 0 ? "Nothing cached yet." : "Nothing to show."}</p>
                 )}
                 {shown.length > 0 && (
                     <div ref={wrapRef} style={{ position: "relative", flex: "1 1 auto", minHeight: 0, display: "flex" }}>
-                        <Focusable key={`${filter}-${page}`} className="dt-cache-scroll" style={{ flex: 1, overflowY: "scroll", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "12px", paddingTop: "8px", paddingBottom: "8px" }}>
+                        <Focusable key={`${filter}-${page}`} className="dlt-cache-scroll" style={{ flex: 1, overflowY: "scroll", display: "flex", flexDirection: "column", gap: "6px", paddingRight: "12px", paddingTop: "8px", paddingBottom: "8px" }}>
                             {pageItems.map((e) => (
                                 <Focusable
                                     key={`${e.sourceLang}|${e.targetLang}|${e.source}`}
-                                    focusWithinClassName="dt-rowfocus"
+                                    focusWithinClassName="dlt-rowfocus"
                                     style={{ display: "flex", gap: "10px", alignItems: "center", paddingRight: "10px", background: "rgba(255,255,255,0.04)", borderRadius: "4px", scrollMargin: "8px" }}
                                 >
                                     <Focusable
@@ -338,7 +338,7 @@ const CacheEntriesModal: VFC<{ closeModal?: () => void; onCleared?: () => void }
     );
 };
 
-const knownGeminiModels: DropdownItem[] = [
+const knownGeminiModels = [
     { label: <span>2.5 Flash</span>, data: "gemini-2.5-flash" },
     { label: <span>2.5 Flash Lite</span>, data: "gemini-2.5-flash-lite" },
     { label: <span>3 Flash (Preview)</span>, data: "gemini-3-flash-preview" },
@@ -352,7 +352,7 @@ const GeminiModelSelector: VFC<{
     hasApiKey: boolean;
     onChange: (model: string) => void;
 }> = ({ selectedModel, hasApiKey, onChange }) => {
-    const [models, setModels] = useState<DropdownItem[]>(knownGeminiModels);
+    const [models, setModels] = useState(knownGeminiModels);
     const [loading, setLoading] = useState(false);
     const [validated, setValidated] = useState(false);
 
@@ -388,7 +388,7 @@ const GeminiModelSelector: VFC<{
 
     return (
         <>
-            <style>{`@keyframes gemini-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            <style>{`@keyframes dlt-gemini-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
             <PanelSectionRow>
                 <Field
                     label="Gemini Model"
@@ -409,7 +409,7 @@ const GeminiModelSelector: VFC<{
                             disabled={loading || !hasApiKey}
                             style={{ minWidth: "40px", width: "40px", padding: "10px 0" }}
                         >
-                            <BsArrowRepeat style={loading ? { animation: "gemini-spin 1s linear infinite" } : {}} />
+                            <BsArrowRepeat style={loading ? { animation: "dlt-gemini-spin 1s linear infinite" } : {}} />
                         </DialogButton>
                     </Focusable>
                 </Field>
@@ -539,7 +539,7 @@ const ModelActionButton: VFC<{
     const needsDownload = !isDownloaded && !isDownloading;
     return (
         <>
-            <style>{`@keyframes dt-download-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } 50% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.45); } }`}</style>
+            <style>{`@keyframes dlt-download-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } 50% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.45); } }`}</style>
             <DialogButton
                 ref={actionRef}
                 onClick={onActionClick}
@@ -547,7 +547,7 @@ const ModelActionButton: VFC<{
                     minWidth: "40px",
                     width: "40px",
                     padding: "10px 0",
-                    animation: needsDownload ? "dt-download-pulse 1.6s ease-in-out infinite" : undefined,
+                    animation: needsDownload ? "dlt-download-pulse 1.6s ease-in-out infinite" : undefined,
                 }}
             >
                 <ActionIcon style={{ transform: "scale(1.25) translateY(1px)" }} />
@@ -744,14 +744,14 @@ export const TabTranslation: VFC<TabTranslationProps> = ({ scrollTarget, onScrol
                         focusable={false}
                     >
                         <Focusable style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                            <div className="dt-ocr-dropdown-wrapper" style={{ flex: 1 }}>
-                                <style>{`.dt-ocr-dropdown-wrapper .dt-recommended-tag { display: none !important; }`}</style>
+                            <div className="dlt-ocr-dropdown-wrapper" style={{ flex: 1 }}>
+                                <style>{`.dlt-ocr-dropdown-wrapper .dlt-recommended-tag { display: none !important; }`}</style>
                             <Dropdown
                                 rgOptions={[
                                     { label: <span style={{ display: "flex", alignItems: "center", height: "20px", lineHeight: "20px" }}><span>On-Device</span><span style={{ fontSize: "10px", opacity: 0.7, marginLeft: "4px", transform: "translateY(2px)" }}>(RapidOCR)</span></span>, data: "rapidocr" },
-                                    { label: <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", height: "20px", lineHeight: "20px" }}><span style={{ display: "flex", alignItems: "center" }}><span>On-Device</span><span style={{ fontSize: "10px", opacity: 0.7, marginLeft: "4px", transform: "translateY(2px)" }}>(Chrome)</span></span><span className="dt-recommended-tag" style={{ fontSize: "10px", color: "#9aa0a6", fontStyle: "italic" }}>★ recommended</span></span>, data: "chromescreenai" },
+                                    { label: <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", height: "20px", lineHeight: "20px" }}><span style={{ display: "flex", alignItems: "center" }}><span>On-Device</span><span style={{ fontSize: "10px", opacity: 0.7, marginLeft: "4px", transform: "translateY(2px)" }}>(Chrome)</span></span><span className="dlt-recommended-tag" style={{ fontSize: "10px", color: "#9aa0a6", fontStyle: "italic" }}>★ recommended</span></span>, data: "chromescreenai" },
                                     { label: <span>OCR.space</span>, data: "ocrspace" },
-                                    { label: <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", height: "20px", lineHeight: "20px" }}><span>Google Cloud</span><span className="dt-recommended-tag" style={{ fontSize: "10px", color: "#9aa0a6", fontStyle: "italic" }}>★ recommended</span></span>, data: "googlecloud" },
+                                    { label: <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", width: "100%", height: "20px", lineHeight: "20px" }}><span>Google Cloud</span><span className="dlt-recommended-tag" style={{ fontSize: "10px", color: "#9aa0a6", fontStyle: "italic" }}>★ recommended</span></span>, data: "googlecloud" },
                                     { label: <span style={{ display: "flex", alignItems: "center", gap: "6px", height: "20px", lineHeight: "20px" }}>Gemini Vision <BsStars style={{ fontSize: "12px" }} /></span>, data: "gemini_vision" }
                                 ]}
                                 selectedOption={settings.ocrProvider}

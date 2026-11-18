@@ -179,19 +179,19 @@ const GameTranslator: VFC<{ logic: GameTranslatorLogic }> = ({ logic }) => {
         <>
             <style>
                 {`
-                .decky-translator-tabs > div > div:first-child::before {
+                .decky-language-tutor-tabs > div > div:first-child::before {
                     background: #0D141C;
                     box-shadow: none;
                     backdrop-filter: none;
                 }
-                .decky-translator-tabs [role="tabpanel"] {
+                .decky-language-tutor-tabs [role="tabpanel"] {
                     padding-left: 0 !important;
                     padding-right: 0 !important;
                 }
                 `}
             </style>
 
-            <div className="decky-translator-tabs" style={{ height: "95%", width: "300px", position: "fixed", marginTop: "-12px", overflow: "hidden" }}>
+            <div className="decky-language-tutor-tabs" style={{ height: "95%", width: "300px", position: "fixed", marginTop: "-12px", overflow: "hidden" }}>
                 <Tabs
                     activeTab={currentTabRoute}
                     // @ts-ignore
@@ -278,7 +278,7 @@ const HoldActivationIndicator: VFC<{ logic: GameTranslatorLogic }> = ({logic}) =
     const getActivationText = () => {
         if (!progressInfo.active) return "";
 
-        const action = progressInfo.forDismiss ? "Dismiss" : "Translate";
+        const action = progressInfo.forDismiss ? "Dismiss" : settings.learnMode ? "Study" : "Translate";
         const timeRequired = `${(progressInfo.forDismiss ? settings.holdTimeDismiss : settings.holdTimeTranslate) / 1000}s`;
 
         return `Hold to ${action} (${timeRequired})`;
@@ -324,27 +324,33 @@ export default definePlugin(() => {
 
     // Create logic instance
     const logic = new GameTranslatorLogic(imageState);
+    const learnControls = {
+        dismiss: logic.dismiss,
+        subscribeToButtonPresses: logic.shortcutInputHandler.subscribeToButtonPresses,
+        translateRegion: logic.translateLearnRegion,
+    };
 
     // Add image overlay as a global component
-    routerHook.addGlobalComponent("ImageOverlay", () => (
-        <ImageOverlay state={imageState} onDismiss={logic.dismiss}/>
+    routerHook.addGlobalComponent("DeckyLanguageTutor.ImageOverlay", () => (
+        <ImageOverlay state={imageState} learnControls={learnControls}/>
     ));
 
     // Add activation indicator as a global component
-    routerHook.addGlobalComponent("HoldActivationIndicator", () => (
+    routerHook.addGlobalComponent("DeckyLanguageTutor.HoldActivationIndicator", () => (
         <ActivationIndicatorWithSettings logic={logic}/>
     ));
 
     return {
-        title: <div className={staticClasses.Title}>Decky Translator</div>,
+        name: "Decky Language Tutor",
+        titleView: <div className={staticClasses.Title}>Decky Language Tutor</div>,
         content: <TranslatorApp logic={logic}/>,
         icon: <BsTranslate/>,
         onDismount() {
             // Clean up resources
             logic.cleanup();
             cleanupAllFontDOM();
-            routerHook.removeGlobalComponent("ImageOverlay");
-            routerHook.removeGlobalComponent("HoldActivationIndicator");
+            routerHook.removeGlobalComponent("DeckyLanguageTutor.ImageOverlay");
+            routerHook.removeGlobalComponent("DeckyLanguageTutor.HoldActivationIndicator");
         },
         alwaysRender: true
     };

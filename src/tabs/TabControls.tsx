@@ -76,10 +76,18 @@ export const TabControls: VFC<TabControlsProps> = ({ inputDiagnostics }) => {
         <div>
             <PanelSection title="Control">
                 <PanelSectionRow>
+                    <ToggleField
+                        label="Enable capture shortcut"
+                        description="If Decky Translator is also installed, choose a different button or combination."
+                        checked={settings.shortcutEnabled}
+                        onChange={(value) => updateSetting('shortcutEnabled', value, 'Capture shortcut')}
+                    />
+                </PanelSectionRow>
+                <PanelSectionRow>
                     <DropdownItem
                         layout="below"
-                        label="Quick Translation Shortcut"
-                        description="Select which buttons to hold to start translaton"
+                        label="Capture Shortcut"
+                        description="Select which buttons to hold to capture a frame"
                         rgOptions={inputModeOptions}
                         selectedOption={settings.inputMode}
                         onChange={(option) => updateSetting('inputMode', option.data, 'Input method')}

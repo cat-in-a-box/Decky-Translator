@@ -1,62 +1,43 @@
-<p align="center">
-  <img src="assets/readme-logo.png" alt="Decky Translator" />
-</p>
+# Decky Language Tutor
 
-![GitHub Release](https://img.shields.io/github/v/release/cat-in-a-box/Decky-Translator)
-![License](https://img.shields.io/github/license/cat-in-a-box/Decky-Translator?color=green)
-![Build Status](https://img.shields.io/github/actions/workflow/status/cat-in-a-box/Decky-Translator/build.yml)
+A Steam Deck plugin for studying English from a captured game screen. Based on
+[Decky Translator](https://github.com/cat-in-a-box/Decky-Translator) by Alexander Timoshuk (cat-in-a-box).
+The fork uses its own plugin name, installation directory, settings, models and caches.
 
-[![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/alexanderdev)
+## Install on Steam Deck
 
-A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin that lets you translate any text on your Steam Deck screen.
+Install Decky Loader, then open **Decky Settings → Developer** after enabling **Developer Mode**.
+Choose **Install Plugin from ZIP file** and select `Decky.Language.Tutor.zip` from a build artifact or release.
+The ZIP includes the Linux runtime and Python packages. Optional offline OCR and translation models
+are downloaded in the **Translation** tab.
 
-It captures your screen, recognizes text using OCR, translates it and then shows the result with screen overlay.
+## Study English
 
-Might be helpful for learning a new language by playing games or some other purposes (you tell me!).
+1. Open Tutor in Decky's Quick Access Menu. In **Translation**, choose your output language.
+   For offline use, download a local OCR model and the NLLB translation model.
+2. Enable **Learn English** on the main tab and select **Study This Screen**. English is used for
+   this capture. Choose Chrome Screen AI, RapidOCR, OCR.space, or Google Cloud Vision for Learn Mode.
+3. Use **D-pad up/down** to select a text block and **left/right** to select part of the original.
+   **X** switches between words and punctuation-based phrases. **A** requests or hides the translation
+   of the whole selected block. **B** closes the study overlay. The panel also has touch controls.
 
-![Screenshot](assets/screenshot_1.jpg)
+Turn off **Learn English** to use the original translation overlay. In **Control**, you can opt in
+to a capture shortcut. Choose a different shortcut if you also use Decky Translator. The study overlay
+uses a captured frame. Game input behavior can vary with Steam Input and the game.
 
-![Translation Demo](assets/translation.gif)
+## Build and package
 
-## Requirements
+Use Node 20 and pnpm 9. Run `pnpm install --frozen-lockfile`, `pnpm typecheck`, and `pnpm build`.
+The GitHub Actions workflow builds the Linux x86-64 `plugin-dependencies.tar.gz` and runs
+`pnpm package` to create `out/Decky.Language.Tutor.zip`. For local packaging, place the Linux
+dependency archive at the repository root before running `pnpm package`.
 
-- Steam Deck (LCD or OLED)
-- Experimental support for non-steamOS handhelds and distros
-- [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) installed
-- Internet connection required for web-based providers and for initial download of offline models
-
-## Installation
-
-### From Decky Plugin Store
-1. Install [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader/tree/main?tab=readme-ov-file#-installation) on your Steam Deck
-2. Press <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/qam.svg"><img height="16" alt="QAM" src="assets/icons/dark/qam.svg"></picture> to open the side bar and go to the Decky tab <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/plug.svg"><img height="16" alt="Decky" src="assets/icons/dark/plug.svg"></picture>
-3. In the upper right corner press <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/store.svg"><img height="16" alt="Store" src="assets/icons/dark/store.svg"></picture> to view all the available plugins
-4. Search for "Decky Translator" and install it
-
-### Manual Installation
-1. Install [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader/tree/main?tab=readme-ov-file#-installation) on your Steam Deck
-2. [Download](https://github.com/cat-in-a-box/Decky-Translator/releases/latest/download/Decky.Translator.zip) the latest release from the [Releases](https://github.com/cat-in-a-box/decky-translator/releases) page
-3. Upload *Decky.Translator.zip* archive to any directory on your Steam Deck
-4. Press <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/qam.svg"><img height="16" alt="QAM" src="assets/icons/dark/qam.svg"></picture>, go to the Decky tab <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/plug.svg"><img height="16" alt="Decky" src="assets/icons/dark/plug.svg"></picture> and click <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/gear.svg"><img height="16" alt="Settings" src="assets/icons/dark/gear.svg"></picture>
-5. Enable "Developer Mode" in General tab
-6. Open the Developer tab
-7. Install Plugin from ZIP file -> "Browse" and then select *Decky.Translator.zip*
-
-## How to use it?
-
-1. Press "Translate" button in the main tab of the plugin
-2. Press <picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/light/qam.svg"><img height="16" alt="QAM" src="assets/icons/dark/qam.svg"></picture> to open the menu again and press "Close Overlay"
-
-## How to quickly use it?
-
-1. Hold L4 button for a Quick Translation
-2. Hold L4 button again to disable the translation overlay
-
-Button or Combinations can be configured in the Controls tab
+A manual workflow run with a version matching `package.json` creates a draft GitHub Release.
+Without a version, the workflow produces downloadable build artifacts.
 
 ## How does it do that? 
 
-Decky Translator allows you to choose different Text Recognition and Translation methods - feel free to experiment.
+The Translation tab lets you choose separate OCR and translation providers in Translate Mode.
 
 ### Text Recognition (OCR)
 
@@ -117,7 +98,7 @@ For security, you can restrict the API key to only the Vision and Translation AP
 ![API-Key-Restriction](assets/google-cloud-key-4.jpg)
 
 ### Step 5: Add API Key to Plugin
-1. Open the Decky Translator plugin on your Steam Deck
+1. Open Decky Language Tutor on your Steam Deck
 2. Go to the Translation tab
 3. Select Google Cloud Vision and/or Google Cloud Translation as your providers
 4. Click "Set Key"
@@ -169,21 +150,7 @@ Try increasing the "Font Scaling" option in plugin settings
 Double-check that you entered it correctly. If the issue persists, please raise an issue - let's investigate it together
 
 ### I see nothing / Recognition is bad / It does not translate anything
-Try other combination of text recognition and translation methods. If it doesnt solve the problem - please report it here [New Issue](https://github.com/cat-in-a-box/Decky-Translator/issues/new). It will also help if you attach your .log file there
-
-## To-Do
-### Functional
-- [x] Add offline OCR functionality
-- [x] Fix interface scaling issues on non-default SteamOS values (experimental)
-- [x] Rework temporary files solution
-- [x] Gamepad support
-- [x] Overlay font scaling for large monitors
-- [x] Fully offline Translation functionality
-- [x] Support for non-SteamOS distros
-- [ ] Disable in-game buttons while overlay is active
-- [ ] Desktop mode support
-- [ ] Nicer look for translation overlay
-- [ ] TTS for translated text (press the translated label to listen)
+Try another OCR or translation provider. When reporting an issue in the fork, include the selected providers and relevant details from the Tutor log.
 
 ## Third-Party Dependencies
 
@@ -262,7 +229,7 @@ Loaded from CDN on demand for the translated text overlay. Not bundled in the pl
 
 ## Support
 
-If you find this plugin useful - feel free to buy me a cup of coffee ❤️
+Support Alexander Timoshuk, the author of the original Decky Translator:
 
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/alexanderdev)
 

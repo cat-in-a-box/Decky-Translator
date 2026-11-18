@@ -8,6 +8,8 @@ import { TranslatedRegion } from "./TextTranslator";
 import { logger } from "./Logger";
 import { buildTranslatedFontFamily, ensureFontLoaded, resolveFontStyleCSS } from "./fonts";
 import type { FontStyleOption } from "./fonts";
+import { LearnOverlay } from "./learn/LearnOverlay";
+import type { LearnControls } from "./learn/LearnOverlay";
 
 export type HorizontalTextAlignment = 'left' | 'right' | 'center' | 'justify';
 
@@ -20,7 +22,7 @@ enum UIComposition {
     OverlayKeyboard = 4,
 }
 
-const useUIComposition: (composition: UIComposition) => void = findModuleChild(
+const useUIComposition: ((composition: UIComposition) => void) | undefined = findModuleChild(
     (m) => {
         if (typeof m !== "object") return undefined;
         for (let prop in m) {
@@ -41,15 +43,20 @@ const useUIComposition: (composition: UIComposition) => void = findModuleChild(
 // When unmounted, the hook cleanup calls RemoveMinimumCompositionStateRequest,
 // fully releasing the request so Steam's own UI sections can get input focus.
 const CompositionRequest: VFC<{ level: UIComposition }> = ({ level }) => {
-    useUIComposition(level);
+    useUIComposition?.(level);
     return null;
 };
+
+interface LearnView {
+    targetLanguage: string;
+}
 
 // Enhanced ImageState to handle translated text regions
 export class ImageState {
     private visible = false;
     private imageData = "";
     private translatedRegions: TranslatedRegion[] = [];
+    private learnView: LearnView | null = null;
     private loading = false;
     private processingStep = ""; // Added to track current processing step
     private processingDetail = "";
@@ -175,6 +182,7 @@ export class ImageState {
 
         // Clear any previous translations
         this.translatedRegions = [];
+        this.learnView = null;
 
         // Ensure the overlay is visible
         this.visible = true;
@@ -191,7 +199,7 @@ export class ImageState {
         this.notifyListeners();
     }
 
-    showTranslatedImage(imageData: string, regions: TranslatedRegion[]): void {
+    showTranslatedImage(imageData: string, regions: TranslatedRegion[], learnView: LearnView | null = null): void {
         // Clear any pending timer
         if (this.loadingIndicatorTimer) {
             clearTimeout(this.loadingIndicatorTimer);
@@ -203,6 +211,7 @@ export class ImageState {
 
         // Set the translated regions
         this.translatedRegions = regions;
+        this.learnView = learnView;
 
         // Ensure the overlay is visible
         this.visible = true;
@@ -239,10 +248,15 @@ export class ImageState {
         // Important: Clear the image data and regions to prevent reuse
         this.imageData = "";
         this.translatedRegions = [];
+        this.learnView = null;
 
         logger.debug('ImageState', 'Hiding image and clearing all state');
 
         this.notifyListeners();
+    }
+
+    getLearnView(): LearnView | null {
+        return this.learnView;
     }
 
     private notifyListeners(): void {
@@ -378,8 +392,10 @@ export const TranslatedTextOverlay: VFC<{
     allowLabelGrowth: boolean,
     translatedTextAlignment: HorizontalTextAlignment,
     translatedTextFontFamily: string,
-    translatedTextFontStyle: FontStyleOption
-}> = ({ visible, imageData, regions, loading, processingStep, processingDetail, processingIsError, translationsVisible, fontScale, allowLabelGrowth, translatedTextAlignment, translatedTextFontFamily, translatedTextFontStyle }) => {
+    translatedTextFontStyle: FontStyleOption,
+    learnView: LearnView | null,
+    learnControls: LearnControls,
+}> = ({ visible, imageData, regions, loading, processingStep, processingDetail, processingIsError, translationsVisible, fontScale, allowLabelGrowth, translatedTextAlignment, translatedTextFontFamily, translatedTextFontStyle, learnView, learnControls }) => {
     // Composition layer is handled by CompositionRequest below -- only mounted when visible
 
     // Ref to the screenshot image element
@@ -485,8 +501,8 @@ export const TranslatedTextOverlay: VFC<{
 
     return (
         <>
-        {visible && <CompositionRequest level={UIComposition.Notification} />}
-        <div id='translation-overlay'
+        {visible && useUIComposition && <CompositionRequest level={learnView ? UIComposition.Overlay : UIComposition.Notification} />}
+        <div id='decky-language-tutor-overlay'
              style={{
                  height: "100vh",
                  width: "100vw",
@@ -519,14 +535,22 @@ export const TranslatedTextOverlay: VFC<{
                             maxWidth: "calc(100vw - 2px)",
                             objectFit: "contain",
                             backgroundColor: "rgba(0, 0, 0, 0.15)",
-                            border: translationsVisible ? "1px solid #f44336" : "1px solid #ffc107",
+                            border: learnView ? "none" : translationsVisible ? "1px solid #f44336" : "1px solid #ffc107",
                             imageRendering: "pixelated"
                         }}
                         alt="Screenshot"
                     />
 
+                    {visible && learnView && regions.length > 0 && (() => {
+                        const { widthFactor, heightFactor } = getScalingFactor();
+                        return <LearnOverlay {...learnControls} regions={regions}
+                            targetLanguage={learnView.targetLanguage}
+                            widthFactor={widthFactor} heightFactor={heightFactor}
+                            imageHeight={imageDimensions.height} />;
+                    })()}
+
                     {/* Overlay translated text boxes with adaptive font sizing */}
-                    {translationsVisible && (() => {
+                    {!learnView && translationsVisible && (() => {
                         const { widthFactor, heightFactor, generalFactor } = getScalingFactor();
                         const pad = 4;
                         const gap = 2;
@@ -661,7 +685,7 @@ export const TranslatedTextOverlay: VFC<{
                                         wordWrap: "break-word",
                                         whiteSpace: "pre-wrap",
 
-                                        animation: "fadeInTranslation 0.2s ease-out forwards"
+                                        animation: "dlt-translation-in 0.2s ease-out forwards"
                                     }}
                                 >
                                     <div style={{
@@ -677,7 +701,7 @@ export const TranslatedTextOverlay: VFC<{
                     })()}
 
                     {/* Indicator when translations are hidden - eye closed icon */}
-                    {!translationsVisible && !loading && (
+                    {!learnView && !translationsVisible && !loading && (
                         <div style={{
                             position: "absolute",
                             bottom: "20px",
@@ -739,23 +763,23 @@ export const TranslatedTextOverlay: VFC<{
                             <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
                         </svg>
                     ) : (
-                        <div className="loader" style={{
+                        <div className="dlt-overlay-loader" style={{
                             border: "3px solid #f3f3f3",
                             borderTop: "3px solid #3498db",
                             borderRadius: "50%",
                             width: "16px",
                             height: "16px",
                             flexShrink: 0,
-                            animation: "spin 1.5s linear infinite",
+                            animation: "dlt-overlay-spin 1.5s linear infinite",
                             marginRight: "10px",
                         }}></div>
                     )}
                     <style>{`
-                        @keyframes spin {
+                        @keyframes dlt-overlay-spin {
                             0% { transform: rotate(0deg); }
                             100% { transform: rotate(360deg); }
                         }
-                        @keyframes fadeInTranslation {
+                        @keyframes dlt-translation-in {
                             0% { opacity: 0; transform: translateY(10px); }
                             100% { opacity: 1; transform: translateY(0); }
                         }
@@ -776,10 +800,11 @@ export const TranslatedTextOverlay: VFC<{
 
 
 // Main image overlay component
-export const ImageOverlay: VFC<{ state: ImageState, onDismiss: () => void }> = ({ state, onDismiss }) => {
+export const ImageOverlay: VFC<{ state: ImageState, learnControls: LearnControls }> = ({ state, learnControls }) => {
     const [visible, setVisible] = useState<boolean>(false);
     const [imageData, setImageData] = useState<string>("");
     const [regions, setRegions] = useState<TranslatedRegion[]>([]);
+    const [learnView, setLearnView] = useState<LearnView | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [processingStep, setProcessingStep] = useState<string>("");
     const [processingDetail, setProcessingDetail] = useState<string>("");
@@ -813,6 +838,7 @@ export const ImageOverlay: VFC<{ state: ImageState, onDismiss: () => void }> = (
             setVisible(isVisible);
             setImageData(imgData);
             setRegions(textRegions);
+            setLearnView(state.getLearnView());
             setLoading(isLoading);
             setProcessingStep(currProcessingStep);
             setProcessingDetail(currProcessingDetail);
@@ -828,14 +854,14 @@ export const ImageOverlay: VFC<{ state: ImageState, onDismiss: () => void }> = (
         state.onStateChanged(handleStateChanged);
 
         const suspend_register = SteamClient.User.RegisterForPrepareForSystemSuspendProgress(() => {
-            onDismiss();
+            learnControls.dismiss();
         });
 
         return () => {
             state.offStateChanged(handleStateChanged);
             suspend_register.unregister();
         };
-    }, [state, onDismiss]);
+    }, [state, learnControls]);
 
     return (
         <TranslatedTextOverlay
@@ -852,6 +878,8 @@ export const ImageOverlay: VFC<{ state: ImageState, onDismiss: () => void }> = (
             translatedTextAlignment={translatedTextAlignment}
             translatedTextFontFamily={translatedTextFontFamily}
             translatedTextFontStyle={translatedTextFontStyle}
+            learnView={learnView}
+            learnControls={learnControls}
         />
     );
 };

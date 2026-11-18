@@ -95,7 +95,8 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
             || (settings.ocrProvider === 'rapidocr' && !providerStatus.rapidocr_downloaded));
 
     const translationNeedsDownload =
-        settings.ocrProvider !== 'gemini_vision'
+        !settings.learnMode
+        && settings.ocrProvider !== 'gemini_vision'
         && settings.translationProvider === 'ct2'
         && !!providerStatus
         && !providerStatus.nllb_downloaded;
@@ -104,6 +105,10 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
         if (overlayVisible) {
             logic.dismiss();
             Router.CloseSideMenus();
+            return;
+        }
+        if (settings.learnMode && settings.ocrProvider === 'gemini_vision') {
+            onNavigateToTab('translation');
             return;
         }
         if (ocrNeedsDownload) {
@@ -126,10 +131,13 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
         if (overlayVisible) {
             return <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}><BsXLg /> Close Overlay</span>;
         }
+        if (settings.learnMode && settings.ocrProvider === 'gemini_vision') {
+            return "Choose OCR provider for Learn Mode";
+        }
         if (ocrNeedsDownload || translationNeedsDownload) {
             return <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}><HiInboxArrowDown size={20} /> Download required</span>;
         }
-        return <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}><BsTranslate /> Translate</span>;
+        return <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}><BsTranslate /> {settings.learnMode ? "Study This Screen" : "Translate"}</span>;
     };
 
     return (
@@ -140,12 +148,20 @@ export const TabMain: VFC<TabMainProps> = ({ logic, overlayVisible, providerStat
                         label={settings.enabled ? "Plugin is enabled" : "Plugin is disabled"}
                         description="Toggle the functionality on or off"
                         checked={settings.enabled}
-                        onChange={(value) => updateSetting('enabled', value, 'Decky Translator')}
+                        onChange={(value) => updateSetting('enabled', value, 'Decky Language Tutor')}
                     />
                 </PanelSectionRow>
 
                 {settings.enabled && (
                     <>
+                        <PanelSectionRow>
+                            <ToggleField
+                                label="Learn English"
+                                description="Select text on the captured frame and reveal its translation."
+                                checked={settings.learnMode}
+                                onChange={(value) => updateSetting('learnMode', value, 'Learn English')}
+                            />
+                        </PanelSectionRow>
                         <PanelSectionRow>
                             <ButtonItem
                                 bottomSeparator="standard"

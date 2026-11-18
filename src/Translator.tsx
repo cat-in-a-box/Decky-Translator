@@ -2,7 +2,7 @@
 
 import { call, toaster } from "@decky/api";
 import { Router } from "@decky/ui";
-import { TextRecognizer, NetworkError, ApiKeyError, RateLimitError, ModelNotAvailableError } from "./TextRecognizer";
+import { TextRecognizer, TextRegion, NetworkError, ApiKeyError, RateLimitError, ModelNotAvailableError } from "./TextRecognizer";
 import { TextTranslator } from "./TextTranslator";
 import { Input, InputMode, ActionType, ProgressInfo } from "./Input";
 import { ImageState } from "./Overlay";
@@ -27,6 +27,7 @@ export class GameTranslatorLogic {
     private pauseGameOnOverlay: boolean = false;
     private hideIdenticalTranslations: boolean = false;
     private currentRunId: number = 0;
+    private learnMode = false;
 
     // Provider settings for upfront validation
     private ocrProvider: string = "rapidocr";
@@ -68,7 +69,7 @@ export class GameTranslatorLogic {
                 // Translate action
                 if (this.imageState.isVisible()) return;
                 if (this.isProcessing) return;
-                if (!this.canStartTranslation()) return;
+                if (!this.canStartTranslation(this.learnMode)) return;
 
                 // Pause first so the game freezes before the screenshot
                 if (this.pauseGameOnOverlay) {
@@ -312,17 +313,35 @@ export class GameTranslatorLogic {
         }
     }
 
+    setLearnMode(learnMode: boolean): void {
+        this.learnMode = learnMode;
+    }
+
+    translateLearnRegion = async (region: TextRegion, targetLanguage: string): Promise<string> => {
+        const [result] = await this.textTranslator.translateText(
+            [{ ...region, translatedText: undefined }], 'en', targetLanguage,
+        );
+        return result?.translatedText?.trim() ?? "";
+    }
+
     takeScreenshotAndTranslate = async (): Promise<void> => {
         // If already processing or disabled, return
-        if (this.isProcessing || !this.enabled) {
+        if (this.isProcessing || !this.enabled || this.imageState.isVisible()) {
             logger.debug('Translator', 'Already processing a screenshot or plugin disabled, skipping');
             return;
         }
 
-        if (!this.canStartTranslation()) return;
+        const learnMode = this.learnMode;
+        const targetLanguage = this.getTargetLanguage();
+        if (!this.canStartTranslation(learnMode)) return;
 
         const runId = ++this.currentRunId;
         const isCancelled = (): boolean => runId !== this.currentRunId;
+        const hideAfter = (delay: number): void => {
+            setTimeout(() => {
+                if (!isCancelled()) this.imageState.hideImage();
+            }, delay);
+        };
 
         try {
             this.isProcessing = true;
@@ -352,14 +371,20 @@ export class GameTranslatorLogic {
                 : "Recognizing";
             this.imageState.updateProcessingStep(recognizingStep, false, this.ocrMethodHint());
 
-            const textRegions = await this.textRecognizer.recognizeTextFile(result.path);
+            const textRegions = await this.textRecognizer.recognizeTextFile(result.path, learnMode);
             if (isCancelled()) {
                 logger.debug('Translator', 'Translation cancelled after OCR');
                 return;
             }
             logger.info('Translator', `Found ${textRegions.length} text regions`);
 
-            if (textRegions.length > 0) {
+            if (learnMode && textRegions.length > 0) {
+                this.imageState.showTranslatedImage(
+                    result.base64,
+                    textRegions.map(region => ({ ...region, translatedText: "" })),
+                    { targetLanguage },
+                );
+            } else if (textRegions.length > 0) {
                 const alreadyTranslated = textRegions.every(r => r.translatedText);
                 if (!alreadyTranslated) {
                     this.imageState.updateProcessingStep("Translating text", false, this.translationMethodHint());
@@ -389,9 +414,7 @@ export class GameTranslatorLogic {
                 this.imageState.updateProcessingStep("No text found");
 
                 // Hide overlay after a short delay
-                setTimeout(() => {
-                    this.imageState.hideImage();
-                }, 2000); // 2 seconds delay
+                hideAfter(2000);
             }
         } catch (error) {
             if (isCancelled()) {
@@ -406,26 +429,18 @@ export class GameTranslatorLogic {
                 const msg = error.message || "No internet connection";
                 this.imageState.updateProcessingStep(msg, true);
                 // Hide overlay after showing the error message
-                setTimeout(() => {
-                    this.imageState.hideImage();
-                }, 2500); // 2.5 seconds delay for network error
+                hideAfter(2500);
             } else if (error instanceof ApiKeyError) {
                 this.imageState.updateProcessingStep(error.message || "Invalid API key", true);
                 // Hide overlay after showing the error message
-                setTimeout(() => {
-                    this.imageState.hideImage();
-                }, 2500); // 2.5 seconds delay for API key error
+                hideAfter(2500);
             } else if (error instanceof ModelNotAvailableError) {
                 this.imageState.updateProcessingStep(error.message, true);
-                setTimeout(() => {
-                    this.imageState.hideImage();
-                }, 3000);
+                hideAfter(3000);
             } else if (error instanceof RateLimitError) {
                 this.imageState.updateProcessingStep(error.message, true);
                 // Hide overlay after showing the error message
-                setTimeout(() => {
-                    this.imageState.hideImage();
-                }, 3000); // 3 seconds delay for rate limit error
+                hideAfter(3000);
             } else {
                 this.imageState.hideImage();
             }
@@ -562,7 +577,19 @@ export class GameTranslatorLogic {
 
     // Runs all pre-checks that would prevent a translation from starting.
     // Returns false and shows a toast if any check fails.
-    private canStartTranslation(): boolean {
+    private canStartTranslation(learnMode: boolean): boolean {
+        if (learnMode) {
+            if (this.ocrProvider === 'gemini_vision') {
+                this.notify("Select another OCR provider for Learn Mode", 3000, "Open the Translation tab to change it.");
+                return false;
+            }
+            if (this.ocrProvider === 'googlecloud' && !this.hasGoogleApiKey) {
+                this.notify("API key required for Google Cloud Vision", 3000, "Open the Translation tab to configure it.");
+                return false;
+            }
+            return true;
+        }
+
         const inputLang = this.getInputLanguage();
         const targetLang = this.getTargetLanguage();
         if (!inputLang && targetLang) {

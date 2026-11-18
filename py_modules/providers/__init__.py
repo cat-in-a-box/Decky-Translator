@@ -62,6 +62,7 @@ class ProviderManager:
     """Factory and manager for OCR and Translation providers."""
 
     def __init__(self):
+        self._ocrspace_data_dir = ""
         """Initialize the provider manager."""
         # Provider instances (created on demand)
         self._ocr_providers = {}
@@ -107,6 +108,7 @@ class ProviderManager:
         ct2_models_dir: str = "",
         screenai_models_dir: str = "",
         rapidocr_models_dir: str = "",
+        ocrspace_data_dir: str = "",
     ) -> None:
         """
         Configure provider preferences.
@@ -120,6 +122,8 @@ class ProviderManager:
             translation_provider: Translation provider preference - "freegoogle", "googlecloud", or "ct2"
             ct2_models_dir: Directory for CT2 translation model storage
         """
+        if ocrspace_data_dir:
+            self._ocrspace_data_dir = ocrspace_data_dir
         if ct2_models_dir:
             self._ct2_models_dir = ct2_models_dir
             if not self._model_manager:
@@ -357,7 +361,7 @@ class ProviderManager:
                     provider.set_persistent_mode(True)
                 self._ocr_providers[provider_type] = provider
             elif provider_type == ProviderType.OCR_SPACE:
-                self._ocr_providers[provider_type] = OCRSpaceProvider()
+                self._ocr_providers[provider_type] = OCRSpaceProvider(data_dir=self._ocrspace_data_dir)
             elif provider_type == ProviderType.GOOGLE:
                 self._ocr_providers[provider_type] = GoogleVisionProvider(
                     self._google_api_key

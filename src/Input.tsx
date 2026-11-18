@@ -91,11 +91,15 @@ const HIDRAW_BUTTON_MAP: Record<string, Button> = {
 
 export class Input {
     private onButtonsPressedListeners: Array<(actionType: ActionType) => void> = [];
+    private buttonListeners = new Set<(button: Button) => void>();
     private onProgressListeners: Array<(progressInfo: ProgressInfo) => void> = [];
     private touchStartTime: number | null = null;
 
     private pollingInterval: ReturnType<typeof setInterval> | null = null;
     private pollingRate = 100; // 10Hz polling
+    private pollInProgress = false;
+    private shortcutEnabled = false;
+    private hasButtonSample = false;
 
     // Health tracking
     private lastInputTime: number = 0;
@@ -155,18 +159,26 @@ export class Input {
     // Poll the backend for complete button state (not individual events)
     // This is more reliable when multiple frontend instances are polling
     private async pollButtonState(): Promise<void> {
-        if (!this.enabled) return;
+        if (!this.shouldPoll() || this.pollInProgress) return;
 
+        this.pollInProgress = true;
         try {
             const result = await call<[], { success: boolean; buttons: string[] }>('get_hidraw_button_state');
 
-            if (result && result.success && result.buttons) {
+            if (this.shouldPoll() && result?.success && result.buttons) {
                 this.handleButtonState(result.buttons);
             }
         } catch (error) {
             // Silently handle polling errors to avoid log spam
             // Health check will handle reconnection if needed
+        } finally {
+            this.pollInProgress = false;
         }
+    }
+
+    private shouldPoll(): boolean {
+        return this.enabled && this.pollingInterval !== null &&
+            (this.shortcutEnabled || this.buttonListeners.size > 0);
     }
 
     // Handle the complete button state from backend
@@ -183,10 +195,17 @@ export class Input {
             }
         }
 
+        if (!this.hasButtonSample) {
+            this.hasButtonSample = true;
+            this.currentlyPressedButtons = newPressedButtons;
+            return;
+        }
+
         // Check if the button state actually changed
         const stateChanged = this.hasButtonSetChanged(newPressedButtons);
 
         if (stateChanged) {
+            const presses = [...newPressedButtons].filter(button => !this.currentlyPressedButtons.has(button));
             // Log the change
             const buttonList = Array.from(newPressedButtons).map(b => {
                 const entry = Object.entries(HIDRAW_BUTTON_MAP).find(([_, v]) => v === b);
@@ -198,7 +217,10 @@ export class Input {
             this.currentlyPressedButtons = newPressedButtons;
 
             // Process the new state
-            this.processButtonState();
+            if (this.shortcutEnabled) this.processButtonState();
+            for (const button of presses) {
+                this.buttonListeners.forEach(listener => listener(button));
+            }
         }
     }
 
@@ -309,6 +331,8 @@ export class Input {
             this.leftTouchpadTouched = false;
             this.rightTouchpadTouched = false;
             this.currentlyPressedButtons.clear();
+            this.previousButtons = [];
+            this.hasButtonSample = false;
         }
     }
 
@@ -357,7 +381,25 @@ export class Input {
         if (this.timeoutId) clearTimeout(this.timeoutId);
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
         if (this.clearCooldownTimeoutId) clearTimeout(this.clearCooldownTimeoutId);
+        this.buttonListeners.clear();
     }
+
+    setShortcutEnabled(enabled: boolean): void {
+        if (this.shortcutEnabled === enabled) return;
+        this.shortcutEnabled = enabled;
+        this.currentlyPressedButtons.clear();
+        this.previousButtons = [];
+        this.hasButtonSample = false;
+        this.setInputMode(this.inputMode);
+    }
+
+    subscribeToButtonPresses = (listener: (button: Button) => void): (() => void) => {
+        if (!this.shortcutEnabled && this.buttonListeners.size === 0) {
+            this.hasButtonSample = false;
+        }
+        this.buttonListeners.add(listener);
+        return () => { this.buttonListeners.delete(listener); };
+    };
 
     setInputMode(mode: InputMode): void {
         logger.info('Input', `Setting input mode to ${InputMode[mode]}`);

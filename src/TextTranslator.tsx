@@ -39,7 +39,11 @@ export class TextTranslator {
         return this.inputLanguage;
     }
 
-    async translateText(textRegions: TextRegion[]): Promise<TranslatedRegion[]> {
+    async translateText(
+        textRegions: TextRegion[],
+        inputLanguage = this.inputLanguage,
+        targetLanguage = this.targetLanguage,
+    ): Promise<TranslatedRegion[]> {
         try {
             // Skip translation if there's nothing to translate
             if (!textRegions.length) {
@@ -50,8 +54,8 @@ export class TextTranslator {
             const response = await call<[TextRegion[], string, string], TranslatedRegion[] | ErrorResponse>(
                 'translate_text',
                 textRegions,
-                this.targetLanguage,
-                this.inputLanguage
+                targetLanguage,
+                inputLanguage
             );
 
             if (response) {

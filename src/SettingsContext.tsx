@@ -11,6 +11,8 @@ export interface Settings {
     targetLanguage: string;
     inputMode: InputMode;
     enabled: boolean;
+    learnMode: boolean;
+    shortcutEnabled: boolean;
     initialized: boolean;
     holdTimeTranslate: number;
     holdTimeDismiss: number;
@@ -53,6 +55,8 @@ const initialSettings: Settings = {
     targetLanguage: "",
     inputMode: InputMode.L5_BUTTON,  // Default to L5 back button
     enabled: true,
+    learnMode: false,
+    shortcutEnabled: false,
     initialized: false,
     holdTimeTranslate: 1000, // Default to 1 second (1000ms)
     holdTimeDismiss: 500,    // Default to 0.5 seconds (500ms)
@@ -131,6 +135,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     targetLanguage: serverSettings.target_language,
                     inputMode: serverSettings.input_mode,
                     enabled: serverSettings.enabled,
+                    learnMode: serverSettings.learn_mode ?? false,
+                    shortcutEnabled: serverSettings.shortcut_enabled ?? false,
                     holdTimeTranslate: serverSettings.hold_time_translate,
                     holdTimeDismiss: serverSettings.hold_time_dismiss,
                     confidenceThreshold: serverSettings.confidence_threshold || 0.6, // Add default if not present
@@ -168,6 +174,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 logic.setTargetLanguage(serverSettings.target_language);
                 logic.setInputMode(serverSettings.input_mode);
                 logic.setEnabled(serverSettings.enabled);
+                logic.setLearnMode(mappedSettings.learnMode ?? false);
+                logic.shortcutInputHandler.setShortcutEnabled(mappedSettings.shortcutEnabled ?? false);
                 logic.setHoldTimeTranslate(serverSettings.hold_time_translate);
                 logic.setHoldTimeDismiss(serverSettings.hold_time_dismiss);
                 logic.setConfidenceThreshold(serverSettings.confidence_threshold || 0.6); // Set in logic
@@ -213,6 +221,8 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                 targetLanguage: 'target_language',
                 inputMode: 'input_mode',
                 enabled: 'enabled',
+                learnMode: 'learn_mode',
+                shortcutEnabled: 'shortcut_enabled',
                 initialized: 'initialized',
                 holdTimeTranslate: 'hold_time_translate',
                 holdTimeDismiss: 'hold_time_dismiss',
@@ -261,6 +271,12 @@ export const SettingsProvider: React.FC<SettingsProviderProps> = ({
                     break;
                 case 'enabled':
                     logic.setEnabled(value);
+                    break;
+                case 'learnMode':
+                    logic.setLearnMode(value);
+                    break;
+                case 'shortcutEnabled':
+                    logic.shortcutInputHandler.setShortcutEnabled(value);
                     break;
                 case 'holdTimeTranslate':
                     logic.setHoldTimeTranslate(value);

@@ -112,7 +112,7 @@ class RapidOCRProvider(OCRProvider):
         """
         self._plugin_dir = plugin_dir or os.environ.get(
             "DECKY_PLUGIN_DIR",
-            "/home/deck/homebrew/plugins/decky-translator"
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         )
         self._models_dir = models_dir or os.path.join(self._plugin_dir, LEGACY_MODELS_DIR)
         self._min_confidence = max(0.0, min(1.0, min_confidence))

@@ -29,7 +29,6 @@ BIN_DIR = os.path.join(PLUGIN_DIR, "bin")
 DEPENDENCIES_ARCHIVE = os.path.join(BIN_DIR, "plugin-dependencies.tar.gz")
 EXTRACTION_MARKER = os.path.join(BIN_DIR, ".dependencies-extracted")
 BIN_PY_MODULES_DIR = os.path.join(BIN_DIR, "py_modules")
-BIN_RAPIDOCR_DIR = os.path.join(BIN_DIR, "rapidocr")
 BIN_PYTHON_DIR = os.path.join(BIN_DIR, "python313")
 
 def _should_extract_dependencies():
@@ -48,22 +47,22 @@ def _should_extract_dependencies():
         return True  # Dependencies were updated, need to re-extract
 
     # Check if all expected directories exist (partial extraction detection)
-    if not all(os.path.exists(d) for d in [BIN_PY_MODULES_DIR, BIN_RAPIDOCR_DIR, BIN_PYTHON_DIR]):
+    if not all(os.path.isdir(d) for d in [BIN_PY_MODULES_DIR, BIN_PYTHON_DIR]):
         return True  # Some directories missing, need to re-extract
 
     return False  # Already extracted and up-to-date
 
 if _should_extract_dependencies():
     try:
-        print(f"[Decky Translator] Extracting dependencies from {DEPENDENCIES_ARCHIVE}...")
+        print(f"[Decky Language Tutor] Extracting dependencies from {DEPENDENCIES_ARCHIVE}...")
         with tarfile.open(DEPENDENCIES_ARCHIVE, "r:gz") as tar:
             tar.extractall(path=BIN_DIR)
         # Create marker file to indicate successful extraction
         with open(EXTRACTION_MARKER, "w") as f:
             f.write(f"Extracted at {datetime.now().isoformat()}\n")
-        print(f"[Decky Translator] Dependencies extracted successfully")
+        print(f"[Decky Language Tutor] Dependencies extracted successfully")
     except Exception as e:
-        print(f"[Decky Translator] Failed to extract dependencies: {e}")
+        print(f"[Decky Language Tutor] Failed to extract dependencies: {e}")
         # Remove marker if it exists, so we retry next time
         if os.path.exists(EXTRACTION_MARKER):
             os.remove(EXTRACTION_MARKER)
@@ -156,7 +155,10 @@ _url_redact_filter = UrlKeyRedactFilter()
 
 
 # Get environment variable
-settingsDir = os.environ.get("DECKY_PLUGIN_SETTINGS_DIR", "/home/deck/homebrew/settings")
+settingsDir = os.path.join(
+    os.environ.get("DECKY_PLUGIN_SETTINGS_DIR", "/home/deck/homebrew/settings"),
+    "decky-language-tutor",
+)
 
 # Set up logging
 logger = decky_plugin.logger
@@ -183,15 +185,15 @@ logger.debug(f"GStreamer plugins path: {GSTPLUGINSPATH}")
 os.makedirs(DECKY_PLUGIN_LOG_DIR, exist_ok=True)
 
 # Set up log files
-std_out_file_path = Path(DECKY_PLUGIN_LOG_DIR) / "decky-translator-std-out.log"
+std_out_file_path = Path(DECKY_PLUGIN_LOG_DIR) / "decky-language-tutor-std-out.log"
 std_out_file = open(std_out_file_path, "w")
-std_err_file = open(Path(DECKY_PLUGIN_LOG_DIR) / "decky-translator-std-err.log", "w")
+std_err_file = open(Path(DECKY_PLUGIN_LOG_DIR) / "decky-language-tutor-std-err.log", "w")
 logger.debug(f"Standard output logs: {std_out_file_path}")
 
 # Set up file logging
 from logging.handlers import TimedRotatingFileHandler
 
-log_file = Path(DECKY_PLUGIN_LOG_DIR) / "decky-translator.log"
+log_file = Path(DECKY_PLUGIN_LOG_DIR) / "decky-language-tutor.log"
 log_file_handler = TimedRotatingFileHandler(log_file, when="midnight", backupCount=2)
 log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 log_file_handler.addFilter(_url_redact_filter)
@@ -206,12 +208,11 @@ try:
         _plugin_version = json.load(_pkg).get("version", "unknown")
 except Exception as _e:
     _plugin_version = "unknown"
-logger.info(f"Decky Translator v{_plugin_version} starting")
+logger.info(f"Decky Language Tutor v{_plugin_version} starting")
 
 
 import threading
 import queue
-import fcntl
 import struct
 import select
 
@@ -229,17 +230,6 @@ class HidrawButtonMonitor:
     INPUTPLUMBER_PID = 0x12FB
     PACKET_SIZE = 64
     POLL_INTERVAL = 0.004  # 250Hz - matches controller report rate
-
-    # HID ioctl command
-    HIDIOCSFEATURE = lambda self, size: (0xC0000000 | (size << 16) | (ord('H') << 8) | 0x06)
-
-    # HID commands for controller initialization
-    ID_CLEAR_DIGITAL_MAPPINGS = 0x81
-    ID_SET_SETTINGS_VALUES = 0x87
-    SETTING_LEFT_TRACKPAD_MODE = 0x07
-    SETTING_RIGHT_TRACKPAD_MODE = 0x08
-    TRACKPAD_NONE = 0x07
-    SETTING_STEAM_WATCHDOG_ENABLE = 0x2D
 
     # Button masks - ButtonsL (bytes 8-11, uint32 LE)
     BUTTONS_L = {
@@ -386,51 +376,16 @@ class HidrawButtonMonitor:
         logger.info("No supported Valve hidraw device found; relying on evdev only")
         return None
 
-    def send_feature_report(self, data):
-        """Send a HID feature report to the device."""
-        if self.device_fd is None:
-            return False
-        try:
-            # Pad to 64 bytes
-            buf = bytes(data) + bytes(64 - len(data))
-            fcntl.ioctl(self.device_fd, self.HIDIOCSFEATURE(64), buf)
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send feature report: {e}")
-            return False
-
     def initialize_device(self):
-        """Open device and send initialization commands if needed."""
+        """Read controller reports without changing Steam Input mappings."""
         if self.device_path is None:
             self.device_path = self.find_device()
             if self.device_path is None:
                 return False
 
         try:
-            # Open device with read/write access
-            self.device_fd = os.open(self.device_path, os.O_RDWR)
-            logger.info(f"Opened {self.device_path} for hidraw monitoring (pid={hex(self.device_pid or 0)})")
-
-            # Only send init commands for real Steam Deck hardware
-            if self.device_pid == self.STEAMDECK_PID:
-                # Command 1: Clear digital mappings (disable lizard mode)
-                if not self.send_feature_report([self.ID_CLEAR_DIGITAL_MAPPINGS]):
-                    logger.warning("Failed to send CLEAR_DIGITAL_MAPPINGS")
-
-                # Command 2: Set settings to disable trackpad emulation
-                settings_cmd = [
-                    self.ID_SET_SETTINGS_VALUES,
-                    3,  # Number of settings
-                    self.SETTING_LEFT_TRACKPAD_MODE, self.TRACKPAD_NONE,
-                    self.SETTING_RIGHT_TRACKPAD_MODE, self.TRACKPAD_NONE,
-                    self.SETTING_STEAM_WATCHDOG_ENABLE, 0,
-                ]
-                if not self.send_feature_report(settings_cmd):
-                    logger.warning("Failed to send SET_SETTINGS_VALUES")
-
-                logger.info("Steam Deck controller initialized for full button access")
-            else:
-                logger.info(f"Virtual/non-Steam Deck controller opened (skipping init commands)")
+            self.device_fd = os.open(self.device_path, os.O_RDONLY)
+            logger.info(f"Opened {self.device_path} for read-only hidraw monitoring")
 
             self.initialized = True
             return True
@@ -1155,7 +1110,7 @@ def get_base64_image(image_path):
 
 class Plugin:
     _filepath: str = None
-    _screenshotPath: str = "/tmp/decky-translator"  # Temporary directory for screenshots (deleted after OCR)
+    _screenshotPath: str = "/tmp/decky-language-tutor"  # Temporary directory for screenshots (deleted after OCR)
     _settings = None
     _input_language: str = "auto"  # Default to auto-detect
     _target_language: str = "en"
@@ -1311,6 +1266,8 @@ class Plugin:
                 self._input_language = value
             elif key == "input_mode":
                 self._input_mode = value
+            elif key in ("learn_mode", "shortcut_enabled"):
+                value = bool(value)
             elif key == "enabled":
                 if self._provider_manager:
                     if value:
@@ -1504,6 +1461,8 @@ class Plugin:
                 "input_language": self._input_language,
                 "input_mode": self._input_mode,
                 "enabled": self._settings.get_setting("enabled", True),
+                "learn_mode": self._settings.get_setting("learn_mode", False),
+                "shortcut_enabled": self._settings.get_setting("shortcut_enabled", False),
                 "use_free_providers": self._use_free_providers,
                 "ocr_provider": self._ocr_provider,
                 "translation_provider": self._translation_provider,
@@ -1868,7 +1827,7 @@ class Plugin:
     async def _take_screenshot_portal(self, env, screenshot_path, MIN_VALID_SIZE):
         # Result arrives as a Request.Response signal; start gdbus monitor before issuing the call to avoid a race.
         env = self._clean_system_binary_env(env)
-        handle_token = f"deckytr_{int(time.time() * 1000)}"
+        handle_token = f"deckytutor_{int(time.time() * 1000)}"
 
         # stdbuf -oL: gdbus block-buffers when stdout is a pipe, so the Response signal stays unread until exit.
         monitor = await asyncio.create_subprocess_exec(
@@ -2156,7 +2115,7 @@ class Plugin:
         except Exception as e:
             logger.debug(f"Background color sampling failed (non-fatal): {e}")
 
-    async def recognize_text(self, image_data: str):
+    async def recognize_text(self, image_data: str, learn_mode: bool = False):
         try:
             if not image_data:
                 logger.error("Empty image data for text recognition")
@@ -2180,12 +2139,14 @@ class Plugin:
             # If using Gemini Vision, set the target language before OCR
             # so it can translate in the same API call
             if self._ocr_provider == "gemini_vision":
+                if learn_mode:
+                    return {"error": "model_not_available", "message": "Select another OCR provider for Learn Mode"}
                 self._provider_manager.set_gemini_target_language(self._target_language)
 
             start_time = time.time()
             text_regions = await self._provider_manager.recognize_text(
                 image_bytes,
-                language=self._input_language
+                language="en" if learn_mode else self._input_language
             )
             logger.info(f"OCR completed in {time.time() - start_time:.2f}s, found {len(text_regions)} regions")
 
@@ -2209,7 +2170,7 @@ class Plugin:
             logger.error(traceback.format_exc())
             return []
 
-    async def recognize_text_file(self, image_path: str):
+    async def recognize_text_file(self, image_path: str, learn_mode: bool = False):
         try:
             if not os.path.exists(image_path):
                 logger.error(f"Image file does not exist: {image_path}")
@@ -2220,7 +2181,7 @@ class Plugin:
                 logger.error("Failed to encode image for OCR")
                 return []
 
-            return await Plugin.recognize_text(self, base64_data)
+            return await Plugin.recognize_text(self, base64_data, learn_mode)
         except Exception as e:
             logger.error(f"recognize_text_file error: {e}")
             logger.error(traceback.format_exc())
@@ -2674,7 +2635,7 @@ class Plugin:
         logger.info("Plugin initialization started")
         try:
             self._settings = SettingsManager(
-                name="decky-translator-settings",
+                name="decky-language-tutor-settings",
                 settings_directory=settingsDir
             )
             self._settings.read()
@@ -2753,17 +2714,15 @@ class Plugin:
                 self._settings.set_setting("translation_provider", self._translation_provider)
 
             # Set up CT2 translation models directory
-            ct2_models_dir = os.path.join(settingsDir, "decky-translator", "models", "nllb")
+            ct2_models_dir = os.path.join(settingsDir, "models", "nllb")
             os.makedirs(ct2_models_dir, exist_ok=True)
 
             # Same parent as NLLB so both share the plugin uninstall lifecycle.
-            screenai_models_dir = os.path.join(settingsDir, "decky-translator", "models")
+            screenai_models_dir = os.path.join(settingsDir, "models")
             os.makedirs(screenai_models_dir, exist_ok=True)
 
             # RapidOCR models download into the same parent dir as NLLB and
             # Chrome Screen AI so they all persist across plugin updates.
-            rapidocr_models_dir = os.path.join(settingsDir, "decky-translator", "models")
-            os.makedirs(rapidocr_models_dir, exist_ok=True)
 
             try:
                 self._translation_cache = TranslationCache(
@@ -2783,7 +2742,8 @@ class Plugin:
                 translation_provider=self._translation_provider,
                 ct2_models_dir=ct2_models_dir,
                 screenai_models_dir=screenai_models_dir,
-                rapidocr_models_dir=rapidocr_models_dir,
+                rapidocr_models_dir=screenai_models_dir,
+                ocrspace_data_dir=settingsDir,
             )
 
             # Load and apply RapidOCR-specific settings

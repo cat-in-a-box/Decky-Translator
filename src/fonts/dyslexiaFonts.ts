@@ -98,7 +98,7 @@ export function loadCDNFont(fontName: string): Promise<boolean> {
     if (!def || def.source !== 'cdn' || !def.cdnCssUrls?.length) return Promise.resolve(false);
 
     const promises = def.cdnCssUrls.map((cssUrl, i) => {
-        const id = `decky-translator-cdnfont-${fontName.replace(/\s+/g, '-')}-${i}`;
+        const id = `decky-language-tutor-cdnfont-${fontName.replace(/\s+/g, '-')}-${i}`;
         return injectStylesheetLink(id, cssUrl, CDN_FONT_TIMEOUT_MS);
     });
 
@@ -122,6 +122,6 @@ export function preloadDyslexiaFonts(targetLanguage: string): void {
 }
 
 export function cleanupDyslexiaFonts(): void {
-    document.querySelectorAll('[id^="decky-translator-cdnfont-"]').forEach(el => el.remove());
+    document.querySelectorAll('[id^="decky-language-tutor-cdnfont-"]').forEach(el => el.remove());
     loadedCDNFonts.clear();
 }

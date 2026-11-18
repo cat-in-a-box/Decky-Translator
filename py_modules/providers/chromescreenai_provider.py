@@ -47,7 +47,7 @@ class ChromeScreenAIProvider(OCRProvider):
     ):
         self._plugin_dir = plugin_dir or os.environ.get(
             "DECKY_PLUGIN_DIR",
-            "/home/deck/homebrew/plugins/decky-translator",
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
         )
         # model_dir holds the .so and TFLite files; owned by ScreenAIDownloader.
         self._model_dir = model_dir

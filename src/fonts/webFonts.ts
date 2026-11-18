@@ -36,7 +36,7 @@ export function isWebFont(fontName: string): boolean {
     return allWebFontSet.has(fontName);
 }
 
-const GFONTS_LINK_PREFIX = 'decky-translator-gfont-';
+const GFONTS_LINK_PREFIX = 'decky-language-tutor-gfont-';
 export const GOOGLE_FONT_TIMEOUT_MS = 6000;
 const loadedWebFonts = new Set<string>();
 

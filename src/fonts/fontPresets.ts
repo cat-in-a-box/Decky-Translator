@@ -70,7 +70,7 @@ export function detectAvailableFonts(fontCandidates: string[]): Set<string> {
 // Steam's CEF may not expose system fonts unless they are explicitly
 // declared through @font-face with a local() src.
 
-const STYLE_ID = 'decky-translator-font-faces';
+const STYLE_ID = 'decky-language-tutor-font-faces';
 
 function getOrCreateStyleSheet(): HTMLStyleElement {
     let el = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
