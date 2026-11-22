@@ -1,33 +1,5 @@
 import { VFC } from "react";
-import { findModuleChild } from "@decky/ui";
-
-// UI Composition layers provided by Decky
-enum UIComposition {
-    Hidden = 0,
-    Notification = 1,
-    Overlay = 2,
-    Opaque = 3,
-    OverlayKeyboard = 4,
-}
-
-// Hook into Decky's UI composition to ensure our indicator renders above the game or overlay
-const useUIComposition: (composition: UIComposition) => void = findModuleChild(
-    (m) => {
-        if (typeof m !== "object") return undefined;
-        for (let prop in m) {
-            const fn = (m as any)[prop];
-            if (
-                typeof fn === "function" &&
-                fn.toString().includes("AddMinimumCompositionStateRequest") &&
-                fn.toString().includes("ChangeMinimumCompositionStateRequest") &&
-                fn.toString().includes("RemoveMinimumCompositionStateRequest") &&
-                !fn.toString().includes("m_mapCompositionStateRequests")
-            ) {
-                return fn;
-            }
-        }
-    }
-);
+import { useUIComposition, EUIComposition } from "./useUIComposition";
 
 interface ActivationIndicatorProps {
     visible: boolean;
@@ -38,13 +10,13 @@ interface ActivationIndicatorProps {
 
 // Mountable component that holds a composition state request.
 // When unmounted, the hook cleanup removes the request entirely.
-const CompositionRequest: VFC<{ level: UIComposition }> = ({ level }) => {
+const CompositionRequest: VFC<{ level: EUIComposition }> = ({ level }) => {
     useUIComposition(level);
     return null;
 };
 
 export const ActivationIndicator: VFC<ActivationIndicatorProps> = ({ visible, progress, text, forDismiss }) => {
-    const layer = forDismiss ? UIComposition.Overlay : UIComposition.Notification;
+    const layer = forDismiss ? EUIComposition.Overlay : EUIComposition.Notification;
 
     const size = 36;
     const strokeWidth = 3;

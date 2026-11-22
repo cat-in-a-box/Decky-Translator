@@ -1,46 +1,18 @@
 // Overlay.tsx - Handles overlay components and UI
 
-import { findModuleChild } from "@decky/ui";
-
-
 import { VFC, useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { TranslatedRegion } from "./TextTranslator";
 import { logger } from "./Logger";
 import { buildTranslatedFontFamily, ensureFontLoaded, resolveFontStyleCSS } from "./fonts";
 import type { FontStyleOption } from "./fonts";
+import { useUIComposition, EUIComposition } from "./useUIComposition";
 
 export type HorizontalTextAlignment = 'left' | 'right' | 'center' | 'justify';
-
-// UI Composition for overlay
-enum UIComposition {
-    Hidden = 0,
-    Notification = 1,
-    Overlay = 2,
-    Opaque = 3,
-    OverlayKeyboard = 4,
-}
-
-const useUIComposition: (composition: UIComposition) => void = findModuleChild(
-    (m) => {
-        if (typeof m !== "object") return undefined;
-        for (let prop in m) {
-            if (
-                typeof m[prop] === "function" &&
-                m[prop].toString().includes("AddMinimumCompositionStateRequest") &&
-                m[prop].toString().includes("ChangeMinimumCompositionStateRequest") &&
-                m[prop].toString().includes("RemoveMinimumCompositionStateRequest") &&
-                !m[prop].toString().includes("m_mapCompositionStateRequests")
-            ) {
-                return m[prop];
-            }
-        }
-    }
-);
 
 // Mountable component that holds a composition state request.
 // When unmounted, the hook cleanup calls RemoveMinimumCompositionStateRequest,
 // fully releasing the request so Steam's own UI sections can get input focus.
-const CompositionRequest: VFC<{ level: UIComposition }> = ({ level }) => {
+const CompositionRequest: VFC<{ level: EUIComposition }> = ({ level }) => {
     useUIComposition(level);
     return null;
 };
@@ -485,7 +457,7 @@ export const TranslatedTextOverlay: VFC<{
 
     return (
         <>
-        {visible && <CompositionRequest level={UIComposition.Notification} />}
+        {visible && <CompositionRequest level={EUIComposition.Notification} />}
         <div id='translation-overlay'
              style={{
                  height: "100vh",
